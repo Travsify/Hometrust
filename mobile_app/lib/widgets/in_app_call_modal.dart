@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../core/constants/colors.dart';
 
 class InAppCallModal extends StatefulWidget {
   final String entityName;

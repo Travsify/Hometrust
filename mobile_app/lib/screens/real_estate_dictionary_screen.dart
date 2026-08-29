@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 
 class RealEstateDictionaryScreen extends StatefulWidget {
@@ -757,6 +756,30 @@ Return a valid JSON object with the following schema:
                 if (_aiSearchResult != null) ...[
                   _buildAiResultCard(_aiSearchResult!),
                   const SizedBox(height: 16),
+                ],
+
+                if (_aiSearchError != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFCA5A5)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _aiSearchError!,
+                            style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626), fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                 ],
 
                 // Terms count header

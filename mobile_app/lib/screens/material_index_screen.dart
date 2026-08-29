@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../core/constants/colors.dart';
 
 class MaterialIndexScreen extends StatefulWidget {
   const MaterialIndexScreen({super.key});
