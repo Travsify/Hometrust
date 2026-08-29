@@ -103,16 +103,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         if (auth.isAuthenticated) ...[
                           const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.emeraldBg,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'ROLE: ${user?.role}',
-                              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.emeraldText),
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.emeraldBg,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'ROLE: ${user?.role}',
+                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.emeraldText),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  if (user?.isVerified != true) {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: (user?.isVerified == true)
+                                        ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                                        : const Color(0xFFEF4444).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: (user?.isVerified == true)
+                                          ? const Color(0xFF10B981)
+                                          : const Color(0xFFEF4444),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    (user?.isVerified == true)
+                                        ? 'VERIFIED 🛡️'
+                                        : 'UNVERIFIED ⚠️',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      color: (user?.isVerified == true)
+                                          ? const Color(0xFF059669)
+                                          : const Color(0xFFDC2626),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ],

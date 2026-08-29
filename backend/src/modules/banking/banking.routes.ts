@@ -6,6 +6,7 @@ const router = Router();
 
 // Buyer KYC & Account Generation
 router.post('/kyc/submit', requireAuth, BankingController.submitBuyerKyc);
+router.post('/kyc/auto-verify', requireAuth, BankingController.triggerPremblyAutoKyc);
 
 // Developer KYB & Corporate Account Generation
 router.post('/kyb/submit', requireAuth, BankingController.submitDeveloperKyb);

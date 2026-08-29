@@ -100,6 +100,16 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> refreshUser() async {
+    if (_token != null) {
+      try {
+        final userData = await ApiClient.get('/auth/me');
+        _user = UserModel.fromJson(userData);
+        notifyListeners();
+      } catch (_) {}
+    }
+  }
+
   Future<void> logout() async {
     _user = null;
     _token = null;

@@ -181,3 +181,11 @@ export const resolveAccount = async (bankCode: string, accountNumber: string) =>
   const response = await api.post('/banking/resolve-account', { bankCode, accountNumber });
   return response.data.data;
 };
+
+export const getMaterialsIndex = async (category?: string, state?: string) => {
+  let url = '/materials?';
+  if (category) url += `category=${category}&`;
+  if (state) url += `state=${state}&`;
+  const response = await api.get(url);
+  return response.data.data;
+};

@@ -538,6 +538,45 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     }
 
     final purchaseProvider = Provider.of<PurchaseProvider>(context, listen: false);
+
+    // Single Active Property Purchase Enforcement
+    final hasActivePurchase = purchaseProvider.userPurchases.any(
+      (p) => (p.status == 'ACTIVE' || p.status == 'INITIATED') && p.outstandingBalance > 0,
+    );
+
+    if (hasActivePurchase) {
+      final active = purchaseProvider.userPurchases.firstWhere(
+        (p) => (p.status == 'ACTIVE' || p.status == 'INITIATED') && p.outstandingBalance > 0,
+      );
+      final activeTitle = active.property?.title ?? active.projectUnit?.name ?? active.purchaseCode;
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: const [
+              Icon(Icons.info_outline_rounded, color: Color(0xFFEA580C)),
+              SizedBox(width: 8),
+              Text('Active Order in Progress', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          content: Text(
+            'You currently have an active property purchase ($activeTitle - ${active.purchaseCode}) in progress.\n\nTo ensure complete milestone escrow protection, only one property purchase is permitted at a time. Please complete your existing balance before adding another property.',
+            style: const TextStyle(fontSize: 12, height: 1.4, color: Color(0xFF475569)),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('Understood', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final purchase = await purchaseProvider.initiatePurchase(
       propertyId: widget.property.id,
       paymentPlanId: _selectedPlan?.id,

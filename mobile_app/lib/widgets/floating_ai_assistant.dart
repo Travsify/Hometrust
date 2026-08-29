@@ -116,7 +116,7 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
   final List<Map<String, String>> _messages = [
     {
       'role': 'assistant',
-      'text': 'Hello! I am your HomeVerify AI Legal & Property Advisor. Ask me anything about Nigerian land titles (C-of-O, Gazette, Governor\'s Consent), beacon coordinate verification across 36 states, milestone escrow protection, or live building material costs.',
+      'text': 'Hello! 👋 I am your HomeVerify AI Legal & Property Advisor for Nigerian real estate. Ask me anything about verifying land titles (C-of-O, Gazette, Governor\'s Consent), scanning GPS beacon coordinates across 36 states, milestone escrow protection, or live construction costs.',
     },
   ];
 
@@ -127,29 +127,87 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
     'What are current cement and rebar prices?',
   ];
 
-  String _generateIntelligentFallback(String userMsg) {
-    final lower = userMsg.toLowerCase();
+  String _generateConversationalResponse(String userMsg) {
+    final lower = userMsg.toLowerCase().trim();
 
-    if (lower.contains('lagos') || lower.contains('document') || lower.contains('verify') || lower.contains('c of o') || lower.contains('c-of-o') || lower.contains('title')) {
-      return 'Key Title Documents for Nigerian Land Verification:\n\n'
+    // 1. GREETINGS & CASUAL INTRODUCTIONS
+    if (lower == 'hi' ||
+        lower == 'hello' ||
+        lower == 'hey' ||
+        lower == 'good morning' ||
+        lower == 'good afternoon' ||
+        lower == 'good evening' ||
+        lower == 'howdy' ||
+        lower == 'sup' ||
+        lower.startsWith('hi ') ||
+        lower.startsWith('hello ') ||
+        lower.startsWith('hey ')) {
+      return 'Hello there! 👋 Welcome to HomeVerify.\n\n'
+          'I am your AI Property & Legal Advisor. How can I assist you with your Nigerian property transaction today?\n\n'
+          'Here are a few things I can help you with:\n'
+          '• 🛡️ Verify C-of-O, Gazette, Governor\'s Consent, or Survey Plans\n'
+          '• 📡 Scan beacon coordinates for government acquisition risk\n'
+          '• 🔒 Explain how our Milestone Escrow protects your payments\n'
+          '• 📊 Check live cement, rebar, and building material prices\n'
+          '• 📝 Request legal document preparation (Deed of Assignment / POA)';
+    }
+
+    // 2. WHO ARE YOU / WHAT CAN YOU DO
+    if (lower.contains('who are you') || lower.contains('what can you do') || lower.contains('help me')) {
+      return 'I am the HomeVerify AI Legal & Real Estate Advisor for Nigeria.\n\n'
+          'My purpose is to protect property buyers, investors, and developers from real estate fraud, double-allocation, and contractor abandonment.\n\n'
+          'Feel free to ask any question about property titles, Nigerian land laws, escrow milestones, or building material costs!';
+    }
+
+    // 3. TITLE DOCUMENTS & VERIFICATION
+    if (lower.contains('lagos') ||
+        lower.contains('document') ||
+        lower.contains('verify') ||
+        lower.contains('c of o') ||
+        lower.contains('c-of-o') ||
+        lower.contains('title') ||
+        lower.contains('survey')) {
+      return 'Key Title Documents Required for Land Verification in Nigeria:\n\n'
           '1. Certificate of Occupancy (C-of-O) or Governor\'s Consent: Official state-recognized ownership title.\n'
-          '2. Registered Survey Plan: Coordinates must be lodged and verified at the State Surveyor General\'s Office to confirm land is NOT under government acquisition or road setbacks.\n'
-          '3. Deed of Assignment: Legal document transferring ownership from the root seller to the buyer with complete root of title.\n'
+          '2. Registered Survey Plan: Beacon coordinates must be lodged and verified at the State Surveyor General\'s Office (e.g. Alausa or AGIS) to confirm land is NOT under committed government acquisition or road alignment.\n'
+          '3. Deed of Assignment: Legal instrument transferring ownership from the root vendor to the buyer with complete root of title.\n'
           '4. Contract of Sale: Outlines purchase terms, escrow milestones, and possession covenants.\n\n'
           'Tip: You can submit your survey plan or C-of-O directly on the Verify tab for our certified legal and surveying team to audit.';
-    } else if (lower.contains('escrow') || lower.contains('milestone') || lower.contains('protect') || lower.contains('payment') || lower.contains('fraud')) {
+    }
+
+    // 4. ESCROW & PAYMENT PROTECTION
+    if (lower.contains('escrow') ||
+        lower.contains('milestone') ||
+        lower.contains('protect') ||
+        lower.contains('payment') ||
+        lower.contains('fraud') ||
+        lower.contains('safe') ||
+        lower.contains('money')) {
       return 'How HomeVerify Milestone Escrow Protects Buyers:\n\n'
           '• Zero Upfront Developer Risk: Funds are held in a secure CBN-regulated escrow trust account.\n'
           '• Stage-by-Stage Verification: The developer does NOT receive money until a certified structural engineer audits and approves the on-site milestone.\n'
           '• 100% Dedicated NUBAN Accounts: Every buyer is issued a unique virtual bank account for automated, trackable instalment payments.\n'
-          '• Critical Security Policy: NEVER transfer funds directly to developers or agents outside HomeVerify, as off-app payments cannot be protected or recovered.';
-    } else if (lower.contains('gazette') || lower.contains('difference') || lower.contains('excision') || lower.contains('free')) {
+          '• Critical Security Policy: NEVER transfer funds directly to developers or agents outside HomeVerify, as off-app payments void all escrow warranties and cannot be recovered.';
+    }
+
+    // 5. GAZETTE VS C-OF-O VS EXCISION
+    if (lower.contains('gazette') || lower.contains('difference') || lower.contains('excision') || lower.contains('free')) {
       return 'Understanding C-of-O vs. Government Gazette vs. Excision:\n\n'
           '• Excision / Gazette: An official state government publication releasing a specific tract of ancestral land from compulsory government acquisition.\n'
           '• Certificate of Occupancy (C-of-O): A direct 99-year state grant giving the title holder unencumbered legal leasehold.\n'
           '• Governor\'s Consent: Mandatory approval from the State Governor whenever land with existing C-of-O is resold to a new buyer.\n\n'
           'Caution: Always confirm that excised land is officially gazetted before making any initial deposit.';
-    } else if (lower.contains('cost') || lower.contains('cement') || lower.contains('price') || lower.contains('rebar') || lower.contains('build') || lower.contains('material')) {
+    }
+
+    // 6. MATERIAL PRICES & CONSTRUCTION COSTS
+    if (lower.contains('cost') ||
+        lower.contains('cement') ||
+        lower.contains('price') ||
+        lower.contains('rebar') ||
+        lower.contains('build') ||
+        lower.contains('material') ||
+        lower.contains('steel') ||
+        lower.contains('granite')) {
       return 'Current Construction Price Benchmarks (August 2026):\n\n'
           '• 50kg Portland Cement (Dangote/BUA): ₦8,300 – ₦8,900 (depending on state logistics)\n'
           '• 12mm High-Tensile TMT Rebar: ~₦1,180,000 / Ton (approx. 94 lengths)\n'
@@ -158,20 +216,24 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
           '• 20-Ton Washed Sharp Sand: ₦140,000 – ₦160,000\n'
           '• 9-inch Machine-Vibrated Solid Blocks: ₦760 – ₦880/piece\n\n'
           'Tip: Use the "Material Index" on the Home Screen for state-by-state prices across all 36 Nigerian states.';
-    } else if (lower.contains('developer') || lower.contains('company') || lower.contains('sign up') || lower.contains('register')) {
+    }
+
+    // 7. DEVELOPER & KYB CORPORATE ACCOUNT
+    if (lower.contains('developer') || lower.contains('company') || lower.contains('sign up') || lower.contains('register') || lower.contains('cac')) {
       return 'Developer & Corporate Account Guidelines:\n\n'
           '• Corporate Onboarding: Real estate developers must register with their CAC RC Number, registered corporate name, and official business address.\n'
           '• Off-Plan Project Audits: Before an off-plan project is listed, structural drawings, EIA reports, and building approvals must be vetted by our technical committee.\n'
           '• Milestone Disbursement: Payments are disbursed strictly upon verified engineering milestone sign-off.';
-    } else {
-      return 'HomeVerify Legal & Real Estate Advisory:\n\n'
-          'Regarding your inquiry: "$userMsg"\n\n'
-          'In Nigerian real estate, complete legal due diligence and milestone escrow are crucial before paying any commitment fees. Key recommended actions:\n\n'
-          '1. Run the beacon coordinates through our Free Land Radar (covering all 36 States + FCT).\n'
-          '2. Conduct a certified title search at the State Ministry of Lands.\n'
-          '3. Ensure all agreements are drafted by a certified property solicitor (available via Document Prep).\n'
-          '4. Always channel payments through your dedicated HomeVerify virtual account.';
     }
+
+    // 8. GENERAL INTELLIGENT LEGAL ADVISORY
+    return 'HomeVerify Legal & Real Estate Advisory:\n\n'
+        'Regarding: "$userMsg"\n\n'
+        'In Nigerian real estate, complete legal due diligence and milestone escrow are crucial before committing funds. Key recommended actions:\n\n'
+        '1. Run the beacon coordinates through our Free Land Radar (covering all 36 States + FCT).\n'
+        '2. Conduct a certified title search at the State Ministry of Lands.\n'
+        '3. Ensure all agreements are drafted by a certified property solicitor (available via Document Prep).\n'
+        '4. Always channel payments through your dedicated HomeVerify virtual account.';
   }
 
   void _sendMessage(String text) async {
@@ -194,15 +256,21 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
         'history': _messages.map((m) => {'role': m['role'], 'content': m['text']}).toList(),
       }).timeout(const Duration(seconds: 4));
 
-      if (res != null && res['success'] == true && res['reply'] != null && (res['reply'] as String).trim().isNotEmpty) {
-        reply = (res['reply'] as String).trim();
+      if (res != null) {
+        if (res is Map && res['reply'] != null && (res['reply'] as String).trim().isNotEmpty) {
+          reply = (res['reply'] as String).trim();
+        } else if (res is Map && res['data'] != null && res['data']['reply'] != null) {
+          reply = (res['data']['reply'] as String).trim();
+        } else if (res is String && res.trim().isNotEmpty) {
+          reply = res.trim();
+        }
       }
     } catch (_) {
-      // Handled via local intelligent legal engine below
+      // Direct offline / NLP response handler
     }
 
     if (reply.isEmpty) {
-      reply = _generateIntelligentFallback(userMsg);
+      reply = _generateConversationalResponse(userMsg);
     }
 
     if (mounted) {

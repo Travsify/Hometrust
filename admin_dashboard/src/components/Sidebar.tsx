@@ -30,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, cur
     { id: 'projects', label: 'Off-Plan & Milestones', icon: HardHat },
     { id: 'payments', label: 'Payments & Revenue', icon: CreditCard },
     { id: 'banking', label: 'Virtual Banking & DVA', icon: Landmark },
+    { id: 'materials', label: 'Material Price Index', icon: HardHat, badge: 'Live' },
     { id: 'legal', label: 'Legal Drafting Queue', icon: FileText },
     { id: 'inspections', label: 'Site Inspections', icon: Calendar },
     { id: 'users', label: 'User Management', icon: Building2 },

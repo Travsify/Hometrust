@@ -7,6 +7,7 @@ import 'providers/auth_provider.dart';
 import 'providers/property_provider.dart';
 import 'providers/verification_provider.dart';
 import 'providers/purchase_provider.dart';
+import 'providers/notification_provider.dart';
 import 'screens/splash_screen.dart';
 
 // Global navigator key so ApiClient can navigate on 401
@@ -36,6 +37,7 @@ class HomeVerifyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PropertyProvider()..fetchAll()),
         ChangeNotifierProvider(create: (_) => VerificationProvider()),
         ChangeNotifierProvider(create: (_) => PurchaseProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: MaterialApp(
         title: 'HomeVerify',

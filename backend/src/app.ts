@@ -20,6 +20,7 @@ import { adminRoutes } from './modules/admin/admin.routes';
 import { storageRoutes } from './modules/storage/storage.routes';
 import { bankingRoutes } from './modules/banking/banking.routes';
 import { aiRoutes } from './modules/ai/ai.routes';
+import { materialsRoutes } from './modules/materials/materials.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -81,6 +82,7 @@ app.use(`${apiPrefix}/admin`, adminRoutes);
 app.use(`${apiPrefix}/storage`, storageRoutes);
 app.use(`${apiPrefix}/banking`, bankingRoutes);
 app.use(`${apiPrefix}/ai`, aiRoutes);
+app.use(`${apiPrefix}/materials`, materialsRoutes);
 
 // Fallback to Admin Dashboard SPA if public/index.html exists
 app.get('*', (req: Request, res: Response, next) => {

@@ -9,6 +9,7 @@ import { PropertiesPage } from './pages/Properties';
 import { ProjectsPage } from './pages/Projects';
 import { PaymentsPage } from './pages/Payments';
 import { BankingPage } from './pages/Banking';
+import { MaterialsPage } from './pages/Materials';
 import { LegalRequestsPage } from './pages/LegalRequests';
 import { InspectionsPage } from './pages/Inspections';
 import { UsersPage } from './pages/Users';
@@ -82,6 +83,8 @@ export const App: React.FC = () => {
         return { title: 'Payments & Revenue Ledger', subtitle: 'Paystack, Flutterwave & Fincra reconciliation records' };
       case 'banking':
         return { title: 'Dedicated Virtual Banking & KYB/KYC', subtitle: 'Fincra Dedicated NUBAN Accounts & Developer Bank Payouts' };
+      case 'materials':
+        return { title: 'National Building Material Price Index', subtitle: 'Live audited construction market prices across 36 Nigerian States + FCT' };
       case 'legal':
         return { title: 'Legal Drafting Console', subtitle: 'EstateVerify internal legal team drafting & document delivery' };
       case 'inspections':
@@ -127,6 +130,7 @@ export const App: React.FC = () => {
           {currentTab === 'projects' && <ProjectsPage />}
           {currentTab === 'payments' && <PaymentsPage />}
           {currentTab === 'banking' && <BankingPage />}
+          {currentTab === 'materials' && <MaterialsPage />}
           {currentTab === 'legal' && <LegalRequestsPage />}
           {currentTab === 'inspections' && <InspectionsPage />}
           {currentTab === 'users' && <UsersPage />}

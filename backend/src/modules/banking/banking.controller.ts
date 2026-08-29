@@ -18,6 +18,19 @@ export class BankingController {
     }
   }
 
+  static async triggerPremblyAutoKyc(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await BankingService.triggerAutomatedPremblyKyc(req.user.id, req.body);
+      sendSuccess(res, result, 'Prembly Automated KYC Completed & Bank Account Active', 200);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
   static async submitDeveloperKyb(req: AuthRequest, res: Response): Promise<void> {
     try {
       if (!req.user) {

@@ -9,6 +9,26 @@ export interface CreatePurchaseParams {
 
 export class PurchasesService {
   static async create(params: CreatePurchaseParams) {
+    // Enforce Single Active Property Purchase Rule
+    const existingActive = await prisma.purchase.findFirst({
+      where: {
+        userId: params.userId,
+        status: { in: ['INITIATED', 'ACTIVE'] },
+        outstandingBalance: { gt: 0 },
+      },
+      include: {
+        property: true,
+        projectUnit: true,
+      },
+    });
+
+    if (existingActive) {
+      const title = existingActive.property?.title ?? existingActive.projectUnit?.name ?? existingActive.purchaseCode;
+      throw new Error(
+        `You currently have an active property purchase in progress (${title} - ${existingActive.purchaseCode}). You cannot add multiple properties at a time until your active property is completed.`
+      );
+    }
+
     let totalPrice = 0;
     let initialDeposit = 0;
     let nextPaymentAmount: number | null = null;
