@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/network/api_client.dart';
 import '../providers/auth_provider.dart';
+import 'kyc_screen.dart';
 import 'login_screen.dart';
 
 class DeveloperProfileScreen extends StatefulWidget {
@@ -56,6 +57,400 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
     );
   }
 
+  void _showEditProfileModal(BuildContext context, Map<String, dynamic>? dev, String currentPhone) {
+    final companyCtrl = TextEditingController(text: dev?['companyName'] ?? '');
+    final addressCtrl = TextEditingController(text: dev?['officeAddress'] ?? '');
+    final websiteCtrl = TextEditingController(text: dev?['website'] ?? '');
+    final aboutCtrl = TextEditingController(text: dev?['about'] ?? '');
+    final phoneCtrl = TextEditingController(text: currentPhone);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Edit Corporate Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                    IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                  ],
+                ),
+                const Text('Update your registered corporate details and official contact addresses.', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: companyCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Company / Developer Name',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: addressCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Head Office / Business Address',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Corporate Contact Phone',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: websiteCtrl,
+                  keyboardType: TextInputType.url,
+                  decoration: InputDecoration(
+                    labelText: 'Official Website',
+                    hintText: 'https://...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: aboutCtrl,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Company Overview / Track Record',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        await ApiClient.put('/users/profile', {
+                          'companyName': companyCtrl.text.trim(),
+                          'businessAddress': addressCtrl.text.trim(),
+                          'officeAddress': addressCtrl.text.trim(),
+                          'phone': phoneCtrl.text.trim(),
+                          'website': websiteCtrl.text.trim(),
+                          'about': aboutCtrl.text.trim(),
+                        });
+                        if (context.mounted) {
+                          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                          await authProvider.refreshUser();
+                          Navigator.pop(ctx);
+                          _fetchProfileStats();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('🎉 Corporate profile updated successfully!'),
+                              backgroundColor: Color(0xFF059669),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString().replaceAll('Exception: ', '')),
+                              backgroundColor: const Color(0xFFDC2626),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F172A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Save Corporate Changes', style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showChangePasswordModal(BuildContext context) {
+    final currentPassCtrl = TextEditingController();
+    final newPassCtrl = TextEditingController();
+    final confirmPassCtrl = TextEditingController();
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Change Account Password', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                      IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                    ],
+                  ),
+                  const Text('Enter your current password and set a new secure password.', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: currentPassCtrl,
+                    obscureText: obscureCurrent,
+                    decoration: InputDecoration(
+                      labelText: 'Current Password',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureCurrent ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                        onPressed: () => setModalState(() => obscureCurrent = !obscureCurrent),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: newPassCtrl,
+                    obscureText: obscureNew,
+                    decoration: InputDecoration(
+                      labelText: 'New Password (min 6 chars)',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                        onPressed: () => setModalState(() => obscureNew = !obscureNew),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: confirmPassCtrl,
+                    obscureText: obscureNew,
+                    decoration: InputDecoration(
+                      labelText: 'Confirm New Password',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (currentPassCtrl.text.isEmpty || newPassCtrl.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please fill all password fields')),
+                          );
+                          return;
+                        }
+                        if (newPassCtrl.text != confirmPassCtrl.text) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('New passwords do not match')),
+                          );
+                          return;
+                        }
+
+                        try {
+                          await ApiClient.post('/auth/change-password', {
+                            'currentPassword': currentPassCtrl.text.trim(),
+                            'newPassword': newPassCtrl.text.trim(),
+                          });
+                          if (context.mounted) {
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('🔒 Password changed successfully!'),
+                                backgroundColor: Color(0xFF059669),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString().replaceAll('Exception: ', '')),
+                                backgroundColor: const Color(0xFFDC2626),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F172A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Update Password', style: TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showFactsFaqModal(BuildContext context) {
+    final faqs = [
+      {
+        'q': 'How are construction milestone payouts disbursed?',
+        'a': 'When you submit a milestone completion request with site photos, a certified Hometrust engineer audits the site. Upon verification, the escrow funds for that specific tranche are unlocked directly to your designated corporate bank account.',
+      },
+      {
+        'q': 'What is the subscriber 3-day inspection window?',
+        'a': 'After Hometrust certifies a construction milestone, verified subscribers have a 3-day window to view progress updates before the funds are released from the arbiter vault.',
+      },
+      {
+        'q': 'How do Pay-Small-Small projects work for developers?',
+        'a': 'You can list fully titled land plots or residential units for installment sales. Buyers pay initial deposits and monthly installments into the dedicated escrow ledger. You receive structured scheduled tranches.',
+      },
+      {
+        'q': 'How are my title and survey documents protected from forgery?',
+        'a': 'All documents uploaded to Hometrust are rendered in a secure read-only cloud container with dynamic buyer watermarks and encrypted viewing tokens. Buyers cannot download or replicate raw source documents.',
+      },
+      {
+        'q': 'What are the criteria for Full Developer KYB Certification?',
+        'a': 'Full verification requires: (1) Valid CAC Incorporation Certificate (RC Number), (2) Director National Identity (NIN/BVN), (3) Verified Corporate Head Office Address, and (4) Clean land title track record.',
+      },
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.help_center_rounded, color: Color(0xFF0284C7)),
+                      SizedBox(width: 8),
+                      Text('Developer Facts & Operating Rules', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                    ],
+                  ),
+                  IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                ],
+              ),
+              const Text('Frequently Asked Questions regarding Hometrust Escrow, KYB, and Milestone payouts.', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+              const SizedBox(height: 16),
+
+              Expanded(
+                child: ListView.separated(
+                  itemCount: faqs.length,
+                  separatorBuilder: (_, __) => const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                  itemBuilder: (context, idx) {
+                    final item = faqs[idx];
+                    return ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      title: Text(item['q']!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            item['a']!,
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF475569), height: 1.45),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPrivacyPolicyModal(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.privacy_tip_outlined, color: Color(0xFF059669)),
+              SizedBox(width: 8),
+              Text('Developer Privacy & NDPR', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
+            ],
+          ),
+          content: const SingleChildScrollView(
+            child: Text(
+              'Hometrust is strictly compliant with the Nigeria Data Protection Act (NDPA) and NDPR regulations.\n\n'
+              '1. Corporate Data Protection: Your uploaded corporate incorporation instruments, director identities, and banking details are encrypted with AES-256 bank-grade cryptography.\n\n'
+              '2. Anti-Forgery Watermarking: All property titles and architectural plans you provide are rendered strictly through secure read-only streams with active buyer identity watermarking to eliminate forgery risks.\n\n'
+              '3. Arbiter Confidentiality: Payout requests, milestone escrow releases, and banking virtual account ledgers are strictly accessible only to your authorized directors and the designated CBN-licensed escrow trustees.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF475569), height: 1.5),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('I Understand', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF059669))),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -68,6 +463,7 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
     final cacNumber = dev?['cacNumber'] ?? 'Not registered';
     final contactPerson = dev?['contactPerson'] ?? user?.fullName ?? 'Lead Director';
     final officeAddress = dev?['officeAddress'] ?? 'Corporate Head Office';
+    final phone = user?.phone ?? dev?['phone'] ?? 'Not provided';
     final isVerified = dev?['isVerified'] ?? user?.isVerified ?? false;
 
     final acctNum = vba?['accountNumber']?.toString() ?? user?.virtualAccountNumber;
@@ -164,9 +560,23 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                   const SizedBox(height: 8),
                   _buildInfoRow('Official Email', user?.email ?? 'developer@company.ng'),
                   const SizedBox(height: 8),
-                  _buildInfoRow('Phone', user?.phone ?? 'Not provided'),
+                  _buildInfoRow('Phone', phone),
                   const SizedBox(height: 8),
                   _buildInfoRow('Head Office', officeAddress),
+                  const SizedBox(height: 16),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showEditProfileModal(context, dev, phone),
+                      icon: const Icon(Icons.edit_note_rounded, size: 18),
+                      label: const Text('Edit Corporate Profile & Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -278,19 +688,81 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                       ],
                     ),
                   ] else
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Text(
-                        'Virtual NUBAN will be assigned upon KYB compliance approval.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Virtual NUBAN will be assigned upon KYB compliance approval.',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
+                            },
+                            child: const Text('Verify KYB', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF059669))),
+                          ),
+                        ],
                       ),
                     ),
                 ],
               ),
             ),
+            const SizedBox(height: 20),
+
+            // 4. ACCOUNT SECURITY & CORPORATE COMPLIANCE MENU
+            const Text('Security, Governance & Facts', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  _buildMenuTile(
+                    icon: Icons.lock_outline_rounded,
+                    color: const Color(0xFF475569),
+                    title: 'Change Password',
+                    subtitle: 'Update your corporate account login credentials',
+                    onTap: () => _showChangePasswordModal(context),
+                  ),
+                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  _buildMenuTile(
+                    icon: Icons.verified_user_outlined,
+                    color: const Color(0xFF059669),
+                    title: 'Corporate KYB & Director Verification',
+                    subtitle: isVerified ? 'Verified Active Corporate Account' : 'Upload CAC & Director Documents',
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
+                    },
+                  ),
+                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  _buildMenuTile(
+                    icon: Icons.help_outline_rounded,
+                    color: const Color(0xFF0284C7),
+                    title: 'Developer Facts & Operating FAQs',
+                    subtitle: 'Escrow release schedules, milestone audits & payouts',
+                    onTap: () => _showFactsFaqModal(context),
+                  ),
+                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  _buildMenuTile(
+                    icon: Icons.privacy_tip_outlined,
+                    color: const Color(0xFFD97706),
+                    title: 'Privacy Policy & NDPR Terms',
+                    subtitle: 'Data governance and anti-forgery vault security',
+                    onTap: () => _showPrivacyPolicyModal(context),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
 
-            // 4. LOGOUT
+            // 5. LOGOUT BUTTON
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -335,4 +807,28 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
       ],
     );
   }
+
+  Widget _buildMenuTile({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: color, size: 20),
+      ),
+      title: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+      trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF94A3B8)),
+      onTap: onTap,
+    );
+  }
 }
+

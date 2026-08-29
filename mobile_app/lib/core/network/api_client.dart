@@ -57,6 +57,15 @@ class ApiClient {
     return _handleResponse(response);
   }
 
+  static Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
+    final headers = await _headers();
+    final response = await http
+        .put(url, headers: headers, body: jsonEncode(body))
+        .timeout(const Duration(seconds: 20));
+    return _handleResponse(response);
+  }
+
   static Future<dynamic> patch(String endpoint, Map<String, dynamic> body) async {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     final headers = await _headers();

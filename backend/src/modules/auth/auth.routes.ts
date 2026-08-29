@@ -10,5 +10,6 @@ router.post('/forgot-password', AuthController.forgotPassword);
 router.post('/reset-password', AuthController.resetPassword);
 router.get('/me', requireAuth, AuthController.getMe);
 router.post('/upgrade-to-developer', requireAuth, AuthController.upgradeToDeveloper);
+router.post('/change-password', requireAuth, AuthController.changePassword);
 
 export const authRoutes = router;

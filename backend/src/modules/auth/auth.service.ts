@@ -278,5 +278,34 @@ export class AuthService {
 
     return { user: freshUser, token: newToken };
   }
+
+  static async changePassword(userId: string, currentPass: string, newPass: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+
+    const isMatch = await bcrypt.compare(currentPass, user.passwordHash);
+    if (!isMatch) throw new Error('Current password is incorrect');
+
+    if (newPass.length < 6) {
+      throw new Error('New password must be at least 6 characters long');
+    }
+
+    const passwordHash = await bcrypt.hash(newPass, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    await AuditService.log({
+      adminId: userId,
+      adminEmail: user.email,
+      action: 'PASSWORD_CHANGED',
+      entityType: 'USER',
+      entityId: userId,
+      details: { timestamp: new Date().toISOString() },
+    });
+
+    return { message: 'Password changed successfully' };
+  }
 }
 
