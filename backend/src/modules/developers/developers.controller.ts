@@ -138,4 +138,35 @@ export class DevelopersController {
       sendError(res, error.message, 400);
     }
   }
+
+  static async validateBoq(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const result = await DevelopersService.validateBoq(req.body);
+      sendSuccess(res, result, 'BOQ material prices validated against 36 states index');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async getJvLandListings(req: Request, res: Response): Promise<void> {
+    try {
+      const listings = await DevelopersService.getJvLandListings();
+      sendSuccess(res, listings, 'Joint venture land opportunities retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async sendBuyerReminder(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await DevelopersService.sendBuyerReminder(req.user.id, req.params.purchaseId as string);
+      sendSuccess(res, result, 'Automated buyer reminder dispatched');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }

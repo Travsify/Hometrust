@@ -4,6 +4,9 @@ import 'material_index_screen.dart';
 import 'legal_request_screen.dart';
 import 'real_estate_dictionary_screen.dart';
 import 'verify_screen.dart';
+import 'developer_boq_validator_screen.dart';
+import 'developer_jv_board_screen.dart';
+import 'developer_site_gallery_screen.dart';
 
 class DeveloperToolsScreen extends StatefulWidget {
   const DeveloperToolsScreen({super.key});
@@ -196,10 +199,49 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
           const Text('Ecosystem Construction & Legal Tools', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
           const SizedBox(height: 12),
 
-          // 2. 36 STATES MATERIAL PRICE INDEX
+          // 2. CONTRACTOR BOQ MATERIAL PRICE VALIDATOR
+          _buildToolTile(
+            icon: Icons.receipt_long_rounded,
+            iconColor: const Color(0xFF059669),
+            title: 'Contractor BOQ Price Validator',
+            subtitle: 'Cross-check contractor Bill of Quantities quotes against certified state material indices to detect padding and overbilling.',
+            badge: 'AI COST AUDIT',
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperBoqValidatorScreen()));
+            },
+          ),
+          const SizedBox(height: 12),
+
+          // 3. JOINT VENTURE (JV) LAND MATCHING BOARD
+          _buildToolTile(
+            icon: Icons.handshake_rounded,
+            iconColor: const Color(0xFF0284C7),
+            title: 'JV Land Matching Board',
+            subtitle: 'Browse pre-vetted land parcels across prime corridors available for Joint Venture development with certified titles.',
+            badge: 'JV PARTNERS',
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperJvBoardScreen()));
+            },
+          ),
+          const SizedBox(height: 12),
+
+          // 4. SITE DRONE & GEOTAGGED PROGRESS GALLERY
+          _buildToolTile(
+            icon: Icons.photo_camera_back_rounded,
+            iconColor: const Color(0xFF7C3AED),
+            title: 'Site Drone & Geotagged Gallery',
+            subtitle: 'Timestamped EXIF GPS progress photos showing structural rising stages to build transparent buyer confidence.',
+            badge: 'VISUAL AUDIT',
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperSiteGalleryScreen()));
+            },
+          ),
+          const SizedBox(height: 12),
+
+          // 5. 36 STATES MATERIAL PRICE INDEX
           _buildToolTile(
             icon: Icons.analytics_rounded,
-            iconColor: const Color(0xFF0284C7),
+            iconColor: const Color(0xFF0D9488),
             title: '36 States Material Price Index',
             subtitle: 'Real-time verified wholesale & retail pricing for cement, rebar, granite, sand, and roofing across Nigeria.',
             badge: 'LIVE BENCHMARKS',
@@ -209,10 +251,10 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 3. LAND RADAR & BOUNDARY COORDINATES
+          // 6. LAND RADAR & BOUNDARY COORDINATES
           _buildToolTile(
             icon: Icons.radar_rounded,
-            iconColor: const Color(0xFF7C3AED),
+            iconColor: const Color(0xFF9333EA),
             title: 'Land Radar & Coordinate Plotter',
             subtitle: 'Instantly check GPS / cadastral survey coordinates against government acquisition and master plans.',
             badge: 'SURVEY CHECK',
@@ -222,7 +264,7 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 4. 3% LEGAL DOCUMENT PREPARATION
+          // 7. 3% LEGAL DOCUMENT PREPARATION
           _buildToolTile(
             icon: Icons.gavel_rounded,
             iconColor: const Color(0xFFD97706),
@@ -235,7 +277,7 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 5. TITLE & DOCUMENT VERIFICATION
+          // 8. TITLE & DOCUMENT VERIFICATION
           _buildToolTile(
             icon: Icons.security_rounded,
             iconColor: const Color(0xFF059669),
@@ -248,7 +290,7 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 6. REAL ESTATE LEXICON (ARBITER OF TRUTH)
+          // 9. REAL ESTATE LEXICON (ARBITER OF TRUTH)
           _buildToolTile(
             icon: Icons.menu_book_rounded,
             iconColor: const Color(0xFF0F172A),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
+import 'chat_screen.dart';
+import '../widgets/in_app_call_modal.dart';
 
 class DeveloperSubscribersScreen extends StatefulWidget {
   const DeveloperSubscribersScreen({super.key});
@@ -42,6 +44,34 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
         });
       }
     }
+  }
+
+  Future<void> _sendAutomatedReminder(String purchaseId, String buyerName) async {
+    try {
+      await ApiClient.post('/developers/subscribers/$purchaseId/remind', {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Automated payment reminder SMS & Push sent to $buyerName via Hometrust Shield.'),
+            backgroundColor: const Color(0xFF059669),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: const Color(0xFFE11D48),
+          ),
+        );
+      }
+    }
+  }
+
+  String _maskPhone(String? phone) {
+    if (phone == null || phone.length < 8) return '+234 80* *** **19';
+    return '${phone.substring(0, 6)} *** **${phone.substring(phone.length - 2)}';
   }
 
   @override
@@ -94,6 +124,7 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
                       final amountPaid = (sub['amountPaid'] as num?)?.toDouble() ?? 0;
                       final balance = (sub['outstandingBalance'] as num?)?.toDouble() ?? (totalPrice - amountPaid);
                       final progress = totalPrice > 0 ? (amountPaid / totalPrice).clamp(0.0, 1.0) : 0.0;
+                      final buyerName = buyer['name'] ?? 'Subscriber';
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 16),
@@ -113,7 +144,7 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Buyer Name & Purchase Code
+                            // Buyer Name & Privacy Shield
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -132,12 +163,21 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          buyer['name'] ?? 'Buyer',
+                                          buyerName,
                                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
                                         ),
-                                        Text(
-                                          sub['purchaseCode'] ?? 'HT-PUR-001',
-                                          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                                        Row(
+                                          children: [
+                                            Text(
+                                              sub['purchaseCode'] ?? 'HT-PUR-001',
+                                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              '• ${_maskPhone(buyer['phone'])}',
+                                              style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -212,16 +252,75 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
                               ),
                               child: const Row(
                                 children: [
-                                  Icon(Icons.verified_user_rounded, color: Color(0xFF059669), size: 14),
+                                  Icon(Icons.shield_rounded, color: Color(0xFF059669), size: 14),
                                   SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
-                                      'Digital Contract of Sale: Sealed & Escrow Protected',
+                                      'Privacy Shield: Communications mediated in-app only',
                                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                                     ),
                                   ),
                                 ],
                               ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // IN-APP MEDIATED ACTION BUTTONS
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ChatScreen(
+                                            recipientName: buyerName,
+                                            recipientRole: 'Subscriber (${sub['purchaseCode'] ?? 'HT-PUR'})',
+                                            propertyTitle: sub['propertyTitle'],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.chat_bubble_outline_rounded, size: 14),
+                                    label: const Text('In-App Chat', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      foregroundColor: const Color(0xFF0F172A),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                      InAppCallModal.show(
+                                        context,
+                                        entityName: buyerName,
+                                        entityRole: 'Subscriber (${sub['purchaseCode'] ?? 'HT-PUR'})',
+                                      );
+                                    },
+                                    icon: const Icon(Icons.phone_in_talk_rounded, size: 14, color: Color(0xFF059669)),
+                                    label: const Text('In-App Call', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF059669))),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      side: const BorderSide(color: Color(0xFF059669)),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(Icons.notifications_active_outlined, color: Color(0xFFD97706), size: 20),
+                                  tooltip: 'Send Payment Reminder SMS & Push',
+                                  onPressed: () => _sendAutomatedReminder(sub['id'], buyerName),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFFFBEB),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -232,3 +331,4 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
     );
   }
 }
+

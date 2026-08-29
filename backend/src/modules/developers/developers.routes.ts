@@ -15,6 +15,9 @@ router.post('/my-projects/:projectId/units', authenticate as any, DevelopersCont
 router.get('/my-subscribers', authenticate as any, DevelopersController.getMySubscribers as any);
 router.post('/request-milestone-inspection', authenticate as any, DevelopersController.requestMilestoneInspection as any);
 router.post('/request-payout', authenticate as any, DevelopersController.requestPayout as any);
+router.post('/validate-boq', authenticate as any, DevelopersController.validateBoq as any);
+router.get('/jv-lands', DevelopersController.getJvLandListings as any);
+router.post('/subscribers/:purchaseId/remind', authenticate as any, DevelopersController.sendBuyerReminder as any);
 
 // Specific developer detail & Admin verification
 router.get('/:id', DevelopersController.getById);

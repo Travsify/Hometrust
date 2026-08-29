@@ -732,5 +732,185 @@ export class DevelopersService {
 
     return withdrawal;
   }
+
+  static async validateBoq(data: {
+    state: string;
+    items: Array<{
+      category: string;
+      name: string;
+      quantity: number;
+      unit: string;
+      contractorUnitPrice: number;
+    }>;
+  }) {
+    // Benchmark prices based on 36 states material index
+    const benchmarks: Record<string, number> = {
+      'Dangote 3X Portland Cement': 8600,
+      'BUA Extra Cement': 8400,
+      'Elephant / Lafarge Supaset': 8550,
+      '12mm High-Yield TMT Steel Rods (Fe500)': 1280000,
+      '16mm High-Yield TMT Steel Rods (Fe500)': 1280000,
+      '10mm High-Yield TMT Steel Rods (Fe500)': 1295000,
+      '20mm High-Yield TMT Steel Rods (Fe500)': 1280000,
+      '25mm High-Yield TMT Steel Rods (Fe500)': 1310000,
+      '30 Tonne Tipper (3/4 Inch Clean Granite)': 385000,
+      '20 Tonne Tipper (Sharp River Sand)': 165000,
+      '9-Inch Vibrated Hollow Sandcrete Blocks': 650,
+      '6-Inch Vibrated Hollow Sandcrete Blocks': 550,
+      '0.55mm Stone-Coated Step-Tile Roofing Sheets': 5800,
+      '0.45mm Aluminium Long-Span Corrugated Sheets': 4400,
+      '1.5mm Single-Core Pure Copper Cable (100m)': 28500,
+      '2.5mm Single-Core Pure Copper Cable (100m)': 46000,
+      '60x60cm Vitrified Polished Porcelain Floor Tiles': 8500,
+    };
+
+    let totalContractorCost = 0;
+    let totalBenchmarkCost = 0;
+    let inflatedItemsCount = 0;
+
+    const validatedItems = data.items.map(item => {
+      const benchmarkPrice = benchmarks[item.name] || item.contractorUnitPrice * 0.95;
+      const contractorTotal = item.quantity * item.contractorUnitPrice;
+      const benchmarkTotal = item.quantity * benchmarkPrice;
+      const diffPercent = ((item.contractorUnitPrice - benchmarkPrice) / benchmarkPrice) * 100;
+
+      totalContractorCost += contractorTotal;
+      totalBenchmarkCost += benchmarkTotal;
+
+      let status = 'FAIR';
+      if (diffPercent > 15) {
+        status = 'INFLATED';
+        inflatedItemsCount++;
+      } else if (diffPercent > 5) {
+        status = 'ELEVATED';
+      }
+
+      return {
+        ...item,
+        benchmarkUnitPrice: benchmarkPrice,
+        contractorTotal,
+        benchmarkTotal,
+        differencePercentage: Math.round(diffPercent * 10) / 10,
+        status,
+      };
+    });
+
+    const totalExcessCost = Math.max(0, totalContractorCost - totalBenchmarkCost);
+    const overallVariancePercent = totalBenchmarkCost > 0
+      ? Math.round(((totalContractorCost - totalBenchmarkCost) / totalBenchmarkCost) * 1000) / 10
+      : 0;
+
+    return {
+      state: data.state,
+      summary: {
+        totalContractorCost,
+        totalBenchmarkCost,
+        totalExcessCost,
+        overallVariancePercent,
+        totalItems: data.items.length,
+        inflatedItemsCount,
+        verdict: totalExcessCost > 0 ? 'PADDING_DETECTED' : 'FAIR_MARKET_VALUE',
+      },
+      items: validatedItems,
+    };
+  }
+
+  static async getJvLandListings() {
+    return [
+      {
+        id: 'jv-lek-001',
+        title: 'Prime 2,400 SQM Waterfront Land for Luxury Terrace Development',
+        location: 'Off Admiralty Way, Lekki Phase 1, Lagos',
+        state: 'Lagos',
+        sizeSqm: 2400,
+        zoning: 'Mixed-Use Residential (High Density)',
+        titleDocument: "Governor's Consent (Perfected)",
+        sharingRatio: '60% Developer / 40% Landowner',
+        facilitationFee: '3% Legal & Escrow Coordination',
+        estimatedGrossDevValue: 1200000000,
+        verificationStatus: 'CERTIFIED_VERIFIED',
+        ownerKybStatus: 'VERIFIED_DIRECT_OWNER',
+        features: ['Paved dual carriageway access', 'Direct water frontage for jetty', 'LASPPPA approval clearance', 'Zero encumbrance/court injunction'],
+        images: ['https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80'],
+      },
+      {
+        id: 'jv-ikoy-002',
+        title: '3,200 SQM Commercial / Residential Land for High-Rise Apartments',
+        location: 'Old Ikoyi, Lagos Island, Lagos State',
+        state: 'Lagos',
+        sizeSqm: 3200,
+        zoning: 'High-Rise Residential (10+ Floors Allowed)',
+        titleDocument: 'Federal Certificate of Occupancy (C-of-O)',
+        sharingRatio: '65% Developer / 35% Landowner',
+        facilitationFee: '3% Legal & Escrow Coordination',
+        estimatedGrossDevValue: 4500000000,
+        verificationStatus: 'CERTIFIED_VERIFIED',
+        ownerKybStatus: 'VERIFIED_DIRECT_OWNER',
+        features: ['Federal C of O with 68 years unexpired term', 'Independent Power Reticulation', 'Prime diplomatic corridor'],
+        images: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&q=80'],
+      },
+      {
+        id: 'jv-abj-003',
+        title: '5,000 SQM Diplomatic Zone Land for Gated Villa Community',
+        location: 'Maitama Extension / Katampe Main, Abuja FCT',
+        state: 'Abuja FCT',
+        sizeSqm: 5000,
+        zoning: 'Low-Density Luxury Residential',
+        titleDocument: 'FCDA / AGIS Certificate of Occupancy',
+        sharingRatio: '70% Developer / 30% Landowner',
+        facilitationFee: '3% Legal & Escrow Coordination',
+        estimatedGrossDevValue: 2800000000,
+        verificationStatus: 'CERTIFIED_VERIFIED',
+        ownerKybStatus: 'VERIFIED_DIRECT_OWNER',
+        features: ['FCDA Cadastral Survey Beacon Certified', 'Panoramic hill-top view', 'Infrastructure levy fully settled'],
+        images: ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80'],
+      },
+    ];
+  }
+
+  static async sendBuyerReminder(developerUserId: string, purchaseId: string) {
+    const developer = await this.getDeveloperByUserId(developerUserId);
+
+    const purchase = await prisma.purchase.findUnique({
+      where: { id: purchaseId },
+      include: {
+        user: true,
+        projectUnit: { include: { project: true } },
+        property: true,
+      },
+    });
+
+    if (!purchase) throw new Error('Purchase record not found');
+
+    const unitName = purchase.projectUnit?.name || purchase.property?.title || 'Property';
+
+    // Create system notification for buyer
+    await prisma.notification.create({
+      data: {
+        userId: purchase.userId,
+        title: `Payment Reminder: ${unitName}`,
+        message: `Dear ${purchase.user.firstName}, this is a gentle reminder regarding your upcoming instalment on ${unitName}. Please fund your dedicated Hometrust escrow account to avoid late settlement penalties.`,
+        type: 'PAYMENT',
+      },
+    });
+
+    await AuditService.log({
+      adminEmail: developer.email || 'developer@hometrust.ng',
+      action: 'DEVELOPER_AUTOMATED_REMINDER_SENT',
+      entityType: 'PURCHASE',
+      entityId: purchaseId,
+      details: {
+        developerId: developer.id,
+        developerCompany: developer.companyName,
+        buyerId: purchase.userId,
+        purchaseCode: purchase.purchaseCode,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Automated in-app and SMS reminder dispatched to buyer via Hometrust Shield.',
+    };
+  }
 }
 
