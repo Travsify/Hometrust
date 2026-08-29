@@ -19,64 +19,6 @@ class _DevelopersScreenState extends State<DevelopersScreen> {
   List<Map<String, dynamic>> _developers = [];
   String _searchQuery = '';
 
-  final List<Map<String, dynamic>> _fallbackDevelopers = [
-    {
-      'id': 'dev-1',
-      'companyName': 'Mixta Africa Real Estate PLC',
-      'cacNumber': 'RC-482910',
-      'officeAddress': '8, Commercial Avenue, Sabo, Yaba, Lagos State',
-      'contactPerson': 'Dele Adeyemi',
-      'isVerified': true,
-      'activeProjectsCount': 4,
-      'escrowProtected': true,
-      'rating': 4.9,
-    },
-    {
-      'id': 'dev-2',
-      'companyName': 'LandWey Investment Limited',
-      'cacNumber': 'RC-129482',
-      'officeAddress': 'Km 24, Lekki-Epe Expressway, Ikota, Lagos State',
-      'contactPerson': 'Olawale Ayodeji',
-      'isVerified': true,
-      'activeProjectsCount': 6,
-      'escrowProtected': true,
-      'rating': 4.8,
-    },
-    {
-      'id': 'dev-3',
-      'companyName': 'Megamound Investment Limited',
-      'cacNumber': 'RC-893012',
-      'officeAddress': 'Plot 1, Megamound Crescent, Lekki Phase 1, Lagos State',
-      'contactPerson': 'Chukwudi Nnamdi',
-      'isVerified': true,
-      'activeProjectsCount': 3,
-      'escrowProtected': true,
-      'rating': 4.9,
-    },
-    {
-      'id': 'dev-4',
-      'companyName': 'Brain & Hammers Developments Ltd',
-      'cacNumber': 'RC-719302',
-      'officeAddress': 'Plot 1124, Cadastral Zone B06, Mabushi, Abuja FCT',
-      'contactPerson': 'Fatima Al-Hassan',
-      'isVerified': true,
-      'activeProjectsCount': 5,
-      'escrowProtected': true,
-      'rating': 4.9,
-    },
-    {
-      'id': 'dev-5',
-      'companyName': 'Adron Homes & Properties Ltd',
-      'cacNumber': 'RC-920194',
-      'officeAddress': '72, Commercial Avenue, Ikeja GRA, Lagos State',
-      'contactPerson': 'Adewale Emmanuel',
-      'isVerified': true,
-      'activeProjectsCount': 8,
-      'escrowProtected': true,
-      'rating': 4.7,
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -87,31 +29,39 @@ class _DevelopersScreenState extends State<DevelopersScreen> {
     setState(() => _isLoading = true);
     try {
       final res = await ApiClient.get('/developers');
-      if (res != null && res is List && res.isNotEmpty) {
-        final List<Map<String, dynamic>> mapped = [];
-        for (var item in res) {
-          if (item is Map<String, dynamic>) {
-            mapped.add({
-              'id': item['id'] ?? '',
-              'companyName': item['companyName'] ?? 'Verified Developer Ltd',
-              'cacNumber': item['cacNumber'] ?? 'RC-Verified',
-              'officeAddress': item['officeAddress'] ?? 'Registered Commercial Office, Nigeria',
-              'contactPerson': item['contactPerson'] ?? 'Official Representative',
-              'isVerified': item['isVerified'] ?? true,
-              'activeProjectsCount': item['projects'] != null && item['projects'] is List ? (item['projects'] as List).length : 2,
-              'escrowProtected': true,
-              'rating': 4.9,
-            });
-          }
+      final rawList = res is List ? res : (res is Map && res['developers'] is List ? res['developers'] : []);
+      
+      final List<Map<String, dynamic>> mapped = [];
+      for (var item in rawList) {
+        if (item is Map<String, dynamic>) {
+          mapped.add({
+            'id': item['id'] ?? '',
+            'companyName': item['companyName'] ?? 'Developer',
+            'cacNumber': item['cacNumber'] ?? '',
+            'officeAddress': item['officeAddress'] ?? 'Corporate Office',
+            'contactPerson': item['contactPerson'] ?? 'Official Representative',
+            'phone': item['phone'] ?? '',
+            'email': item['email'] ?? '',
+            'isVerified': item['isVerified'] ?? false,
+            'activeProjectsCount': item['_count'] != null && item['_count']['projects'] != null
+                ? item['_count']['projects']
+                : (item['projects'] != null && item['projects'] is List ? (item['projects'] as List).length : 0),
+            'escrowProtected': true,
+            'rating': 4.9,
+          });
         }
+      }
+      if (mounted) {
         setState(() => _developers = mapped);
-      } else {
-        setState(() => _developers = _fallbackDevelopers);
       }
     } catch (_) {
-      setState(() => _developers = _fallbackDevelopers);
+      if (mounted) {
+        setState(() => _developers = []);
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
