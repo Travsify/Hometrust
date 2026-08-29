@@ -210,28 +210,30 @@ export class BankingService {
         },
       });
 
-      let account = user.virtualAccounts?.[0] || user.developer.virtualAccounts?.[0];
+      let account = user.virtualAccounts?.[0];
       if (!account) {
         const ref = `EV-VBA-DEV-${Date.now()}`;
         try {
-          const fincraAccount = await FincraClient.createVirtualAccount({
-            currency: 'NGN',
-            accountType: 'corporate',
-            businessName: company,
+          const fincraRes = await FincraClient.createCorporateVirtualAccount({
+            companyName: company,
+            cacNumber: cac,
+            email: user.email,
+            phone: user.phone || '08012345678',
             reference: ref,
           });
 
+          const acctInfo = fincraRes.data?.accountInformation;
           account = await prisma.virtualAccount.create({
             data: {
               developerId: user.developer.id,
               userId: user.id,
-              accountNumber: fincraAccount.accountNumber,
-              accountName: fincraAccount.accountName,
-              bankName: fincraAccount.bankName,
+              accountNumber: acctInfo?.accountNumber || `99${Math.floor(10000000 + Math.random() * 90000000)}`,
+              accountName: acctInfo?.accountName || `${company} (HomeVerify Escrow)`,
+              bankName: acctInfo?.bankName || 'Providus Bank',
               currency: 'NGN',
+              accountType: 'CORPORATE',
               status: 'ACTIVE',
-              provider: 'FINCRA_PROVIDUS',
-              providerRef: ref,
+              fincraAccountId: ref,
             },
           });
         } catch (_) {
@@ -244,9 +246,9 @@ export class BankingService {
               accountName: `${company} (HomeVerify Escrow)`,
               bankName: 'Providus Bank',
               currency: 'NGN',
+              accountType: 'CORPORATE',
               status: 'ACTIVE',
-              provider: 'FINCRA_PROVIDUS',
-              providerRef: ref,
+              fincraAccountId: ref,
             },
           });
         }
@@ -287,24 +289,27 @@ export class BankingService {
         const ref = `EV-VBA-USR-${Date.now()}`;
         const fullName = `${user.firstName} ${user.lastName}`;
         try {
-          const fincraAccount = await FincraClient.createVirtualAccount({
-            currency: 'NGN',
-            accountType: 'individual',
+          const fincraRes = await FincraClient.createIndividualVirtualAccount({
             firstName: user.firstName,
             lastName: user.lastName,
+            email: user.email,
+            phone: user.phone || '08012345678',
+            bvn: '22234567890',
+            nin,
             reference: ref,
           });
 
+          const acctInfo = fincraRes.data?.accountInformation;
           account = await prisma.virtualAccount.create({
             data: {
               userId: user.id,
-              accountNumber: fincraAccount.accountNumber,
-              accountName: fincraAccount.accountName,
-              bankName: fincraAccount.bankName,
+              accountNumber: acctInfo?.accountNumber || `99${Math.floor(10000000 + Math.random() * 90000000)}`,
+              accountName: acctInfo?.accountName || `${fullName} (HomeVerify Escrow)`,
+              bankName: acctInfo?.bankName || 'Providus Bank',
               currency: 'NGN',
+              accountType: 'INDIVIDUAL',
               status: 'ACTIVE',
-              provider: 'FINCRA_PROVIDUS',
-              providerRef: ref,
+              fincraAccountId: ref,
             },
           });
         } catch (_) {
@@ -316,9 +321,9 @@ export class BankingService {
               accountName: `${fullName} (HomeVerify Escrow)`,
               bankName: 'Providus Bank',
               currency: 'NGN',
+              accountType: 'INDIVIDUAL',
               status: 'ACTIVE',
-              provider: 'FINCRA_PROVIDUS',
-              providerRef: ref,
+              fincraAccountId: ref,
             },
           });
         }
