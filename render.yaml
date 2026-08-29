@@ -33,8 +33,6 @@ services:
 staticSites:
   # 2. Admin Dashboard Static Site
   - name: estateverify-admin
-    plan: free
-    region: frankfurt
     rootDir: admin_dashboard
     buildCommand: npm install && npm run build
     publishPath: dist
