@@ -169,84 +169,72 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // PRIMARY ACTION BUTTONS
-                    Row(
+                    // MODERN 2x2 QUICK ACTION GRID
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.25,
                       children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const VerifyScreen()),
-                              );
-                            },
-                            icon: const Icon(Icons.verified_outlined, size: 16, color: AppColors.primary),
-                            label: const Text(
-                              'Verify a Document',
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: AppColors.primary,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              elevation: 0,
-                            ),
-                          ),
+                        // Grid Item 1: Verify Document
+                        _buildActionGridCard(
+                          context: context,
+                          title: 'Verify Document',
+                          subtitle: 'C-of-O & Survey check',
+                          badge: 'LEGAL VAULT',
+                          icon: Icons.shield_outlined,
+                          accentColor: AppColors.accentGoldLight,
+                          badgeBg: AppColors.accentGold.withValues(alpha: 0.2),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const VerifyScreen()),
+                            );
+                          },
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              propProvider.clearFilters();
-                            },
-                            icon: const Icon(Icons.search_rounded, size: 16, color: Colors.white),
-                            label: const Text(
-                              'Explore Properties',
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white, width: 1.5),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                          ),
+
+                        // Grid Item 2: Explore Properties
+                        _buildActionGridCard(
+                          context: context,
+                          title: 'Explore Properties',
+                          subtitle: 'Vetted land & homes',
+                          badge: '100% VETTED',
+                          icon: Icons.travel_explore_rounded,
+                          accentColor: const Color(0xFF38BDF8),
+                          badgeBg: const Color(0xFF0284C7).withValues(alpha: 0.25),
+                          onTap: () {
+                            propProvider.clearFilters();
+                          },
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    // SECONDARY BUTTONS
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              propProvider.setFilters(listingType: 'OFF_PLAN');
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white.withOpacity(0.9),
-                              side: BorderSide(color: Colors.white.withOpacity(0.3)),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            child: const Text('Off-Plan Projects', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-                          ),
+
+                        // Grid Item 3: Off-Plan Projects
+                        _buildActionGridCard(
+                          context: context,
+                          title: 'Off-Plan Projects',
+                          subtitle: 'Milestone-locked build',
+                          badge: 'ESCROW LOCK',
+                          icon: Icons.apartment_rounded,
+                          accentColor: const Color(0xFFFBBF24),
+                          badgeBg: const Color(0xFFD97706).withValues(alpha: 0.25),
+                          onTap: () {
+                            propProvider.setFilters(listingType: 'OFF_PLAN');
+                          },
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              propProvider.setFilters(listingType: 'PAY_SMALL_SMALL');
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white.withOpacity(0.9),
-                              side: BorderSide(color: Colors.white.withOpacity(0.3)),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            child: const Text('Pay Small-Small', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-                          ),
+
+                        // Grid Item 4: Pay Small-Small
+                        _buildActionGridCard(
+                          context: context,
+                          title: 'Pay Small-Small',
+                          subtitle: 'Dedicated NUBAN bank',
+                          badge: 'DVA BANKING',
+                          icon: Icons.account_balance_wallet_rounded,
+                          accentColor: const Color(0xFF34D399),
+                          badgeBg: const Color(0xFF059669).withValues(alpha: 0.25),
+                          onTap: () {
+                            propProvider.setFilters(listingType: 'PAY_SMALL_SMALL');
+                          },
                         ),
                       ],
                     ),
@@ -660,6 +648,94 @@ class HomeScreen extends StatelessWidget {
                     ),
                   );
                 },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionGridCard({
+    required BuildContext context,
+    required String title,
+    required String subtitle,
+    required String badge,
+    required IconData icon,
+    required Color accentColor,
+    required Color badgeBg,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.15),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.cardBorder),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, size: 20, color: accentColor),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: badgeBg,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      badge,
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                        color: accentColor,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ],
           ),

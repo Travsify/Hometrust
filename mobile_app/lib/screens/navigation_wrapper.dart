@@ -6,6 +6,8 @@ import 'verify_screen.dart';
 import 'purchases_screen.dart';
 import 'profile_screen.dart';
 
+import '../widgets/floating_ai_assistant.dart';
+
 class NavigationWrapper extends StatefulWidget {
   const NavigationWrapper({super.key});
 
@@ -33,9 +35,14 @@ class _NavigationWrapperState extends State<NavigationWrapper> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: _screens,
+          ),
+          const FloatingAiAssistant(),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
