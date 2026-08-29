@@ -62,4 +62,18 @@ export class AuthController {
       sendError(res, error.message, 404);
     }
   }
+
+  static async upgradeToDeveloper(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await AuthService.upgradeToDeveloper(req.user.id, req.body);
+      sendSuccess(res, result, 'Account upgraded to Developer successfully');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }
+

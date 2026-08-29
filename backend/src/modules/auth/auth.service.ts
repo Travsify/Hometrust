@@ -113,6 +113,11 @@ export class AuthService {
       },
     });
 
+    const isVerified = Boolean(
+      (user.profile && (user.profile.nin || user.profile.bvnVerified)) ||
+      (user.developer && (user.developer.isVerified || user.developer.verificationStatus === 'VERIFIED' || user.developer.verificationStatus === 'VERIFIED_WITH_LIMITATIONS'))
+    );
+
     return {
       user: {
         id: user.id,
@@ -121,6 +126,7 @@ export class AuthService {
         lastName: user.lastName,
         phone: user.phone,
         role: user.role,
+        isVerified,
         developer: user.developer,
         profile: user.profile,
       },
@@ -202,7 +208,75 @@ export class AuthService {
       throw new Error('User not found');
     }
 
+    const isVerified = Boolean(
+      (user.profile && (user.profile.nin || user.profile.bvnVerified)) ||
+      (user.developer && (user.developer.isVerified || user.developer.verificationStatus === 'VERIFIED' || user.developer.verificationStatus === 'VERIFIED_WITH_LIMITATIONS'))
+    );
+
     const { passwordHash, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    return {
+      ...userWithoutPassword,
+      isVerified,
+    };
+  }
+
+  /**
+   * Upgrade an existing BUYER account to DEVELOPER.
+   * Called from the in-app "Become a Developer" flow.
+   * The user's existing KYC (isVerified) is honoured — no re-verification needed.
+   */
+  static async upgradeToDeveloper(userId: string, developerInfo: any) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+    if (user.role === 'DEVELOPER') throw new Error('Account is already a Developer account');
+
+    if (!developerInfo?.companyName || !developerInfo?.cacNumber || !developerInfo?.officeAddress) {
+      throw new Error('Company name, CAC number, and office address are required');
+    }
+
+    // Run upgrade inside a transaction so it is atomic
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      // 1. Update user role
+      const u = await tx.user.update({
+        where: { id: userId },
+        data: { role: 'DEVELOPER' },
+      });
+
+      // 2. Create Developer profile
+      await tx.developer.create({
+        data: {
+          userId,
+          companyName: developerInfo.companyName,
+          cacNumber: developerInfo.cacNumber,
+          businessType: developerInfo.businessType || 'LTD',
+          contactPerson: developerInfo.contactPerson || `${user.firstName} ${user.lastName}`,
+          phone: developerInfo.phone || user.phone || '',
+          email: user.email,
+          officeAddress: developerInfo.officeAddress,
+          yearsOperating: developerInfo.yearsOperating || 1,
+          website: developerInfo.website,
+          about: developerInfo.about,
+          verificationStatus: 'PENDING',
+        },
+      });
+
+      return u;
+    });
+
+    await AuditService.log({
+      adminId: userId,
+      adminEmail: user.email,
+      action: 'BUYER_UPGRADED_TO_DEVELOPER',
+      entityType: 'USER',
+      entityId: userId,
+      details: { companyName: developerInfo.companyName, cacNumber: developerInfo.cacNumber },
+    });
+
+    // Issue a new token reflecting the updated role
+    const newToken = this.generateToken(updatedUser);
+    const freshUser = await this.getCurrentUser(userId);
+
+    return { user: freshUser, token: newToken };
   }
 }
+

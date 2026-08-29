@@ -19,12 +19,18 @@ class AuthProvider with ChangeNotifier {
 
   void toggleDeveloperMode() {
     _isDeveloperMode = !_isDeveloperMode;
+    // Persist the preference so switching back survives app restarts
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setBool('developer_mode_active', _isDeveloperMode);
+    });
     notifyListeners();
   }
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
+    // Restore the last-used mode preference (defaults to true for developer accounts)
+    _isDeveloperMode = prefs.getBool('developer_mode_active') ?? true;
     if (_token != null) {
       try {
         final userData = await ApiClient.get('/auth/me');
@@ -33,6 +39,17 @@ class AuthProvider with ChangeNotifier {
         await logout();
       }
     }
+    notifyListeners();
+  }
+
+  /// Clears the mode preference on logout so the next login starts fresh
+  Future<void> logout() async {
+    _user = null;
+    _token = null;
+    _isDeveloperMode = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    await prefs.remove('developer_mode_active');
     notifyListeners();
   }
 
@@ -117,11 +134,4 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> logout() async {
-    _user = null;
-    _token = null;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
-    notifyListeners();
-  }
 }

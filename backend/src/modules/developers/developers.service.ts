@@ -253,6 +253,24 @@ export class DevelopersService {
       },
     });
 
+    // 5. Active construction milestones across all developer projects
+    const activeMilestones = projects.flatMap(p =>
+      p.milestones
+        .filter(m => m.status === 'IN_PROGRESS' || m.status === 'PENDING')
+        .map(m => ({
+          id: m.id,
+          projectId: p.id,
+          projectName: p.name,
+          title: m.title,
+          description: m.description,
+          orderIndex: m.orderIndex,
+          percentage: m.percentage,
+          status: m.status,
+          completionDate: m.completionDate,
+          proofPhotos: m.proofPhotos ? JSON.parse(m.proofPhotos) : [],
+        }))
+    );
+
     return {
       developer: {
         id: developer.id,
@@ -283,6 +301,7 @@ export class DevelopersService {
         availableUnits: availableUnitsCount,
         soldUnits: totalUnits - availableUnitsCount,
       },
+      activeMilestones,
       subscribers: {
         totalCount: totalSubscribers,
         activePurchases: purchases.filter(p => p.status === 'ACTIVE' || p.status === 'AGREEMENT_SIGNED').length,
