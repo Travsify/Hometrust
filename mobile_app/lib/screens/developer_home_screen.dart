@@ -6,8 +6,6 @@ import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
 import '../providers/auth_provider.dart';
 import 'developer_boq_validator_screen.dart';
-import 'developer_jv_board_screen.dart';
-import 'developer_site_gallery_screen.dart';
 import 'developer_projects_screen.dart';
 import 'developer_subscribers_screen.dart';
 import 'land_radar_screen.dart';
@@ -344,7 +342,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
               ),
 
               // 2. ESCROW WALLET & DEDICATED CORPORATE BANK ACCOUNT CARD
-              _buildCorporateEscrowCard(virtualAccount, availableBalance, lockedEscrow, grossRevenue, isVerified),
+              _buildCorporateEscrowCard(context, virtualAccount, availableBalance, lockedEscrow, grossRevenue, isVerified),
               const SizedBox(height: 16),
 
               // 3. SLIDEABLE SPOTLIGHT HERO BANNER CAROUSEL
@@ -375,8 +373,8 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                         // Bento 3: Land Radar & Boundary Scan
                         _buildLandRadarBentoCard(context),
                         const SizedBox(height: 14),
-                        // Bento 4: Joint Venture Land Marketplace
-                        _buildJvBoardBentoCard(context),
+                        // Bento 4: Contractor BOQ Price Validator
+                        _buildBoqBentoCard(context),
                       ],
                     ),
                   ),
@@ -384,28 +382,20 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 5. CONTRACTOR BOQ VALIDATOR BANNER
-              _buildBoqValidatorBanner(context),
-              const SizedBox(height: 14),
-
-              // 6. SITE DRONE GALLERY & GEOTAGGED INSPECTIONS BANNER
-              _buildDroneGalleryBanner(context),
-              const SizedBox(height: 14),
-
-              // 7. SUBSCRIBER CRM & IN-APP COMMUNICATIONS BANNER
+              // 5. SUBSCRIBER CRM & IN-APP COMMUNICATIONS BANNER
               _buildSubscribersBanner(context),
               const SizedBox(height: 14),
 
-              // 8. REAL ESTATE DICTIONARY & LEGAL DRAFTING
+              // 6. REAL ESTATE DICTIONARY & LEGAL DRAFTING
               _buildLegalDictionaryBanner(context),
               const SizedBox(height: 24),
 
-              // 9. ACTIVE CONSTRUCTION MILESTONES (100% Real Database Data)
-              _buildActiveMilestonesSection(activeMilestones),
+              // 7. ACTIVE CONSTRUCTION MILESTONES (100% Real Database Data)
+              _buildActiveMilestonesSection(context, activeMilestones),
               const SizedBox(height: 24),
 
-              // 10. RECENT SUBSCRIBERS & TRANCHE LEDGER (100% Real Database Data)
-              _buildRecentSubscribersSection(recentSubscribers),
+              // 8. RECENT SUBSCRIBERS & TRANCHE LEDGER (100% Real Database Data)
+              _buildRecentSubscribersSection(context, recentSubscribers),
               const SizedBox(height: 20),
             ],
           ),
@@ -414,8 +404,10 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
     );
   }
 
+
   // ── 1. DEDICATED CORPORATE NUBAN & ESCROW WALLET CARD ──
   Widget _buildCorporateEscrowCard(
+    BuildContext context,
     Map<String, dynamic>? vba,
     double availableBalance,
     double lockedEscrow,
@@ -614,7 +606,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _showPayoutModal(),
+              onPressed: () => _showPayoutModal(context),
               icon: const Icon(Icons.payments_outlined, size: 16, color: Colors.white),
               label: const Text('Request Bank Settlement Payout', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
               style: ElevatedButton.styleFrom(
@@ -649,18 +641,18 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
         'icon': Icons.calculate_outlined,
       },
       {
-        'title': 'Drone Milestone Inspections',
-        'subtitle': 'Upload EXIF-verified drone footage & GPS timestamps for swift escrow release.',
-        'badge': 'ENGINEERING SIGN-OFF',
-        'gradient': [const Color(0xFF1E1B4B), const Color(0xFF312E81)],
-        'icon': Icons.camera_alt_outlined,
+        'title': '36 States Material Price Index',
+        'subtitle': 'Wholesale benchmarks for Dangote cement, TMT rebar, sharp sand, and granite.',
+        'badge': 'LIVE WHOLESALE BENCHMARKS',
+        'gradient': [const Color(0xFF075985), const Color(0xFF0284C7)],
+        'icon': Icons.insights_rounded,
       },
       {
-        'title': 'Verified Joint Venture Matching',
-        'subtitle': 'Partner with verified landowners in Ikoyi, Lekki & Maitama with certified title deeds.',
-        'badge': 'LAND PIPELINE',
-        'gradient': [const Color(0xFF78350F), const Color(0xFFB45309)],
-        'icon': Icons.handshake_outlined,
+        'title': 'Cadastral Land Radar Scan',
+        'subtitle': 'GPS satellite verification of boundary beacons against gazette acquisition records.',
+        'badge': 'SATELLITE CADASTRAL AUDIT',
+        'gradient': [const Color(0xFF581C87), const Color(0xFF7E22CE)],
+        'icon': Icons.radar_rounded,
       },
     ];
 
@@ -1009,11 +1001,11 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
     );
   }
 
-  // ── 6. BENTO BOX 4: JV LAND MARKETPLACE ──
-  Widget _buildJvBoardBentoCard(BuildContext context) {
+  // ── 6. BENTO BOX 4: CONTRACTOR BOQ PRICE VALIDATOR ──
+  Widget _buildBoqBentoCard(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperJvBoardScreen()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperBoqValidatorScreen()));
       },
       child: Container(
         height: 165,
@@ -1040,20 +1032,20 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                    color: const Color(0xFF059669).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.handshake_outlined, color: Color(0xFF8B5CF6), size: 20),
+                  child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF059669), size: 20),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                    color: const Color(0xFF059669).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Text(
-                    'Verified Titles',
-                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF8B5CF6)),
+                    'AI Audit',
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
                   ),
                 ),
               ],
@@ -1062,12 +1054,12 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
-                  'JV Land Board',
+                  'Contractor BOQ',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Ikoyi, Lekki & Abuja JV',
+                  'Audit Material Quotes',
                   style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
                 ),
               ],
@@ -1076,123 +1068,12 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: const [
                 Text(
-                  'Explore JVs',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF8B5CF6)),
+                  'Audit BOQ',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
                 ),
-                Icon(Icons.arrow_forward_rounded, size: 14, color: Color(0xFF8B5CF6)),
+                Icon(Icons.arrow_forward_rounded, size: 14, color: Color(0xFF059669)),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── 7. BOQ CONTRACTOR PADDING VALIDATOR BANNER ──
-  Widget _buildBoqValidatorBanner(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperBoqValidatorScreen()));
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF059669).withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.calculate_rounded, color: Color(0xFF34D399), size: 24),
-            ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Contractor BOQ Price Validator',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white),
-                  ),
-                  SizedBox(height: 3),
-                  Text(
-                    'Cross-check subcontractor estimates against state benchmarks to detect padding.',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), height: 1.3),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: Color(0xFF34D399), size: 22),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── 8. DRONE INSPECTIONS & SITE PROGRESS GALLERY BANNER ──
-  Widget _buildDroneGalleryBanner(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperSiteGalleryScreen()));
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0284C7).withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.camera_alt_rounded, color: Color(0xFF0284C7), size: 22),
-            ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Drone Progress & Milestone Evidence',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-                  ),
-                  SizedBox(height: 3),
-                  Text(
-                    'Upload timestamped GPS drone footage for certified escrow release.',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.3),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: Color(0xFF0284C7), size: 22),
           ],
         ),
       ),
@@ -1323,7 +1204,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
   }
 
   // ── 11. ACTIVE CONSTRUCTION MILESTONES (100% Real Database Data) ──
-  Widget _buildActiveMilestonesSection(List<dynamic> activeMilestones) {
+  Widget _buildActiveMilestonesSection(BuildContext context, List<dynamic> activeMilestones) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1466,7 +1347,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
   }
 
   // ── 12. RECENT SUBSCRIBERS & PAYMENTS SECTION (100% Real Database Data) ──
-  Widget _buildRecentSubscribersSection(List<dynamic> recent) {
+  Widget _buildRecentSubscribersSection(BuildContext context, List<dynamic> recent) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1577,7 +1458,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
   }
 
   // ── 13. BANK SETTLEMENT PAYOUT MODAL ──
-  void _showPayoutModal() {
+  void _showPayoutModal(BuildContext context) {
     final amountCtrl = TextEditingController();
     final acctCtrl = TextEditingController();
     final nameCtrl = TextEditingController();
@@ -1630,7 +1511,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: selectedBank,
+                initialValue: selectedBank,
                 decoration: InputDecoration(
                   labelText: 'Destination Commercial Bank',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -1672,7 +1553,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     if (amountCtrl.text.isEmpty || acctCtrl.text.isEmpty || nameCtrl.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(ctx).showSnackBar(
                         const SnackBar(content: Text('Please fill all payout fields')),
                       );
                       return;

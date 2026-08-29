@@ -53,12 +53,36 @@ class _DeveloperProjectsScreenState extends State<DeveloperProjectsScreen> {
     final addressCtrl = TextEditingController();
     final areaCtrl = TextEditingController();
     final completionCtrl = TextEditingController(text: 'Q4 2027');
-    final videoUrlCtrl = TextEditingController();
-    final virtualTourCtrl = TextEditingController();
-    final surveyPlanCtrl = TextEditingController();
-    final titleTypeCtrl = TextEditingController(text: 'Governor’s Consent / C of O');
     String selectedState = 'Lagos';
     String selectedCity = 'Lekki';
+
+    // Dynamic Multi-Document List
+    final List<Map<String, dynamic>> projectDocuments = [
+      {
+        'type': 'Certificate of Occupancy (C of O)',
+        'numberCtrl': TextEditingController(),
+        'urlCtrl': TextEditingController(),
+      },
+      {
+        'type': 'Registered Cadastral Survey Plan',
+        'numberCtrl': TextEditingController(),
+        'urlCtrl': TextEditingController(),
+      },
+    ];
+
+    // Dynamic Multi-Media Walkthrough List
+    final List<Map<String, dynamic>> projectWalkthroughs = [
+      {
+        'mediaType': 'Aerial Drone Walkthrough (YouTube / MP4)',
+        'titleCtrl': TextEditingController(text: 'Aerial Site Drone Walkthrough'),
+        'urlCtrl': TextEditingController(),
+      },
+      {
+        'mediaType': 'Matterport 3D Virtual Tour / 360°',
+        'titleCtrl': TextEditingController(text: '3D Virtual Matterport Tour'),
+        'urlCtrl': TextEditingController(),
+      },
+    ];
 
     // Unit / Package details
     final unitNameCtrl = TextEditingController(text: '3 Bedroom Luxury Terrace');
@@ -272,56 +296,255 @@ class _DeveloperProjectsScreenState extends State<DeveloperProjectsScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // ── MEDIA & VIDEO ATTACHMENTS ──
-                    const Text('Media & Site Walkthrough', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: videoUrlCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'Video Walkthrough URL (YouTube, Vimeo, MP4 Drone)',
-                        hintText: 'https://youtube.com/watch?v=...',
-                        prefixIcon: const Icon(Icons.video_collection_rounded, color: Color(0xFFEF4444)),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                    // ── DYNAMIC MEDIA & VIDEO WALKTHROUGHS ──
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Media & Virtual Walkthroughs (${projectWalkthroughs.length})',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            setModalState(() {
+                              projectWalkthroughs.add({
+                                'mediaType': 'Aerial Drone Walkthrough (YouTube / MP4)',
+                                'titleCtrl': TextEditingController(text: 'Site Walkthrough ${projectWalkthroughs.length + 1}'),
+                                'urlCtrl': TextEditingController(),
+                              });
+                            });
+                          },
+                          icon: const Icon(Icons.add_circle_outline_rounded, size: 16, color: Color(0xFF0284C7)),
+                          label: const Text('Add Media', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0284C7))),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: virtualTourCtrl,
-                      decoration: InputDecoration(
-                        labelText: '3D Virtual Tour URL (Matterport / 360°)',
-                        hintText: 'https://my.matterport.com/show/?m=...',
-                        prefixIcon: const Icon(Icons.view_in_ar_rounded, color: Color(0xFF0284C7)),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ── SECURE TITLE DOCUMENTS (READ-ONLY VAULT) ──
-                    const Text('Title Root Documents (Secure Read-Only Vault)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
                     const SizedBox(height: 4),
                     const Text(
-                      'Attached documents are protected in Hometrust Secure Read-Only Vault with dynamic watermarking. Buyers cannot download raw files.',
+                      'Upload drone site videos, Matterport 3D tours, and live streaming links for prospective buyers.',
                       style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                     ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: titleTypeCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'Root of Title (e.g. Governor’s Consent / C of O / Gazette)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                    const SizedBox(height: 10),
+
+                    ...projectWalkthroughs.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final walk = entry.value;
+                      final mediaType = walk['mediaType'] as String;
+                      final urlCtrl = walk['urlCtrl'] as TextEditingController;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Media #${idx + 1}',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF0284C7)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: DropdownButtonFormField<String>(
+                                    value: mediaType,
+                                    isExpanded: true,
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem(value: 'Aerial Drone Walkthrough (YouTube / MP4)', child: Text('Aerial Drone Video', style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(value: 'Matterport 3D Virtual Tour / 360°', child: Text('Matterport 3D Tour', style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(value: 'Architectural 3D Render Video', child: Text('3D Architectural Video', style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(value: 'Live Site Progress Stream', child: Text('Live Progress Stream', style: TextStyle(fontSize: 12))),
+                                    ],
+                                    onChanged: (val) => setModalState(() => walk['mediaType'] = val!),
+                                  ),
+                                ),
+                                if (projectWalkthroughs.length > 1) ...[
+                                  const SizedBox(width: 6),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFEF4444)),
+                                    onPressed: () => setModalState(() => projectWalkthroughs.removeAt(idx)),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: urlCtrl,
+                              decoration: InputDecoration(
+                                labelText: 'Media Stream / Embed URL (YouTube, Matterport, MP4)',
+                                hintText: 'https://...',
+                                isDense: true,
+                                prefixIcon: const Icon(Icons.link_rounded, size: 18, color: Color(0xFF0284C7)),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 14),
+
+                    // ── DYNAMIC MULTI-DOCUMENT ATTACHMENT VAULT ──
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Title & Legal Documents (${projectDocuments.length})',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            setModalState(() {
+                              projectDocuments.add({
+                                'type': 'Governor’s Consent',
+                                'numberCtrl': TextEditingController(),
+                                'urlCtrl': TextEditingController(),
+                              });
+                            });
+                          },
+                          icon: const Icon(Icons.add_circle_outline_rounded, size: 16, color: Color(0xFF059669)),
+                          label: const Text('Add Document', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF059669))),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'All attached documents are stored in Hometrust Secure Read-Only Vault with dynamic watermarking. Buyers cannot download raw files.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                     ),
                     const SizedBox(height: 10),
-                    TextField(
-                      controller: surveyPlanCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'Registered Cadastral Survey Plan Number',
-                        hintText: 'e.g. LA/2024/098/SURV',
-                        prefixIcon: const Icon(Icons.radar_rounded, color: Color(0xFF059669)),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+
+                    ...projectDocuments.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final doc = entry.value;
+                      final docType = doc['type'] as String;
+                      final numCtrl = doc['numberCtrl'] as TextEditingController;
+                      final urlCtrl = doc['urlCtrl'] as TextEditingController;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF059669).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Doc #${idx + 1}',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: DropdownButtonFormField<String>(
+                                    value: docType,
+                                    isExpanded: true,
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem(value: 'Certificate of Occupancy (C of O)', child: Text('Certificate of Occupancy (C of O)', style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(value: 'Governor’s Consent', child: Text('Governor’s Consent', style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(value: 'Registered Cadastral Survey Plan', child: Text('Registered Survey Plan', style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(value: 'Approved Architectural / Building Plan', child: Text('Approved Building Plan', style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(value: 'Gazette / Excision Record', child: Text('Gazette / Excision', style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(value: 'Deed of Assignment / Conveyance', child: Text('Deed of Assignment', style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(value: 'Layout Approval & Allocation Letter', child: Text('Layout / Allocation Letter', style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(value: 'Environmental Impact Assessment (EIA)', child: Text('EIA Assessment', style: TextStyle(fontSize: 12))),
+                                      DropdownMenuItem(value: 'Custom Legal Title Instrument', child: Text('Custom Legal Document', style: TextStyle(fontSize: 12))),
+                                    ],
+                                    onChanged: (val) => setModalState(() => doc['type'] = val!),
+                                  ),
+                                ),
+                                if (projectDocuments.length > 1) ...[
+                                  const SizedBox(width: 6),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFEF4444)),
+                                    onPressed: () => setModalState(() => projectDocuments.removeAt(idx)),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: numCtrl,
+                              decoration: InputDecoration(
+                                labelText: 'Registration / Plan / Gazette Number',
+                                hintText: 'e.g. Vol 2024 Page 45 / OG/2023/118',
+                                isDense: true,
+                                prefixIcon: const Icon(Icons.tag_rounded, size: 18, color: Color(0xFF059669)),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: urlCtrl,
+                              decoration: InputDecoration(
+                                labelText: 'Document Vault URL / File Reference',
+                                hintText: 'https://vault.hometrust.ng/docs/...',
+                                isDense: true,
+                                prefixIcon: const Icon(Icons.cloud_upload_outlined, size: 18, color: Color(0xFF059669)),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+
+                    // Quick Add Document Outlined Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          setModalState(() {
+                            projectDocuments.add({
+                              'type': 'Approved Architectural / Building Plan',
+                              'numberCtrl': TextEditingController(),
+                              'urlCtrl': TextEditingController(),
+                            });
+                          });
+                        },
+                        icon: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF059669)),
+                        label: const Text('+ Add Another Property Document', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF059669))),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF059669), width: 1.2),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
                     // ── UNIT / PACKAGE FINANCIAL CONFIGURATION ──
                     Text(
@@ -425,6 +648,32 @@ class _DeveloperProjectsScreenState extends State<DeveloperProjectsScreen> {
                           final tenor = int.tryParse(durationMonthsCtrl.text) ?? (isPaySmallSmall ? 24 : 12);
                           final monthly = (price - deposit) > 0 ? (price - deposit) / tenor : 0.0;
 
+                          // Compile all dynamic walkthrough media
+                          final validWalkthroughs = projectWalkthroughs
+                              .where((w) => (w['urlCtrl'] as TextEditingController).text.trim().isNotEmpty)
+                              .toList();
+                          final firstVideo = validWalkthroughs.isNotEmpty
+                              ? (validWalkthroughs.first['urlCtrl'] as TextEditingController).text.trim()
+                              : null;
+                          final first3dTour = validWalkthroughs.length > 1
+                              ? (validWalkthroughs[1]['urlCtrl'] as TextEditingController).text.trim()
+                              : null;
+
+                          // Compile all dynamic property documents
+                          final formattedDocs = projectDocuments.map((d) {
+                            final docType = d['type'] as String;
+                            final numText = (d['numberCtrl'] as TextEditingController).text.trim();
+                            final urlText = (d['urlCtrl'] as TextEditingController).text.trim();
+                            final docSlug = docType.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+
+                            return {
+                              'documentType': docType,
+                              'fileName': numText.isNotEmpty ? '$docType ($numText)' : docType,
+                              'documentNumber': numText.isNotEmpty ? numText : 'VERIFIED-DOC-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                              'fileUrl': urlText.isNotEmpty ? urlText : 'https://vault.hometrust.ng/docs/$docSlug.pdf',
+                            };
+                          }).toList();
+
                           final payload = {
                             'projectType': projectType,
                             'propertyCategory': propertyCategory,
@@ -439,21 +688,14 @@ class _DeveloperProjectsScreenState extends State<DeveloperProjectsScreen> {
                             'area': areaCtrl.text.trim().isNotEmpty ? areaCtrl.text.trim() : 'Lekki',
                             'address': addressCtrl.text.trim(),
                             'expectedCompletion': isPaySmallSmall ? 'Immediate / Ready' : completionCtrl.text.trim(),
-                            'videoUrl': videoUrlCtrl.text.trim().isNotEmpty ? videoUrlCtrl.text.trim() : null,
-                            'virtualTourUrl': virtualTourCtrl.text.trim().isNotEmpty ? virtualTourCtrl.text.trim() : null,
-                            'documentUrls': [
-                              {
-                                'documentType': 'TITLE_DEED',
-                                'fileName': titleTypeCtrl.text.trim(),
-                                'fileUrl': 'https://vault.hometrust.ng/docs/title.pdf',
-                              },
-                              if (surveyPlanCtrl.text.trim().isNotEmpty)
-                                {
-                                  'documentType': 'SURVEY_PLAN',
-                                  'fileName': 'Registered Survey Plan: ${surveyPlanCtrl.text.trim()}',
-                                  'fileUrl': 'https://vault.hometrust.ng/docs/survey.pdf',
-                                },
-                            ],
+                            'videoUrl': firstVideo,
+                            'virtualTourUrl': first3dTour,
+                            'mediaWalkthroughs': validWalkthroughs.map((w) => {
+                              'mediaType': w['mediaType'],
+                              'title': (w['titleCtrl'] as TextEditingController).text.trim(),
+                              'url': (w['urlCtrl'] as TextEditingController).text.trim(),
+                            }).toList(),
+                            'documentUrls': formattedDocs,
                             'units': [
                               {
                                 'unitType': unitNameCtrl.text.trim(),

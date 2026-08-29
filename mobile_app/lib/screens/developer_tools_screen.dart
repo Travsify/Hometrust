@@ -5,8 +5,6 @@ import 'legal_request_screen.dart';
 import 'real_estate_dictionary_screen.dart';
 import 'verify_screen.dart';
 import 'developer_boq_validator_screen.dart';
-import 'developer_jv_board_screen.dart';
-import 'developer_site_gallery_screen.dart';
 
 class DeveloperToolsScreen extends StatefulWidget {
   const DeveloperToolsScreen({super.key});
@@ -21,7 +19,6 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
     final phoneCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
     String selectedStage = 'Stage 2: Structural Framing & Lintels';
-    String selectedDate = 'Tomorrow (10:00 AM)';
 
     showModalBottomSheet(
       context: context,
@@ -57,7 +54,7 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: selectedStage,
+                initialValue: selectedStage,
                 decoration: InputDecoration(
                   labelText: 'Construction Milestone Stage',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -144,7 +141,7 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // 1. PRIMARY FEATURED ACTION: REQUEST MILESTONE INSPECTION
+          // ── 1. PRIMARY FEATURED ACTION: MILESTONE INSPECTION ──
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -196,119 +193,138 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
           ),
           const SizedBox(height: 20),
 
-          const Text('Ecosystem Construction & Legal Tools', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-          const SizedBox(height: 12),
-
-          // 2. CONTRACTOR BOQ MATERIAL PRICE VALIDATOR
-          _buildToolTile(
-            icon: Icons.receipt_long_rounded,
-            iconColor: const Color(0xFF059669),
-            title: 'Contractor BOQ Price Validator',
-            subtitle: 'Cross-check contractor Bill of Quantities quotes against certified state material indices to detect padding and overbilling.',
-            badge: 'AI COST AUDIT',
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperBoqValidatorScreen()));
-            },
+          // ── 2. BENTO GRID SECTION HEADER ──
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Construction & Legal Bento Grid',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF059669).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text('6 MODULES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF059669))),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
-          // 3. JOINT VENTURE (JV) LAND MATCHING BOARD
-          _buildToolTile(
-            icon: Icons.handshake_rounded,
-            iconColor: const Color(0xFF0284C7),
-            title: 'JV Land Matching Board',
-            subtitle: 'Browse pre-vetted land parcels across prime corridors available for Joint Venture development with certified titles.',
-            badge: 'JV PARTNERS',
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperJvBoardScreen()));
-            },
-          ),
-          const SizedBox(height: 12),
+          // ── 3. 2x3 BENTO GRID OF ACTIVE TOOLS ──
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // LEFT COLUMN
+              Expanded(
+                child: Column(
+                  children: [
+                    // Bento 1: Contractor BOQ Price Validator
+                    _buildBentoGridCard(
+                      icon: Icons.receipt_long_rounded,
+                      accentColor: const Color(0xFF059669),
+                      bgGradient: [const Color(0xFFECFDF5), Colors.white],
+                      title: 'Contractor BOQ Validator',
+                      subtitle: 'Audit material quotes against live state benchmarks to eliminate contractor padding.',
+                      badge: 'AI COST AUDIT',
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperBoqValidatorScreen()));
+                      },
+                    ),
+                    const SizedBox(height: 14),
 
-          // 4. SITE DRONE & GEOTAGGED PROGRESS GALLERY
-          _buildToolTile(
-            icon: Icons.photo_camera_back_rounded,
-            iconColor: const Color(0xFF7C3AED),
-            title: 'Site Drone & Geotagged Gallery',
-            subtitle: 'Timestamped EXIF GPS progress photos showing structural rising stages to build transparent buyer confidence.',
-            badge: 'VISUAL AUDIT',
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperSiteGalleryScreen()));
-            },
-          ),
-          const SizedBox(height: 12),
+                    // Bento 2: 36 States Material Price Index
+                    _buildBentoGridCard(
+                      icon: Icons.insights_rounded,
+                      accentColor: const Color(0xFF0284C7),
+                      bgGradient: [const Color(0xFFF0F9FF), Colors.white],
+                      title: '36 States Material Index',
+                      subtitle: 'Wholesale & retail prices for cement, rebar, sand, and granite across Nigeria.',
+                      badge: 'LIVE BENCHMARKS',
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const MaterialIndexScreen()));
+                      },
+                    ),
+                    const SizedBox(height: 14),
 
-          // 5. 36 STATES MATERIAL PRICE INDEX
-          _buildToolTile(
-            icon: Icons.analytics_rounded,
-            iconColor: const Color(0xFF0D9488),
-            title: '36 States Material Price Index',
-            subtitle: 'Real-time verified wholesale & retail pricing for cement, rebar, granite, sand, and roofing across Nigeria.',
-            badge: 'LIVE BENCHMARKS',
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const MaterialIndexScreen()));
-            },
-          ),
-          const SizedBox(height: 12),
+                    // Bento 3: Title & Land Registry Search
+                    _buildBentoGridCard(
+                      icon: Icons.verified_user_rounded,
+                      accentColor: const Color(0xFF10B981),
+                      bgGradient: [const Color(0xFFF0FDF4), Colors.white],
+                      title: 'Title & Land Registry',
+                      subtitle: 'Direct search and verification at Alausa, AGIS, and state land registries.',
+                      badge: 'REGISTRY SEARCH',
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const VerifyScreen()));
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
 
-          // 6. LAND RADAR & BOUNDARY COORDINATES
-          _buildToolTile(
-            icon: Icons.radar_rounded,
-            iconColor: const Color(0xFF9333EA),
-            title: 'Land Radar & Coordinate Plotter',
-            subtitle: 'Instantly check GPS / cadastral survey coordinates against government acquisition and master plans.',
-            badge: 'SURVEY CHECK',
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const LandRadarScreen()));
-            },
-          ),
-          const SizedBox(height: 12),
+              // RIGHT COLUMN
+              Expanded(
+                child: Column(
+                  children: [
+                    // Bento 4: Land Radar & Boundary Scan
+                    _buildBentoGridCard(
+                      icon: Icons.radar_rounded,
+                      accentColor: const Color(0xFF7C3AED),
+                      bgGradient: [const Color(0xFFF5F3FF), Colors.white],
+                      title: 'Land Radar & GPS Plotter',
+                      subtitle: 'Scan cadastral beacons to check encroachment, committed gazette, and acquisition status.',
+                      badge: 'GPS BEACON SCAN',
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const LandRadarScreen()));
+                      },
+                    ),
+                    const SizedBox(height: 14),
 
-          // 7. 3% LEGAL DOCUMENT PREPARATION
-          _buildToolTile(
-            icon: Icons.gavel_rounded,
-            iconColor: const Color(0xFFD97706),
-            title: 'Legal Document Drafting (3%)',
-            subtitle: 'Automated legal drafting for Joint Venture agreements, Deeds of Assignment, and bespoke off-plan contracts.',
-            badge: 'LEGAL DRAFTING',
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalRequestScreen()));
-            },
-          ),
-          const SizedBox(height: 12),
+                    // Bento 5: 3% Legal Document Drafting
+                    _buildBentoGridCard(
+                      icon: Icons.gavel_rounded,
+                      accentColor: const Color(0xFFD97706),
+                      bgGradient: [const Color(0xFFFFFBEB), Colors.white],
+                      title: 'Legal Drafting (3%)',
+                      subtitle: 'Automated NBA-compliant Contracts of Sale, Deeds of Assignment, and Covenants.',
+                      badge: 'NBA COMPLIANT',
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalRequestScreen()));
+                      },
+                    ),
+                    const SizedBox(height: 14),
 
-          // 8. TITLE & DOCUMENT VERIFICATION
-          _buildToolTile(
-            icon: Icons.security_rounded,
-            iconColor: const Color(0xFF059669),
-            title: 'Title & Land Registry Search',
-            subtitle: 'AI-assisted document scanning and physical registry search at state lands bureaus (Alausa, AGIS).',
-            badge: 'TITLE SEARCH',
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const VerifyScreen()));
-            },
+                    // Bento 6: Real Estate Lexicon ("Arbiter of Truth")
+                    _buildBentoGridCard(
+                      icon: Icons.menu_book_rounded,
+                      accentColor: const Color(0xFF0F172A),
+                      bgGradient: [const Color(0xFFF8FAFC), Colors.white],
+                      title: 'Hometrust Lexicon',
+                      subtitle: 'Nigerian real estate terms, legal checklists, red flags, and title classifications.',
+                      badge: 'ARBITER OF TRUTH',
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const RealEstateDictionaryScreen()));
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-
-          // 9. REAL ESTATE LEXICON (ARBITER OF TRUTH)
-          _buildToolTile(
-            icon: Icons.menu_book_rounded,
-            iconColor: const Color(0xFF0F172A),
-            title: 'Hometrust Lexicon ("Arbiter of Truth")',
-            subtitle: 'Comprehensive real estate terms, legal definitions, verification checklists, and warning signs.',
-            badge: 'DICTIONARY',
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const RealEstateDictionaryScreen()));
-            },
-          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _buildToolTile({
+  Widget _buildBentoGridCard({
     required IconData icon,
-    required Color iconColor,
+    required Color accentColor,
+    required List<Color> bgGradient,
     required String title,
     required String subtitle,
     required String badge,
@@ -316,74 +332,80 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        gradient: LinearGradient(
+          colors: bgGradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: accentColor.withValues(alpha: 0.15), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: accentColor.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: iconColor, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            title,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: iconColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            badge,
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: iconColor),
-                          ),
-                        ),
-                      ],
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: accentColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(icon, color: accentColor, size: 20),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: accentColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        badge,
+                        style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: accentColor),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF94A3B8)),
-            ],
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), height: 1.2),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B), height: 1.35),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text('Open Tool', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: accentColor)),
+                    const SizedBox(width: 2),
+                    Icon(Icons.arrow_forward_rounded, size: 12, color: accentColor),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+
