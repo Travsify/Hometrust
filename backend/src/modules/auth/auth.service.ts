@@ -105,6 +105,50 @@ export class AuthService {
     };
   }
 
+  static async forgotPassword(email: string) {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (!user) {
+      // Return success to prevent user enumeration attacks
+      return { message: 'If an account with that email exists, a password reset link has been dispatched.' };
+    }
+
+    const resetToken = jwt.sign(
+      { id: user.id, email: user.email, type: 'PASSWORD_RESET' },
+      config.jwtSecret,
+      { expiresIn: '1h' }
+    );
+
+    // In production, dispatch email via SendGrid/Mailgun/Postmark:
+    console.log(`[PASSWORD_RESET] Reset token for ${user.email}: ${resetToken}`);
+
+    return {
+      message: 'Password reset link dispatched.',
+      resetToken: config.nodeEnv === 'development' ? resetToken : undefined,
+    };
+  }
+
+  static async resetPassword(token: string, newPassword: string) {
+    try {
+      const decoded = jwt.verify(token, config.jwtSecret) as any;
+      if (decoded.type !== 'PASSWORD_RESET') {
+        throw new Error('Invalid reset token');
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+      await prisma.user.update({
+        where: { id: decoded.id },
+        data: { passwordHash },
+      });
+
+      return { message: 'Password updated successfully. You can now log in.' };
+    } catch (err: any) {
+      throw new Error(err.message || 'Invalid or expired reset token.');
+    }
+  }
+
   static generateToken(user: { id: string; email: string; role: string; firstName?: string; lastName?: string }) {
     return jwt.sign(
       {

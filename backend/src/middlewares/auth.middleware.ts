@@ -57,6 +57,8 @@ export const authenticate = async (
   }
 };
 
+export const requireAuth = authenticate;
+
 export const requireRoles = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {

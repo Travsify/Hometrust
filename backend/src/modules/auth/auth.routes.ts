@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { AuthController } from './auth.controller';
-import { validateBody } from '../../middlewares/validate.middleware';
-import { authenticate } from '../../middlewares/auth.middleware';
-import { registerSchema, loginSchema } from './auth.dto';
+import { requireAuth } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
-router.post('/register', validateBody(registerSchema), AuthController.register);
-router.post('/login', validateBody(loginSchema), AuthController.login);
-router.get('/me', authenticate as any, AuthController.getMe as any);
+router.post('/register', AuthController.register);
+router.post('/login', AuthController.login);
+router.post('/forgot-password', AuthController.forgotPassword);
+router.post('/reset-password', AuthController.resetPassword);
+router.get('/me', requireAuth, AuthController.getMe);
 
 export const authRoutes = router;

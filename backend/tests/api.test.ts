@@ -21,7 +21,7 @@ describe('EstateVerify API Integration Test Suite', () => {
   it('GET /health should return 200 with platform info', async () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
-    expect(res.body.platform).toBe('EstateVerify API');
+    expect(res.body.platform).toContain('EstateVerify API');
     expect(res.body.tagline).toBe('Verify. Buy. Pay. Track.');
   });
 

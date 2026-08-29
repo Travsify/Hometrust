@@ -141,6 +141,24 @@ export class AdminService {
     return user;
   }
 
+  static async updateUserRole(userId: string, role: string, adminUser: any) {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { role },
+    });
+
+    await AuditService.log({
+      adminId: adminUser.id,
+      adminEmail: adminUser.email,
+      action: 'USER_ROLE_UPDATED',
+      entityType: 'USER',
+      entityId: userId,
+      details: { newRole: role },
+    });
+
+    return user;
+  }
+
   static async getPlatformFees() {
     return prisma.platformFeeConfig.findMany({
       orderBy: { createdAt: 'desc' },

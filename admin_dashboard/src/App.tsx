@@ -10,6 +10,7 @@ import { ProjectsPage } from './pages/Projects';
 import { PaymentsPage } from './pages/Payments';
 import { LegalRequestsPage } from './pages/LegalRequests';
 import { InspectionsPage } from './pages/Inspections';
+import { UsersPage } from './pages/Users';
 import { AuditLogsPage } from './pages/AuditLogs';
 import { SettingsPage } from './pages/Settings';
 import { getDashboardMetrics } from './services/api';
@@ -82,6 +83,8 @@ export const App: React.FC = () => {
         return { title: 'Legal Drafting Console', subtitle: 'EstateVerify internal legal team drafting & document delivery' };
       case 'inspections':
         return { title: 'Physical Site Inspections', subtitle: 'Buyer & developer viewing schedule management' };
+      case 'users':
+        return { title: 'User Account & Role Management', subtitle: 'Manage buyers, developers, internal staff and access roles' };
       case 'audit':
         return { title: 'Security & Regulatory Audit Logs', subtitle: 'Tamper-evident operational audit trail' };
       case 'settings':
@@ -117,6 +120,7 @@ export const App: React.FC = () => {
           {currentTab === 'payments' && <PaymentsPage />}
           {currentTab === 'legal' && <LegalRequestsPage />}
           {currentTab === 'inspections' && <InspectionsPage />}
+          {currentTab === 'users' && <UsersPage />}
           {currentTab === 'audit' && <AuditLogsPage />}
           {currentTab === 'settings' && <SettingsPage />}
         </main>

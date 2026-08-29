@@ -113,3 +113,21 @@ export const updatePlatformFee = async (id: string, amount: number, isActive: bo
   const response = await api.patch(`/admin/platform-fees/${id}`, { amount, isActive });
   return response.data.data;
 };
+
+export const getUsers = async (search?: string, role?: string) => {
+  let url = '/admin/users?';
+  if (search) url += `search=${search}&`;
+  if (role) url += `role=${role}&`;
+  const response = await api.get(url);
+  return response.data.data;
+};
+
+export const updateUserStatus = async (id: string, isActive: boolean) => {
+  const response = await api.patch(`/admin/users/${id}/status`, { isActive });
+  return response.data.data;
+};
+
+export const updateUserRole = async (id: string, role: string) => {
+  const response = await api.patch(`/admin/users/${id}/role`, { role });
+  return response.data.data;
+};

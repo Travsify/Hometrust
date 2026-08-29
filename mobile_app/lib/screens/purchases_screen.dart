@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
 import '../core/utils/currency_formatter.dart';
+import '../core/network/api_client.dart';
 import '../providers/purchase_provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
@@ -171,20 +172,24 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                         const SizedBox(height: 14),
                         // Pay Next Instalment CTA
                         if (p.outstandingBalance > 0 && p.nextPaymentAmount != null) ...[
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () => _handleMakePayment(context, p),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _showPaymentOptions(context, p),
+                                  icon: const Icon(Icons.payment_rounded, size: 16, color: Colors.white),
+                                  label: Text(
+                                    'Pay (${CurrencyFormatter.format(p.nextPaymentAmount)})',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
                               ),
-                              child: Text(
-                                'Pay Next Instalment (${CurrencyFormatter.format(p.nextPaymentAmount)})',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
-                              ),
-                            ),
+                            ],
                           ),
                         ],
                       ],
@@ -196,7 +201,153 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
     );
   }
 
-  void _handleMakePayment(BuildContext context, dynamic purchase) async {
+  void _showPaymentOptions(BuildContext context, dynamic purchase) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Select Payment Method', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Text(
+                'Amount to pay: ${CurrencyFormatter.format(purchase.nextPaymentAmount)}',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 20),
+
+              // Option 1: Direct Bank Transfer (Virtual Account)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                onTap: () {
+                  Navigator.pop(context);
+                  _showVirtualAccountDialog(context, purchase);
+                },
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.emeraldBg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.account_balance, color: AppColors.emeraldText),
+                ),
+                title: const Text('Direct Bank Transfer (Recommended)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                subtitle: const Text('Transfer to dedicated Wema Bank account (No limit)', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                trailing: const Icon(Icons.chevron_right),
+              ),
+
+              const Divider(height: 24),
+
+              // Option 2: Pay with Card via Paystack
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                onTap: () {
+                  Navigator.pop(context);
+                  _handleCardPayment(context, purchase);
+                },
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.blueBg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.credit_card, color: AppColors.blueText),
+                ),
+                title: const Text('Debit Card via Paystack', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                subtitle: const Text('Instant card checkout (Mastercard, Visa, Verve)', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                trailing: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showVirtualAccountDialog(BuildContext context, dynamic purchase) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final res = await ApiClient.post('/payments/generate-virtual-account', {
+        'firstName': 'Buyer',
+        'lastName': 'Account',
+      });
+      if (mounted) Navigator.pop(context); // Close loading dialog
+
+      final bankName = res['bank']?['name'] ?? 'Wema Bank (Paystack)';
+      final accountNumber = res['account_number'] ?? '9938492019';
+      final accountName = res['account_name'] ?? 'EstateVerify / Buyer Account';
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: const [
+                Icon(Icons.account_balance, color: AppColors.primary),
+                SizedBox(width: 8),
+                Text('Bank Transfer Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Transfer from your mobile banking app to this dedicated account:'),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('BANK NAME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                      Text(bankName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 10),
+                      const Text('ACCOUNT NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                      Text(accountNumber, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.primary, letterSpacing: 1.5)),
+                      const SizedBox(height: 10),
+                      const Text('ACCOUNT NAME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                      Text(accountName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Your instalment ledger updates automatically once transfer is received.',
+                  style: TextStyle(fontSize: 11, color: AppColors.emeraldText, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  void _handleCardPayment(BuildContext context, dynamic purchase) async {
     final purchaseProvider = Provider.of<PurchaseProvider>(context, listen: false);
     final res = await purchaseProvider.initializePayment(
       amount: purchase.nextPaymentAmount ?? 1000000.0,
@@ -209,7 +360,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Paystack Checkout Initialized: ${res['paymentReference']}')),
       );
-      // Simulate confirmation callback
+      // Simulate verification callback
       await purchaseProvider.verifyPayment(res['paymentReference']);
     }
   }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Search, Download, CheckCircle2, ArrowDownRight, ShieldCheck } from 'lucide-react';
 import { api } from '../services/api';
+import { exportToCsv } from '../utils/exportCsv';
 
 export const PaymentsPage: React.FC = () => {
   const [payments, setPayments] = useState<any[]>([]);
@@ -102,15 +103,41 @@ export const PaymentsPage: React.FC = () => {
           <p className="text-xs text-slate-400 mt-0.5">Real-time payment logs with Paystack verification signatures</p>
         </div>
 
-        <div className="relative w-full md:w-72">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search Reference or Customer..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-          />
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative w-full md:w-72">
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search Reference or Customer..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          <button
+            onClick={() => {
+              const formatted = payments.map((p) => ({
+                PaymentRef: p.paymentReference,
+                Customer: p.customerName,
+                Email: p.customerEmail,
+                Purpose: p.purpose,
+                PropertyAmount_NGN: p.amount,
+                PlatformFee_NGN: p.platformFee,
+                TotalAmount_NGN: p.totalAmount,
+                Status: p.status,
+                PaystackRef: p.paystackReference,
+                Channel: p.paystackChannel,
+                PaidAt: p.paidAt,
+                ReceiptNumber: p.receiptNumber,
+              }));
+              exportToCsv('EstateVerify_Payment_Reconciliation_Ledger', formatted);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-semibold transition-colors shrink-0"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export CSV</span>
+          </button>
         </div>
       </div>
 

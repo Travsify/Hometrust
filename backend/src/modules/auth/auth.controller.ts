@@ -22,6 +22,34 @@ export class AuthController {
     }
   }
 
+  static async forgotPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        sendError(res, 'Email is required', 400);
+        return;
+      }
+      const result = await AuthService.forgotPassword(email);
+      sendSuccess(res, result, result.message);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async resetPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { token, newPassword } = req.body;
+      if (!token || !newPassword) {
+        sendError(res, 'Token and new password are required', 400);
+        return;
+      }
+      const result = await AuthService.resetPassword(token, newPassword);
+      sendSuccess(res, result, result.message);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
   static async getMe(req: AuthRequest, res: Response): Promise<void> {
     try {
       if (!req.user) {

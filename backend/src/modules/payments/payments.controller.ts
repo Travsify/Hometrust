@@ -30,6 +30,26 @@ export class PaymentsController {
     }
   }
 
+  static async generateVirtualAccount(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+
+      const dva = await PaystackClient.createDedicatedAccount({
+        customerEmail: req.user.email,
+        firstName: req.body.firstName || 'Buyer',
+        lastName: req.body.lastName || 'Customer',
+        phone: req.body.phone,
+      });
+
+      sendSuccess(res, dva.data, 'Dedicated virtual bank account generated for bank transfer');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
   static async verify(req: Request, res: Response): Promise<void> {
     try {
       const reference = req.params.reference as string;

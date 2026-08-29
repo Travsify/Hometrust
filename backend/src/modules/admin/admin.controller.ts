@@ -20,7 +20,7 @@ export class AdminController {
         role: req.query.role as string,
         search: req.query.search as string,
         page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
-        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 20,
+        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 50,
       };
       const result = await AdminService.getUsers(filters);
       sendSuccess(res, result.users, 'Users retrieved', 200, {
@@ -41,6 +41,19 @@ export class AdminController {
       }
       const user = await AdminService.updateUserStatus(req.params.id as string, req.body.isActive, req.user);
       sendSuccess(res, user, 'User status updated');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async updateUserRole(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const user = await AdminService.updateUserRole(req.params.id as string, req.body.role, req.user);
+      sendSuccess(res, user, 'User role updated');
     } catch (error: any) {
       sendError(res, error.message, 400);
     }
