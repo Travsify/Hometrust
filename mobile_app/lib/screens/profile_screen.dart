@@ -1,12 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
+import '../core/network/api_client.dart';
+import '../core/utils/currency_formatter.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'legal_request_screen.dart';
+import 'kyc_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  Map<String, dynamic>? _virtualAccount;
+  bool _loadingAccount = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAccount();
+  }
+
+  void _fetchAccount() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) return;
+
+    setState(() => _loadingAccount = true);
+    try {
+      final res = await ApiClient.get('/banking/my-account');
+      if (mounted) {
+        setState(() {
+          _virtualAccount = res;
+          _loadingAccount = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loadingAccount = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +122,126 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
 
+            // Dedicated Virtual Account Card
+            if (auth.isAuthenticated) ...[
+              const SizedBox(height: 20),
+              if (_virtualAccount != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('ESTATEVERIFY DEDICATED ACCOUNT', style: TextStyle(color: Color(0xFF34D399), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF064E3B),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text('ACTIVE', style: TextStyle(color: Color(0xFF34D399), fontSize: 9, fontWeight: FontWeight.w800)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _virtualAccount!['accountNumber'] ?? '0281928391',
+                            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy_rounded, color: Color(0xFF34D399), size: 20),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: _virtualAccount!['accountNumber'] ?? ''));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Account number copied to clipboard!')),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      Text(
+                        _virtualAccount!['bankName'] ?? 'Wema Bank',
+                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      const Divider(height: 24, color: Color(0xFF334155)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _virtualAccount!['accountName'] ?? 'EstateVerify / Valued Customer',
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            CurrencyFormatter.format(_virtualAccount!['balance'] ?? 0),
+                            style: const TextStyle(color: Color(0xFF34D399), fontSize: 13, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.blueBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.blueBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.account_balance, color: AppColors.blueText, size: 28),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text('Generate Dedicated Bank Account', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.blueText)),
+                            SizedBox(height: 2),
+                            Text('Complete KYC to receive your dedicated account number.', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const KycScreen()),
+                          ).then((_) => _fetchAccount());
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        ),
+                        child: const Text('Start KYC', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+
             const SizedBox(height: 24),
             // Menu Items
             Container(
@@ -112,7 +268,12 @@ class ProfileScreen extends StatelessWidget {
                     icon: Icons.shield_outlined,
                     title: 'KYC & Identity Verification',
                     subtitle: 'NIN & BVN verification badge',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const KycScreen()),
+                      ).then((_) => _fetchAccount());
+                    },
                   ),
                   const Divider(height: 1, color: AppColors.cardBorder),
                   _buildMenuItem(
@@ -152,7 +313,8 @@ class ProfileScreen extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()))
+                        .then((_) => _fetchAccount());
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,

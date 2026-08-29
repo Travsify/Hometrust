@@ -21,10 +21,12 @@ class AppColors {
   // Status Badges
   static const Color emeraldBg = Color(0xFFECFDF5);
   static const Color emeraldText = Color(0xFF059669);
+  static const Color emeraldBorder = Color(0xFFA7F3D0);
   static const Color amberBg = Color(0xFFFFFBEB);
   static const Color amberText = Color(0xFFD97706);
   static const Color roseBg = Color(0xFFFEF2F2);
   static const Color roseText = Color(0xFFDC2626);
   static const Color blueBg = Color(0xFFEFF6FF);
   static const Color blueText = Color(0xFF2563EB);
+  static const Color blueBorder = Color(0xFFBFDBFE);
 }
