@@ -7,7 +7,7 @@ import 'providers/auth_provider.dart';
 import 'providers/property_provider.dart';
 import 'providers/verification_provider.dart';
 import 'providers/purchase_provider.dart';
-import 'screens/navigation_wrapper.dart';
+import 'screens/splash_screen.dart';
 
 // Global navigator key so ApiClient can navigate on 401
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -63,7 +63,7 @@ class HomeVerifyApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const NavigationWrapper(),
+        home: const SplashScreen(),
       ),
     );
   }

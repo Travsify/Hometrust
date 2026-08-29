@@ -1,4 +1,4 @@
-package com.estateverify.mobile_app
+package com.homeverify.app
 
 import io.flutter.embedding.android.FlutterActivity
 
