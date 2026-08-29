@@ -172,6 +172,11 @@ export const getWithdrawals = async () => {
   return response.data.data;
 };
 
+export const getKycVerifications = async () => {
+  const response = await api.get('/banking/admin/kyc-verifications');
+  return response.data.data;
+};
+
 export const resolveAccount = async (bankCode: string, accountNumber: string) => {
   const response = await api.post('/banking/resolve-account', { bankCode, accountNumber });
   return response.data.data;

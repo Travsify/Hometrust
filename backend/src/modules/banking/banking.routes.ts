@@ -25,5 +25,6 @@ router.post('/webhook', BankingController.webhook);
 // Admin Audits
 router.get('/admin/accounts', requireAuth, requireRoles('SUPER_ADMIN', 'ADMIN', 'FINANCE_MANAGER'), BankingController.listAllAccounts);
 router.get('/admin/withdrawals', requireAuth, requireRoles('SUPER_ADMIN', 'ADMIN', 'FINANCE_MANAGER'), BankingController.listAllWithdrawals);
+router.get('/admin/kyc-verifications', requireAuth, requireRoles('SUPER_ADMIN', 'ADMIN', 'LEGAL_OFFICER', 'FINANCE_MANAGER'), BankingController.listAllKyc);
 
 export const bankingRoutes = router;

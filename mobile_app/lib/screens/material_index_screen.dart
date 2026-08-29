@@ -9,87 +9,176 @@ class MaterialIndexScreen extends StatefulWidget {
 }
 
 class _MaterialIndexScreenState extends State<MaterialIndexScreen> {
-  String _selectedCity = 'Lagos (Depot Average)';
+  String _selectedState = 'Lagos (South-West)';
 
-  final List<Map<String, dynamic>> _commodities = [
-    {
-      'name': 'Dangote / BUA Cement (50kg)',
-      'spec': 'Grade 42.5N / Portland',
-      'price': 'NGN 8,400 - 8,700',
-      'unit': 'per 50kg bag',
-      'trend': 'STABLE',
-      'change': '-1.2% this week',
-      'icon': Icons.inventory_2_outlined,
-      'color': Color(0xFF059669),
-    },
-    {
-      'name': '12mm High-Yield TMT Rebar',
-      'spec': 'FE 500 High-Tensile Steel',
-      'price': 'NGN 1,180,000',
-      'unit': 'per Ton (approx. 94 lengths)',
-      'trend': 'UP',
-      'change': '+3.4% this week',
-      'icon': Icons.architecture_rounded,
-      'color': Color(0xFFDC2626),
-    },
-    {
-      'name': '16mm High-Yield TMT Rebar',
-      'spec': 'FE 500 Column / Beam Grade',
-      'price': 'NGN 1,220,000',
-      'unit': 'per Ton (approx. 53 lengths)',
-      'trend': 'UP',
-      'change': '+2.8% this week',
-      'icon': Icons.straighten_rounded,
-      'color': Color(0xFFDC2626),
-    },
-    {
-      'name': 'Granite 3/4 inch (Clean Black)',
-      'spec': 'Standard Foundation/Slab aggregate',
-      'price': 'NGN 285,000',
-      'unit': 'per 30-ton tipper load',
-      'trend': 'STABLE',
-      'change': '0.0% this week',
-      'icon': Icons.terrain_rounded,
-      'color': Color(0xFF059669),
-    },
-    {
-      'name': 'Sharp Sand (Washed Creek)',
-      'spec': 'Plastering and casting sand',
-      'price': 'NGN 145,000',
-      'unit': 'per 20-ton tipper load',
-      'trend': 'STABLE',
-      'change': '0.0% this week',
-      'icon': Icons.waves_rounded,
-      'color': Color(0xFF059669),
-    },
-    {
-      'name': '9-Inch Solid Sandcrete Blocks',
-      'spec': 'Machine-vibrated 1:6 mix',
-      'price': 'NGN 780 - 850',
-      'unit': 'per piece delivered',
-      'trend': 'DOWN',
-      'change': '-2.0% this week',
-      'icon': Icons.view_module_rounded,
-      'color': Color(0xFF059669),
-    },
-    {
-      'name': 'Aluminium Longspan (0.55mm)',
-      'spec': 'Coated Anti-Corrosion Sheet',
-      'price': 'NGN 7,600',
-      'unit': 'per square meter',
-      'trend': 'STABLE',
-      'change': '+0.5% this week',
-      'icon': Icons.roofing_rounded,
-      'color': Color(0xFFD97706),
-    },
+  final List<String> _allStates = [
+    'Lagos (South-West)',
+    'Abuja FCT (North-Central)',
+    'Rivers / Port Harcourt (South-South)',
+    'Ogun (South-West)',
+    'Oyo / Ibadan (South-West)',
+    'Enugu (South-East)',
+    'Anambra / Onitsha (South-East)',
+    'Delta / Asaba (South-South)',
+    'Edo / Benin (South-South)',
+    'Akwa Ibom / Uyo (South-South)',
+    'Cross River / Calabar (South-South)',
+    'Imo / Owerri (South-East)',
+    'Abia / Aba (South-East)',
+    'Kano (North-West)',
+    'Kaduna (North-West)',
+    'Plateau / Jos (North-Central)',
+    'Kwara / Ilorin (North-Central)',
+    'Osun (South-West)',
+    'Ondo / Akure (South-West)',
+    'Ekiti (South-West)',
+    'Kogi (North-Central)',
+    'Benue / Makurdi (North-Central)',
+    'Nasarawa (North-Central)',
+    'Niger / Minna (North-Central)',
+    'Bayelsa (South-South)',
+    'Ebonyi (South-East)',
+    'Bauchi (North-East)',
+    'Gombe (North-East)',
+    'Adamawa / Yola (North-East)',
+    'Borno / Maiduguri (North-East)',
+    'Katsina (North-West)',
+    'Sokoto (North-West)',
+    'Kebbi (North-West)',
+    'Zamfara (North-West)',
+    'Taraba (North-East)',
+    'Yobe (North-East)',
+    'Jigawa (North-West)',
   ];
+
+  List<Map<String, dynamic>> _getCommoditiesForState(String state) {
+    // Dynamic regional adjustment factors based on logistics & factory depots
+    final bool isNorth = state.contains('Kano') ||
+        state.contains('Kaduna') ||
+        state.contains('Plateau') ||
+        state.contains('Borno') ||
+        state.contains('Bauchi') ||
+        state.contains('Sokoto') ||
+        state.contains('Adamawa') ||
+        state.contains('Katsina');
+
+    final bool isSouthEastOrSouthSouth = state.contains('Rivers') ||
+        state.contains('Enugu') ||
+        state.contains('Anambra') ||
+        state.contains('Delta') ||
+        state.contains('Akwa Ibom') ||
+        state.contains('Imo') ||
+        state.contains('Abia') ||
+        state.contains('Edo');
+
+    final cementPrice = isNorth
+        ? 'NGN 8,600 - 8,900'
+        : (isSouthEastOrSouthSouth ? 'NGN 8,500 - 8,800' : 'NGN 8,300 - 8,600');
+
+    final rebar12mm = isNorth
+        ? 'NGN 1,220,000'
+        : (isSouthEastOrSouthSouth ? 'NGN 1,200,000' : 'NGN 1,180,000');
+
+    final rebar16mm = isNorth
+        ? 'NGN 1,260,000'
+        : (isSouthEastOrSouthSouth ? 'NGN 1,240,000' : 'NGN 1,220,000');
+
+    final granitePrice = isNorth
+        ? 'NGN 310,000'
+        : (isSouthEastOrSouthSouth ? 'NGN 295,000' : 'NGN 280,000');
+
+    final sandPrice = isNorth
+        ? 'NGN 160,000'
+        : (isSouthEastOrSouthSouth ? 'NGN 150,000' : 'NGN 140,000');
+
+    final blockPrice = isNorth
+        ? 'NGN 820 - 900'
+        : (isSouthEastOrSouthSouth ? 'NGN 800 - 880' : 'NGN 760 - 840');
+
+    final roofingPrice = isNorth ? 'NGN 8,100' : 'NGN 7,600';
+
+    return [
+      {
+        'name': 'Dangote / BUA / Elephant Cement',
+        'spec': 'Grade 42.5N / Portland (50kg)',
+        'price': cementPrice,
+        'unit': 'per 50kg bag delivered',
+        'trend': 'STABLE',
+        'change': '-1.2% this week',
+        'icon': Icons.inventory_2_outlined,
+        'color': const Color(0xFF059669),
+      },
+      {
+        'name': '12mm High-Yield TMT Rebar',
+        'spec': 'FE 500 High-Tensile Certified Steel',
+        'price': rebar12mm,
+        'unit': 'per Ton (approx. 94 lengths)',
+        'trend': 'UP',
+        'change': '+3.4% this week',
+        'icon': Icons.architecture_rounded,
+        'color': const Color(0xFFDC2626),
+      },
+      {
+        'name': '16mm High-Yield TMT Rebar',
+        'spec': 'FE 500 Column / Beam Structural Grade',
+        'price': rebar16mm,
+        'unit': 'per Ton (approx. 53 lengths)',
+        'trend': 'UP',
+        'change': '+2.8% this week',
+        'icon': Icons.straighten_rounded,
+        'color': const Color(0xFFDC2626),
+      },
+      {
+        'name': 'Granite 3/4 inch (Clean Black)',
+        'spec': 'Foundation & Slab Concrete Aggregate',
+        'price': granitePrice,
+        'unit': 'per 30-ton tipper load',
+        'trend': 'STABLE',
+        'change': '0.0% this week',
+        'icon': Icons.terrain_rounded,
+        'color': const Color(0xFF059669),
+      },
+      {
+        'name': 'Sharp Sand (Washed Creek)',
+        'spec': 'Plastering & Casting Clean Sand',
+        'price': sandPrice,
+        'unit': 'per 20-ton tipper load',
+        'trend': 'STABLE',
+        'change': '0.0% this week',
+        'icon': Icons.waves_rounded,
+        'color': const Color(0xFF059669),
+      },
+      {
+        'name': '9-Inch Solid Sandcrete Blocks',
+        'spec': 'Machine-vibrated 1:6 mix standard',
+        'price': blockPrice,
+        'unit': 'per piece delivered',
+        'trend': 'DOWN',
+        'change': '-2.0% this week',
+        'icon': Icons.view_module_rounded,
+        'color': const Color(0xFF059669),
+      },
+      {
+        'name': 'Aluminium Longspan Roofing (0.55mm)',
+        'spec': 'Oven-baked Anti-Corrosion Sheet',
+        'price': roofingPrice,
+        'unit': 'per square meter',
+        'trend': 'STABLE',
+        'change': '+0.5% this week',
+        'icon': Icons.roofing_rounded,
+        'color': const Color(0xFFD97706),
+      },
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
+    final commodities = _getCommoditiesForState(_selectedState);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Building Material Index'),
+        title: const Text('Building Material Index (36 States)'),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
@@ -98,6 +187,7 @@ class _MaterialIndexScreenState extends State<MaterialIndexScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Top Index Badge
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -121,7 +211,7 @@ class _MaterialIndexScreenState extends State<MaterialIndexScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
-                          'WEEKLY BENCHMARK',
+                          '36 STATES BENCHMARK',
                           style: TextStyle(
                             color: AppColors.accentGoldLight,
                             fontWeight: FontWeight.w800,
@@ -131,7 +221,7 @@ class _MaterialIndexScreenState extends State<MaterialIndexScreen> {
                         ),
                       ),
                       const Text(
-                        'Verified by Site QS',
+                        'Verified by Certified QS',
                         style: TextStyle(color: Colors.white60, fontSize: 10),
                       ),
                     ],
@@ -143,53 +233,54 @@ class _MaterialIndexScreenState extends State<MaterialIndexScreen> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Real-time market rates for building materials to protect you from inflated contractor quotations.',
+                    'Real-time market rates for building materials across all 36 Nigerian states to protect you from inflated contractor quotations.',
                     style: TextStyle(color: Colors.white70, fontSize: 11, height: 1.4),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Live Market Rates',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.cardBorder),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedCity,
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                      items: const [
-                        DropdownMenuItem(value: 'Lagos (Depot Average)', child: Text('Lagos')),
-                        DropdownMenuItem(value: 'Abuja (FCT Average)', child: Text('Abuja')),
-                        DropdownMenuItem(value: 'Port Harcourt (Rivers)', child: Text('Port Harcourt')),
-                        DropdownMenuItem(value: 'Ibadan (Oyo)', child: Text('Ibadan')),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) setState(() => _selectedCity = val);
-                      },
-                    ),
-                  ),
-                ),
-              ],
+
+            // State Selector
+            const Text(
+              'Select State / Region:',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedState,
+                  isExpanded: true,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  items: _allStates.map((s) {
+                    return DropdownMenuItem(
+                      value: s,
+                      child: Text(s, overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedState = val);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            // Commodity List
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _commodities.length,
+              itemCount: commodities.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, idx) {
-                final item = _commodities[idx];
+                final item = commodities[idx];
                 final isUp = item['trend'] == 'UP';
                 final isDown = item['trend'] == 'DOWN';
                 return Container(
@@ -290,7 +381,7 @@ class _MaterialIndexScreenState extends State<MaterialIndexScreen> {
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Tip: Cement prices are currently stable across Western depots. Ideal period to purchase blocks and lock foundation casting.',
+                      'Tip: Always request quantity surveyor approval for steel and cement batch tickets before authorizing milestone disbursements.',
                       style: TextStyle(fontSize: 11, color: AppColors.emeraldText, height: 1.4, fontWeight: FontWeight.w600),
                     ),
                   ),

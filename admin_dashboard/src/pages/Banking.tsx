@@ -1,24 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Landmark, ArrowUpRight, ArrowDownLeft, Search, Download, ShieldCheck, CheckCircle2, Building2, User, RefreshCw, Wallet } from 'lucide-react';
-import { getVirtualAccounts, getWithdrawals } from '../services/api';
+import { Landmark, ArrowUpRight, Search, Download, ShieldCheck, UserCheck, RefreshCw, Wallet, Building2, User } from 'lucide-react';
+import { getVirtualAccounts, getWithdrawals, getKycVerifications } from '../services/api';
 import { exportToCsv } from '../utils/exportCsv';
 
 export const BankingPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'accounts' | 'withdrawals'>('accounts');
+  const [activeTab, setActiveTab] = useState<'accounts' | 'withdrawals' | 'kyc'>('accounts');
   const [accounts, setAccounts] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [kycRecords, setKycRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [accs, withs] = await Promise.all([
+      const [accs, withs, kycs] = await Promise.all([
         getVirtualAccounts(),
         getWithdrawals(),
+        getKycVerifications(),
       ]);
       setAccounts(accs || []);
       setWithdrawals(withs || []);
+      setKycRecords(kycs || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -32,6 +35,7 @@ export const BankingPage: React.FC = () => {
 
   const totalFundedVolume = accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
   const totalPayoutVolume = withdrawals.reduce((sum, w) => sum + (w.amount || 0), 0);
+  const verifiedKycCount = kycRecords.filter((k) => k.status === 'VERIFIED').length;
 
   const filteredAccounts = accounts.filter(
     (a) =>
@@ -39,6 +43,16 @@ export const BankingPage: React.FC = () => {
       a.accountName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       a.accountNumber.includes(searchTerm) ||
       a.bankName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredKyc = kycRecords.filter(
+    (k) =>
+      !searchTerm ||
+      (k.user?.firstName && k.user.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (k.user?.lastName && k.user.lastName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (k.user?.email && k.user.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (k.nin && k.nin.includes(searchTerm)) ||
+      (k.bvn && k.bvn.includes(searchTerm))
   );
 
   const handleExportAccounts = () => {
@@ -72,6 +86,21 @@ export const BankingPage: React.FC = () => {
     exportToCsv('EstateVerify_Developer_Withdrawals', formatted);
   };
 
+  const handleExportKyc = () => {
+    const formatted = kycRecords.map((k) => ({
+      User: `${k.user?.firstName || ''} ${k.user?.lastName || ''}`,
+      Email: k.user?.email || 'N/A',
+      Role: k.user?.role || 'BUYER',
+      KYC_Type: k.kycType,
+      NIN: k.nin || 'N/A',
+      BVN: k.bvn || 'N/A',
+      Status: k.status,
+      VerifiedAt: k.verifiedAt ? new Date(k.verifiedAt).toLocaleString() : 'N/A',
+      Provider: 'Prembly / Identitypass',
+    }));
+    exportToCsv('EstateVerify_Prembly_KYC_Verifications', formatted);
+  };
+
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
@@ -89,24 +118,24 @@ export const BankingPage: React.FC = () => {
 
         <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-2">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold">Escrow & Account Balances</span>
+            <span className="text-xs font-semibold">Prembly KYC Verified Users</span>
             <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+              <UserCheck className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-extrabold text-blue-400">{verifiedKycCount}</div>
+          <div className="text-[11px] text-slate-400">NIN & BVN verified via Prembly</div>
+        </div>
+
+        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-semibold">Escrow & Account Balances</span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
               <Wallet className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-extrabold text-emerald-400">₦{totalFundedVolume.toLocaleString()}</div>
           <div className="text-[11px] text-slate-400">Available funded bank balances</div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold">Total Disbursed Payouts</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
-              <ArrowUpRight className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-extrabold text-white">₦{totalPayoutVolume.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-400">Developer commercial bank withdrawals</div>
         </div>
       </div>
 
@@ -121,6 +150,16 @@ export const BankingPage: React.FC = () => {
           >
             <Landmark className="w-4 h-4" />
             <span>Dedicated Bank Accounts ({accounts.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('kyc')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'kyc' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>Prembly KYC Audits ({kycRecords.length})</span>
           </button>
 
           <button
@@ -139,7 +178,7 @@ export const BankingPage: React.FC = () => {
             <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
             <input
               type="text"
-              placeholder="Search account number or name..."
+              placeholder="Search records..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-10 pr-4 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
@@ -147,11 +186,25 @@ export const BankingPage: React.FC = () => {
           </div>
 
           <button
-            onClick={activeTab === 'accounts' ? handleExportAccounts : handleExportWithdrawals}
+            onClick={
+              activeTab === 'accounts'
+                ? handleExportAccounts
+                : activeTab === 'kyc'
+                ? handleExportKyc
+                : handleExportWithdrawals
+            }
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold transition-colors shrink-0"
           >
             <Download className="w-4 h-4" />
             <span>Export CSV</span>
+          </button>
+
+          <button
+            onClick={fetchData}
+            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs transition-colors shrink-0"
+            title="Refresh"
+          >
+            <RefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -181,7 +234,7 @@ export const BankingPage: React.FC = () => {
                 ) : filteredAccounts.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-12 text-slate-500">
-                      No dedicated virtual accounts found matching criteria.
+                      No virtual bank accounts found.
                     </td>
                   </tr>
                 ) : (
@@ -190,33 +243,24 @@ export const BankingPage: React.FC = () => {
                       <td className="px-6 py-4">
                         <div className="font-bold text-white text-sm">{a.accountName}</div>
                         <div className="text-[11px] text-slate-400">
-                          {a.accountType === 'CORPORATE' ? a.developer?.email : a.user?.email}
+                          {a.accountType === 'CORPORATE' ? a.developer?.companyName : `${a.user?.firstName} ${a.user?.lastName}`} • {a.user?.email || a.developer?.email}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-mono text-base font-extrabold text-emerald-400 tracking-wider">
-                          {a.accountNumber}
-                        </div>
+                        <div className="font-mono text-slate-200 font-bold text-sm tracking-wider">{a.accountNumber}</div>
                         <div className="text-[11px] text-slate-400">{a.bankName}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            a.accountType === 'CORPORATE'
-                              ? 'bg-purple-950 text-purple-300 border border-purple-800'
-                              : 'bg-blue-950 text-blue-300 border border-blue-800'
-                          }`}
-                        >
-                          {a.accountType === 'CORPORATE' ? <Building2 className="w-3 h-3" /> : <User className="w-3 h-3" />}
-                          {a.accountType === 'CORPORATE' ? 'BUSINESS (KYB)' : 'INDIVIDUAL (KYC)'}
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                          {a.accountType === 'CORPORATE' ? <Building2 className="w-3 h-3 text-amber-400" /> : <User className="w-3 h-3 text-blue-400" />}
+                          {a.accountType}
                         </span>
                       </td>
-                      <td className="px-6 py-4 font-bold text-white text-sm">
+                      <td className="px-6 py-4 font-bold text-emerald-400 text-sm">
                         ₦{(a.balance || 0).toLocaleString()}
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                           {a.status}
                         </span>
                       </td>
@@ -232,7 +276,73 @@ export const BankingPage: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: DEVELOPER WITHDRAWALS & PAYOUTS */}
+      {/* TAB 2: PREMBLY KYC & IDENTITY VERIFICATIONS */}
+      {activeTab === 'kyc' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950/70 border-b border-slate-800 text-slate-400 uppercase font-semibold">
+                <tr>
+                  <th className="px-6 py-4">Customer Name & Role</th>
+                  <th className="px-6 py-4">KYC Type</th>
+                  <th className="px-6 py-4">NIN / National ID</th>
+                  <th className="px-6 py-4">BVN</th>
+                  <th className="px-6 py-4">Prembly Status</th>
+                  <th className="px-6 py-4">Verified Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-12 text-slate-400">
+                      Loading Prembly KYC records...
+                    </td>
+                  </tr>
+                ) : filteredKyc.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-12 text-slate-500">
+                      No KYC verifications recorded yet.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredKyc.map((k) => (
+                    <tr key={k.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-white text-sm">
+                          {k.user?.firstName} {k.user?.lastName}
+                        </div>
+                        <div className="text-[11px] text-slate-400">{k.user?.email} • {k.user?.phone || 'No Phone'}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                          {k.kycType}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-mono font-bold text-slate-200">
+                        {k.nin ? `${k.nin.substring(0, 3)}•••••${k.nin.substring(k.nin.length - 3)}` : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 font-mono font-bold text-slate-200">
+                        {k.bvn ? `${k.bvn.substring(0, 3)}•••••${k.bvn.substring(k.bvn.length - 3)}` : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
+                          <ShieldCheck className="w-3 h-3" />
+                          {k.status} (Prembly Verified)
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-400">
+                        {k.verifiedAt ? new Date(k.verifiedAt).toLocaleString() : new Date(k.createdAt).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: DEVELOPER WITHDRAWALS & PAYOUTS */}
       {activeTab === 'withdrawals' && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">

@@ -350,4 +350,16 @@ export class BankingService {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  /**
+   * List all Prembly KYC/KYB records for Admin audit
+   */
+  static async listAllKyc() {
+    return prisma.kycVerification.findMany({
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, role: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }

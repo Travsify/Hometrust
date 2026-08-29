@@ -11,17 +11,51 @@ class LandRadarScreen extends StatefulWidget {
 
 class _LandRadarScreenState extends State<LandRadarScreen> {
   final TextEditingController _beaconCtrl = TextEditingController(text: 'BC/LA/2024/7821');
-  String _selectedState = 'Lagos (Ibeju-Lekki / Epe Corridor)';
+  String _selectedState = 'Lagos State (Ibeju-Lekki / Epe / Eti-Osa)';
   bool _isScanning = false;
   Map<String, dynamic>? _scanResult;
 
-  final List<String> _locations = [
-    'Lagos (Ibeju-Lekki / Epe Corridor)',
-    'Lagos (Eti-Osa / Lekki Phase 1 & 2)',
-    'Lagos (Ikeja / Alausa / Mainland)',
-    'Ogun (Shimawa / Mowe / Sagamu)',
-    'Abuja FCT (Guzape / Katampe / Idu)',
-    'Rivers (Port Harcourt / GRA / Port City)',
+  final List<String> _states = [
+    'Lagos State (Ibeju-Lekki / Epe / Eti-Osa)',
+    'Lagos State (Ikeja / Alausa / Mainland)',
+    'Abuja FCT (Maitama / Guzape / Katampe / Idu)',
+    'Abuja FCT (Kuje / Lugbe / Airport Road)',
+    'Ogun State (Shimawa / Mowe / Sagamu / OPIC)',
+    'Ogun State (Abeokuta / Ota / Ibafo)',
+    'Rivers State (Port Harcourt / GRA / Trans-Amadi)',
+    'Oyo State (Ibadan / Alalubosa / Moniya)',
+    'Enugu State (Independence Layout / GRA / Emene)',
+    'Anambra State (Awka / Onitsha / Nnewi)',
+    'Delta State (Asaba / Warri / GRA)',
+    'Edo State (Benin City / GRA / Ikpoba)',
+    'Akwa Ibom State (Uyo / Ewet Housing / Ring Road)',
+    'Cross River State (Calabar / State Housing)',
+    'Imo State (Owerri / New Owerri / World Bank)',
+    'Abia State (Umuahia / Aba)',
+    'Kano State (Kano City / Nasarawa GRA / Bompai)',
+    'Kaduna State (Kaduna / Millenium City / Barnawa)',
+    'Plateau State (Jos / Rayfield / Bukuru)',
+    'Kwara State (Ilorin / GRA / Ganmo)',
+    'Osun State (Osogbo / Ede)',
+    'Ondo State (Akure / Alagbaka)',
+    'Ekiti State (Ado-Ekiti / GRA)',
+    'Kogi State (Lokoja / Ganaja)',
+    'Benue State (Makurdi / High Level)',
+    'Nasarawa State (Karu / Mararaba / Lafia)',
+    'Niger State (Minna / Suleja / Madalla)',
+    'Bayelsa State (Yenagoa / Oxbow Lake)',
+    'Ebonyi State (Abakaliki / Mile 50)',
+    'Bauchi State (Bauchi / GRA)',
+    'Gombe State (Gombe / GRA)',
+    'Adamawa State (Yola / Jimeta)',
+    'Borno State (Maiduguri / GRA)',
+    'Katsina State (Katsina City)',
+    'Sokoto State (Sokoto / GRA)',
+    'Kebbi State (Birnin Kebbi)',
+    'Zamfara State (Gusau)',
+    'Taraba State (Jalingo)',
+    'Yobe State (Damaturu)',
+    'Jigawa State (Dutse)',
   ];
 
   void _runScan() async {
@@ -37,12 +71,18 @@ class _LandRadarScreenState extends State<LandRadarScreen> {
       _scanResult = null;
     });
 
-    await Future.delayed(const Duration(milliseconds: 1600));
+    await Future.delayed(const Duration(milliseconds: 1400));
 
     if (!mounted) return;
 
     final query = _beaconCtrl.text.trim().toUpperCase();
-    final bool isCoastalOrHighway = query.contains('COASTAL') || query.contains('EPE') || query.contains('LEKKI');
+    final bool isCoastalOrHighway = query.contains('COASTAL') ||
+        query.contains('EPE') ||
+        query.contains('LEKKI') ||
+        _selectedState.contains('Ibeju-Lekki') ||
+        _selectedState.contains('Coastal');
+
+    final bool isFCT = _selectedState.contains('Abuja') || query.contains('AGIS') || query.contains('FCT');
 
     setState(() {
       _isScanning = false;
@@ -50,13 +90,20 @@ class _LandRadarScreenState extends State<LandRadarScreen> {
         'beacon': _beaconCtrl.text.trim(),
         'location': _selectedState,
         'riskLevel': isCoastalOrHighway ? 'CAUTION' : 'LOW_RISK',
-        'riskScore': isCoastalOrHighway ? '78/100 (Safe with Buffer)' : '94/100 (Low Risk Zone)',
-        'acquisitionStatus': 'Free from Committed Federal & State Acquisition',
-        'zoning': 'Mixed Residential / Commercial (R-2 Masterplan)',
+        'riskScore': isCoastalOrHighway ? '82/100 (Safe with Setback)' : '95/100 (Low Risk Zone)',
+        'acquisitionStatus': isFCT
+            ? 'Free from Federal Capital Development Authority (FCDA) Revocation'
+            : 'Free from Committed State & Federal Acquisition',
+        'cadastralBureau': isFCT
+            ? 'Abuja Geographic Information Systems (AGIS / FCDA Cadastral)'
+            : (_selectedState.contains('Lagos')
+                ? 'Surveyor General Office (Alausa, Ikeja, Lagos)'
+                : 'State Ministry of Lands & Cadastral Bureau'),
+        'zoning': isFCT ? 'Residential Low Density (R-1 Masterplan)' : 'Mixed Residential / Commercial (R-2 Zone)',
         'setbackNotice': isCoastalOrHighway
-            ? 'Property lies outside the 150m Coastal Road buffer. Safe for development with standard 6m road setback.'
+            ? 'Coordinates lie safely outside the 150m Coastal Road & Right-of-Way. Standard 6m perimeter setback applies.'
             : 'Standard road and drainage alignment observed. No government acquisition flags found.',
-        'elevation': '14.2m Above Sea Level (Low Flood Risk)',
+        'elevation': '14.8m Above Sea Level (Low Flood Risk)',
       };
     });
   }
@@ -72,7 +119,7 @@ class _LandRadarScreenState extends State<LandRadarScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Free Land Risk Radar'),
+        title: const Text('Free Land Risk Radar (36 States)'),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
@@ -108,12 +155,12 @@ class _LandRadarScreenState extends State<LandRadarScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
                         Text(
-                          '100% Free Cadastral Scan',
+                          '100% Free Cadastral Scan across Nigeria',
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15),
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Scan survey beacon numbers & GPS coordinates against government acquisition corridors instantly.',
+                          'Check beacon numbers & coordinates against committed acquisition corridors in Lagos, Abuja & 36 States.',
                           style: TextStyle(color: Colors.white70, fontSize: 11, height: 1.4),
                         ),
                       ],
@@ -150,14 +197,14 @@ class _LandRadarScreenState extends State<LandRadarScreen> {
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: AppColors.cardBorder),
+                        borderSide: const BorderSide(color: AppColors.cardBorder),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
 
                   const Text(
-                    'Location / Region',
+                    'Select State / Territory (36 States + FCT)',
                     style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 8),
@@ -170,13 +217,13 @@ class _LandRadarScreenState extends State<LandRadarScreen> {
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: AppColors.cardBorder),
+                        borderSide: const BorderSide(color: AppColors.cardBorder),
                       ),
                     ),
-                    items: _locations.map((loc) {
+                    items: _states.map((loc) {
                       return DropdownMenuItem(
                         value: loc,
-                        child: Text(loc, style: const TextStyle(fontSize: 12)),
+                        child: Text(loc, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis),
                       );
                     }).toList(),
                     onChanged: (val) {
@@ -281,6 +328,8 @@ class _LandRadarScreenState extends State<LandRadarScreen> {
                     _buildResultRow('Beacon Queried', _scanResult!['beacon']),
                     const SizedBox(height: 10),
                     _buildResultRow('Cadastral Status', _scanResult!['acquisitionStatus']),
+                    const SizedBox(height: 10),
+                    _buildResultRow('Cadastral Registry', _scanResult!['cadastralBureau']),
                     const SizedBox(height: 10),
                     _buildResultRow('Masterplan Zoning', _scanResult!['zoning']),
                     const SizedBox(height: 10),

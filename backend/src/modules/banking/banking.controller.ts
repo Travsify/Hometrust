@@ -110,7 +110,16 @@ export class BankingController {
   static async listAllWithdrawals(req: Request, res: Response): Promise<void> {
     try {
       const withdrawals = await BankingService.listAllWithdrawals();
-      sendSuccess(res, withdrawals, 'Withdrawal audit trail retrieved');
+      sendSuccess(res, withdrawals, 'All withdrawals retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async listAllKyc(req: Request, res: Response): Promise<void> {
+    try {
+      const kycList = await BankingService.listAllKyc();
+      sendSuccess(res, kycList, 'All Prembly KYC verifications retrieved');
     } catch (error: any) {
       sendError(res, error.message, 400);
     }

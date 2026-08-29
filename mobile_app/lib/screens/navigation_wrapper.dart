@@ -18,12 +18,12 @@ class NavigationWrapper extends StatefulWidget {
 class _NavigationWrapperState extends State<NavigationWrapper> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    ExploreScreen(),
-    VerifyScreen(),
-    PurchasesScreen(),
-    ProfileScreen(),
+  List<Widget> get _screens => [
+    HomeScreen(onNavigateTab: switchTab),
+    const ExploreScreen(),
+    const VerifyScreen(),
+    const PurchasesScreen(),
+    const ProfileScreen(),
   ];
 
   void switchTab(int index) {
