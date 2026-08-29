@@ -12,5 +12,7 @@ router.get('/:id/allocation-letter', authenticate as any, PurchasesController.ge
 router.get('/:id/contract-of-sale', authenticate as any, PurchasesController.getContractOfSale as any);
 router.post('/:id/sign-contract', authenticate as any, PurchasesController.signContractOfSale as any);
 router.get('/:id/receipts-ledger', authenticate as any, PurchasesController.getReceiptsLedger as any);
+router.post('/milestones/vote', authenticate as any, PurchasesController.voteMilestoneReview as any);
+router.get('/projects/:projectId/milestones', authenticate as any, PurchasesController.getProjectMilestones as any);
 
 export const purchaseRoutes = router;

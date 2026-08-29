@@ -14,6 +14,7 @@ router.post('/my-projects', authenticate as any, DevelopersController.createProj
 router.post('/my-projects/:projectId/units', authenticate as any, DevelopersController.addUnit as any);
 router.get('/my-subscribers', authenticate as any, DevelopersController.getMySubscribers as any);
 router.post('/request-milestone-inspection', authenticate as any, DevelopersController.requestMilestoneInspection as any);
+router.post('/submit-milestone-proof', authenticate as any, DevelopersController.submitMilestoneProofPack as any);
 router.post('/request-payout', authenticate as any, DevelopersController.requestPayout as any);
 router.post('/validate-boq', authenticate as any, DevelopersController.validateBoq as any);
 router.get('/jv-lands', DevelopersController.getJvLandListings as any);

@@ -184,4 +184,31 @@ export class AdminController {
       sendError(res, error.message, 400);
     }
   }
+
+  static async getMilestones(req: Request, res: Response): Promise<void> {
+    try {
+      const filters = {
+        search: req.query.search as string,
+        status: req.query.status as string,
+        projectId: req.query.projectId as string,
+      };
+      const milestones = await AdminService.getMilestonesOverview(filters);
+      sendSuccess(res, milestones, 'Milestones overview retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async disburseMilestone(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await AdminService.adminDisburseMilestone(req.user, req.params.id as string, req.body);
+      sendSuccess(res, result, 'Milestone status and disbursement updated successfully');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }

@@ -116,5 +116,27 @@ export class PurchasesController {
       sendError(res, error.message, 400);
     }
   }
+
+  static async voteMilestoneReview(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await PurchasesService.voteMilestoneReview(req.user.id, req.body);
+      sendSuccess(res, result, 'Milestone review vote recorded successfully', 200);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async getProjectMilestones(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const result = await PurchasesService.getProjectMilestones(req.params.projectId as string, req.user?.id);
+      sendSuccess(res, result, 'Project milestones retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }
 

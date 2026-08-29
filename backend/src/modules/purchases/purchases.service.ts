@@ -468,5 +468,153 @@ export class PurchasesService {
       amortizationSchedule: amortization,
     };
   }
+
+  static async voteMilestoneReview(userId: string, data: {
+    milestoneId: string;
+    decision: 'APPROVE' | 'DISPUTE';
+    comment?: string;
+    proofMediaUrl?: string;
+  }) {
+    const milestone = await prisma.constructionMilestone.findUnique({
+      where: { id: data.milestoneId },
+      include: {
+        project: {
+          include: {
+            units: {
+              include: {
+                purchases: true,
+              }
+            }
+          }
+        },
+        reviews: true,
+      }
+    });
+
+    if (!milestone) throw new Error('Milestone not found');
+
+    // Verify user is a subscriber / buyer of this project
+    const userPurchases = milestone.project.units.flatMap(u => u.purchases).filter(p => p.userId === userId);
+    if (userPurchases.length === 0) {
+      throw new Error('Only verified subscribers/purchasers of this project can review and vote on milestones');
+    }
+
+    // Upsert review vote
+    const review = await prisma.milestoneReview.upsert({
+      where: {
+        milestoneId_userId: {
+          milestoneId: data.milestoneId,
+          userId,
+        }
+      },
+      update: {
+        decision: data.decision,
+        comment: data.comment || null,
+        proofMediaUrl: data.proofMediaUrl || null,
+      },
+      create: {
+        milestoneId: data.milestoneId,
+        userId,
+        decision: data.decision,
+        comment: data.comment || null,
+        proofMediaUrl: data.proofMediaUrl || null,
+      }
+    });
+
+    // Recalculate approvals and disputes count
+    const allReviews = await prisma.milestoneReview.findMany({
+      where: { milestoneId: data.milestoneId }
+    });
+
+    const approvals = allReviews.filter(r => r.decision === 'APPROVE').length;
+    const disputes = allReviews.filter(r => r.decision === 'DISPUTE').length;
+
+    const totalSubscribers = milestone.project.units.flatMap(u => u.purchases).length || 1;
+    const approvalRate = (approvals / totalSubscribers) * 100;
+
+    let newStatus = milestone.status;
+    let newPayoutStatus = milestone.payoutStatus;
+
+    if (approvalRate >= 50 && disputes === 0) {
+      newStatus = 'APPROVED';
+      newPayoutStatus = 'APPROVED';
+    } else if (disputes > 0) {
+      newPayoutStatus = 'DISPUTED';
+    }
+
+    const updated = await prisma.constructionMilestone.update({
+      where: { id: data.milestoneId },
+      data: {
+        approvalsCount: approvals,
+        disputesCount: disputes,
+        status: newStatus,
+        payoutStatus: newPayoutStatus,
+      }
+    });
+
+    await AuditService.log({
+      adminEmail: 'subscriber@hometrust.ng',
+      action: 'BUYER_MILESTONE_VOTE_RECORDED',
+      entityType: 'PROJECT',
+      entityId: milestone.projectId,
+      details: {
+        userId,
+        milestoneId: milestone.id,
+        milestoneTitle: milestone.title,
+        decision: data.decision,
+        approvalsCount: approvals,
+        disputesCount: disputes,
+        totalSubscribers,
+      }
+    });
+
+    return {
+      review,
+      milestone: updated,
+      consensus: {
+        totalSubscribers,
+        approvals,
+        disputes,
+        approvalRate: Number(approvalRate.toFixed(1)),
+      }
+    };
+  }
+
+  static async getProjectMilestones(projectId: string, userId?: string) {
+    const milestones = await prisma.constructionMilestone.findMany({
+      where: { projectId },
+      include: {
+        reviews: {
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true } }
+          }
+        },
+        project: {
+          select: { id: true, name: true, developerId: true }
+        }
+      },
+      orderBy: { orderIndex: 'asc' }
+    });
+
+    const now = new Date();
+
+    return milestones.map(m => {
+      let remainingSeconds = 0;
+      if (m.reviewWindowExpiresAt) {
+        remainingSeconds = Math.max(0, Math.floor((new Date(m.reviewWindowExpiresAt).getTime() - now.getTime()) / 1000));
+      }
+
+      const userReview = userId ? m.reviews.find(r => r.userId === userId) : null;
+
+      return {
+        ...m,
+        remainingSeconds,
+        isExpired: m.reviewWindowExpiresAt ? now > new Date(m.reviewWindowExpiresAt) : false,
+        userVoted: !!userReview,
+        userDecision: userReview?.decision || null,
+        userComment: userReview?.comment || null,
+      };
+    });
+  }
 }
 

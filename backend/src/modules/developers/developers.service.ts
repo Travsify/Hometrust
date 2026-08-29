@@ -728,6 +728,98 @@ export class DevelopersService {
     return inspection;
   }
 
+  static async submitMilestoneProofPack(userId: string, data: {
+    projectId: string;
+    milestoneId: string;
+    corenEngineerName: string;
+    corenLicenseNumber: string;
+    corenCertificateUrl?: string;
+    testReportUrl?: string;
+    walkthroughVideoUrl?: string;
+    trancheAmount?: number;
+    notes?: string;
+  }) {
+    const developer = await this.getDeveloperByUserId(userId);
+
+    const project = await prisma.project.findFirst({
+      where: { id: data.projectId, developerId: developer.id },
+      include: {
+        units: {
+          include: {
+            purchases: {
+              include: { user: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!project) throw new Error('Project not found or unauthorized');
+
+    const milestone = await prisma.constructionMilestone.findFirst({
+      where: { id: data.milestoneId, projectId: data.projectId },
+    });
+
+    if (!milestone) throw new Error('Milestone not found');
+
+    const now = new Date();
+    const reviewExpires = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000);
+
+    const updatedMilestone = await prisma.constructionMilestone.update({
+      where: { id: data.milestoneId },
+      data: {
+        status: 'IN_REVIEW',
+        corenEngineerName: data.corenEngineerName,
+        corenLicenseNumber: data.corenLicenseNumber,
+        corenCertificateUrl: data.corenCertificateUrl || null,
+        testReportUrl: data.testReportUrl || null,
+        walkthroughVideoUrl: data.walkthroughVideoUrl || null,
+        trancheAmount: data.trancheAmount ? Number(data.trancheAmount) : milestone.trancheAmount,
+        proofSubmittedAt: now,
+        reviewWindowExpiresAt: reviewExpires,
+        payoutStatus: 'IN_REVIEW',
+        description: data.notes ? `${milestone.description || ''}\n${data.notes}`.trim() : milestone.description,
+        approvalsCount: 0,
+        disputesCount: 0,
+      },
+    });
+
+    // Notify all subscribers of this project
+    const buyers = project.units.flatMap(u => u.purchases.map(p => p.user)).filter(Boolean);
+    const uniqueBuyerIds = [...new Set(buyers.map(b => b.id))];
+
+    for (const buyerId of uniqueBuyerIds) {
+      await prisma.notification.create({
+        data: {
+          userId: buyerId,
+          title: `🏗️ Milestone Review: ${project.name}`,
+          message: `Milestone "${milestone.title}" is complete with COREN engineer certification and 360° video. You have 5 days to review and approve tranche release.`,
+          type: 'MILESTONE_REVIEW',
+        }
+      }).catch(() => {});
+    }
+
+    await AuditService.log({
+      adminEmail: developer.email || 'developer@hometrust.ng',
+      action: 'DEVELOPER_MILESTONE_PROOF_SUBMITTED',
+      entityType: 'PROJECT',
+      entityId: project.id,
+      details: {
+        developerId: developer.id,
+        developerCompany: developer.companyName,
+        projectId: project.id,
+        projectName: project.name,
+        milestoneTitle: milestone.title,
+        corenEngineerName: data.corenEngineerName,
+        corenLicenseNumber: data.corenLicenseNumber,
+        trancheAmount: data.trancheAmount,
+        reviewWindowExpiresAt: reviewExpires.toISOString(),
+      },
+    });
+
+    return updatedMilestone;
+  }
+
   static async requestPayout(userId: string, data: {
     amount: number;
     bankCode: string;

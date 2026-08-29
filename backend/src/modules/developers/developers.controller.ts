@@ -126,6 +126,19 @@ export class DevelopersController {
     }
   }
 
+  static async submitMilestoneProofPack(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const milestone = await DevelopersService.submitMilestoneProofPack(req.user.id, req.body);
+      sendSuccess(res, milestone, 'Milestone proof pack submitted successfully for 5-day review', 200);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
   static async requestPayout(req: AuthRequest, res: Response): Promise<void> {
     try {
       if (!req.user) {

@@ -267,4 +267,174 @@ export class AdminService {
       createdAt: p.createdAt,
     }));
   }
+
+  static async getMilestonesOverview(filters?: { status?: string; projectId?: string; search?: string }) {
+    const where: any = {};
+    if (filters?.status) where.status = filters.status;
+    if (filters?.projectId) where.projectId = filters.projectId;
+    if (filters?.search) {
+      where.OR = [
+        { title: { contains: filters.search } },
+        { corenEngineerName: { contains: filters.search } },
+        { corenLicenseNumber: { contains: filters.search } },
+        { project: { name: { contains: filters.search } } },
+      ];
+    }
+
+    const milestones = await prisma.constructionMilestone.findMany({
+      where,
+      include: {
+        project: {
+          include: {
+            developer: { select: { id: true, companyName: true, email: true, phone: true, isVerified: true } },
+            units: {
+              include: {
+                purchases: {
+                  include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } }
+                }
+              }
+            }
+          }
+        },
+        reviews: {
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true, email: true } }
+          }
+        }
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 100,
+    });
+
+    const now = new Date();
+
+    return milestones.map(m => {
+      let remainingSeconds = 0;
+      if (m.reviewWindowExpiresAt) {
+        remainingSeconds = Math.max(0, Math.floor((new Date(m.reviewWindowExpiresAt).getTime() - now.getTime()) / 1000));
+      }
+
+      const totalSubscribers = m.project.units.flatMap(u => u.purchases).length || 1;
+      const approvalRate = Number(((m.approvalsCount / totalSubscribers) * 100).toFixed(1));
+
+      return {
+        id: m.id,
+        projectId: m.projectId,
+        projectName: m.project.name,
+        developerCompany: m.project.developer?.companyName || 'Developer',
+        developerEmail: m.project.developer?.email,
+        developerVerified: m.project.developer?.isVerified,
+        title: m.title,
+        description: m.description,
+        percentage: m.percentage,
+        status: m.status,
+        trancheAmount: m.trancheAmount,
+        payoutStatus: m.payoutStatus,
+        corenEngineerName: m.corenEngineerName,
+        corenLicenseNumber: m.corenLicenseNumber,
+        corenCertificateUrl: m.corenCertificateUrl,
+        testReportUrl: m.testReportUrl,
+        walkthroughVideoUrl: m.walkthroughVideoUrl,
+        proofSubmittedAt: m.proofSubmittedAt,
+        reviewWindowExpiresAt: m.reviewWindowExpiresAt,
+        remainingSeconds,
+        isExpired: m.reviewWindowExpiresAt ? now > new Date(m.reviewWindowExpiresAt) : false,
+        totalSubscribers,
+        approvalsCount: m.approvalsCount,
+        disputesCount: m.disputesCount,
+        approvalRate,
+        remediationNotes: m.remediationNotes,
+        reviews: m.reviews.map(r => ({
+          id: r.id,
+          userName: `${r.user.firstName} ${r.user.lastName}`,
+          userEmail: r.user.email,
+          decision: r.decision,
+          comment: r.comment,
+          proofMediaUrl: r.proofMediaUrl,
+          createdAt: r.createdAt,
+        })),
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+      };
+    });
+  }
+
+  static async adminDisburseMilestone(adminUser: any, milestoneId: string, data: {
+    action: 'APPROVE_AND_DISBURSE' | 'FLAG_DISPUTE' | 'REQUEST_REMEDIATION';
+    notes?: string;
+  }) {
+    const milestone = await prisma.constructionMilestone.findUnique({
+      where: { id: milestoneId },
+      include: {
+        project: {
+          include: {
+            developer: true,
+            units: {
+              include: { purchases: { include: { user: true } } }
+            }
+          }
+        }
+      }
+    });
+
+    if (!milestone) throw new Error('Milestone not found');
+
+    let newStatus = milestone.status;
+    let newPayoutStatus = milestone.payoutStatus;
+    let payoutRef = milestone.payoutTransactionRef;
+
+    if (data.action === 'APPROVE_AND_DISBURSE') {
+      newStatus = 'COMPLETED';
+      newPayoutStatus = 'DISBURSED';
+      payoutRef = `ESC-DISB-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+    } else if (data.action === 'FLAG_DISPUTE') {
+      newPayoutStatus = 'DISPUTED';
+    } else if (data.action === 'REQUEST_REMEDIATION') {
+      newStatus = 'REMEDIATION_REQUIRED';
+      newPayoutStatus = 'REMEDIATION_REQUIRED';
+    }
+
+    const updated = await prisma.constructionMilestone.update({
+      where: { id: milestoneId },
+      data: {
+        status: newStatus,
+        payoutStatus: newPayoutStatus,
+        payoutTransactionRef: payoutRef,
+        remediationNotes: data.notes || milestone.remediationNotes,
+      }
+    });
+
+    // Notify developer
+    if (milestone.project.developer) {
+      await prisma.notification.create({
+        data: {
+          userId: milestone.project.developer.userId,
+          title: data.action === 'APPROVE_AND_DISBURSE'
+            ? `💰 Milestone Escrow Disbursed: ${milestone.title}`
+            : `⚠️ Milestone Status Update: ${milestone.title}`,
+          message: data.action === 'APPROVE_AND_DISBURSE'
+            ? `Tranche payout of ₦${milestone.trancheAmount.toLocaleString()} has been unlocked and transferred to your corporate account (Ref: ${payoutRef}).`
+            : `Admin notes: ${data.notes || 'Under review'}.`,
+          type: 'ESCROW_PAYOUT',
+        }
+      }).catch(() => {});
+    }
+
+    await AuditService.log({
+      adminId: adminUser.id,
+      adminEmail: adminUser.email,
+      action: `ADMIN_MILESTONE_${data.action}`,
+      entityType: 'PROJECT',
+      entityId: milestone.projectId,
+      details: {
+        milestoneId: milestone.id,
+        milestoneTitle: milestone.title,
+        action: data.action,
+        payoutRef,
+        notes: data.notes,
+      }
+    });
+
+    return updated;
+  }
 }

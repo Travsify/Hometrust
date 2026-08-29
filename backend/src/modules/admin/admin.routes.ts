@@ -26,4 +26,8 @@ router.patch('/api-keys/:id', requireRoles('SUPER_ADMIN'), AdminController.updat
 router.delete('/api-keys/:id', requireRoles('SUPER_ADMIN'), AdminController.deleteApiKey);
 router.post('/api-keys/:id/test', requireRoles('SUPER_ADMIN', 'ADMIN'), AdminController.testApiKey);
 
+// Construction Milestones & Escrow Governance
+router.get('/milestones', AdminController.getMilestones);
+router.post('/milestones/:id/disburse', requireRoles('SUPER_ADMIN', 'ADMIN', 'FINANCE_MANAGER'), AdminController.disburseMilestone);
+
 export const adminRoutes = router;

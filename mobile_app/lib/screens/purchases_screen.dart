@@ -10,6 +10,7 @@ import 'login_screen.dart';
 import 'provisional_allocation_screen.dart';
 import 'contract_of_sale_screen.dart';
 import 'receipts_ledger_screen.dart';
+import 'subscriber_milestone_review_modal.dart';
 
 class PurchasesScreen extends StatefulWidget {
   const PurchasesScreen({super.key});
@@ -403,6 +404,26 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 10),
+
+                      // Construction Milestone Review & Consensus Action
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showMilestonesReviewModal(p),
+                          icon: const Icon(Icons.foundation_rounded, size: 16, color: Color(0xFF059669)),
+                          label: const Text(
+                            'Review Construction Milestones & Tranches',
+                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFFA7F3D0)),
+                            backgroundColor: const Color(0xFFECFDF5),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
 
                       if (p.outstandingBalance > 0 && p.nextPaymentAmount != null) ...[
                         const SizedBox(height: 12),
@@ -435,5 +456,216 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
         ),
       ),
     );
+  }
+
+  void _showMilestonesReviewModal(dynamic purchase) async {
+    final projectId = purchase.projectUnit?.projectId ?? purchase.propertyId ?? '';
+    final propTitle = purchase.property?.title ?? purchase.projectUnit?.name ?? purchase.purchaseCode;
+
+    if (projectId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No active off-plan project link found for this unit')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF059669))),
+    );
+
+    try {
+      final milestones = await ApiClient.get('/purchases/projects/$projectId/milestones');
+      if (!mounted) return;
+      Navigator.pop(context); // close loader
+
+      final list = milestones is List ? milestones : [];
+
+      if (list.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No construction milestones registered for this project yet.')),
+        );
+        return;
+      }
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) {
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Project Milestone Proof & Reviews',
+                            style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            propTitle,
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF059669), fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF059669).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.2)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.verified_user_rounded, color: Color(0xFF059669), size: 18),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Your funds remain locked in CBN-licensed escrow. Review live 360° site videos and COREN engineer sign-offs before approving tranche releases.',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF065F46), height: 1.35),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, idx) {
+                      final m = list[idx] as Map<String, dynamic>;
+                      final status = m['status'] ?? 'PENDING';
+                      final isInReview = status == 'IN_REVIEW';
+                      final isDisbursed = status == 'DISBURSED' || status == 'COMPLETED';
+
+                      return Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isInReview
+                              ? const Color(0xFFFFFBEB)
+                              : (isDisbursed ? const Color(0xFFECFDF5) : const Color(0xFFF8FAFC)),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isInReview
+                                ? const Color(0xFFFDE68A)
+                                : (isDisbursed ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0)),
+                            width: isInReview ? 1.5 : 1.0,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${idx + 1}. ${m['title'] ?? 'Milestone'}',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: isInReview
+                                        ? const Color(0xFFD97706)
+                                        : (isDisbursed ? const Color(0xFF059669) : const Color(0xFF64748B)),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    isInReview ? '5-DAY REVIEW OPEN' : (isDisbursed ? 'ESCROW DISBURSED' : status),
+                                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            if (m['corenEngineerName'] != null)
+                              Text(
+                                'Certified by: ${m['corenEngineerName']} (${m['corenLicenseNumber'] ?? 'COREN'})',
+                                style: const TextStyle(fontSize: 11, color: Color(0xFF475569), fontWeight: FontWeight.w600),
+                              ),
+                            const SizedBox(height: 10),
+
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    builder: (_) => SubscriberMilestoneReviewModal(
+                                      milestone: m,
+                                      projectName: propTitle,
+                                      onVoted: () {
+                                        Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
+                                      },
+                                    ),
+                                  );
+                                },
+                                icon: Icon(
+                                  isInReview ? Icons.how_to_vote_rounded : Icons.visibility_outlined,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  isInReview ? 'Review Proof & Cast Vote' : 'View Milestone Details & Reports',
+                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isInReview ? const Color(0xFF059669) : const Color(0xFF0F172A),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    }
   }
 }

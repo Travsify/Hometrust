@@ -35,6 +35,7 @@ model User {
   virtualAccounts   VirtualAccount[]
   kycVerifications  KycVerification[]
   withdrawals       Withdrawal[]
+  milestoneReviews  MilestoneReview[]
 
   @@map("users")
 }
@@ -230,21 +231,54 @@ model ProjectUnit {
 }
 
 model ConstructionMilestone {
-  id              String      @id @default(uuid())
-  projectId       String
-  project         Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  title           String      // Foundation, Structural Framing, Roofing, Plumbing & Electrical, Finishing, External Works
-  description     String?
-  percentage      Int         @default(0) // 0 - 100
-  status          String      @default("PENDING") // PENDING, IN_PROGRESS, SUBMITTED, VERIFIED, COMPLETED
-  orderIndex      Int         @default(0)
-  completionDate  String?
-  proofPhotos     String?     // JSON string of URLs
-  verifiedBy      String?     // Name or internal badge
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id                    String            @id @default(uuid())
+  projectId             String
+  project               Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title                 String            // Foundation, Structural Framing, Roofing, Plumbing & Electrical, Finishing, External Works
+  description           String?
+  percentage            Int               @default(0) // 0 - 100
+  status                String            @default("PENDING") // PENDING, IN_PROGRESS, IN_REVIEW, APPROVED, DISBURSED, REMEDIATION_REQUIRED, COMPLETED
+  orderIndex            Int               @default(0)
+  completionDate        String?
+  proofPhotos           String?           // JSON string of URLs
+  verifiedBy            String?           // Name or internal badge
+
+  // Tripartite Proof-of-Work & Escrow Fields
+  corenEngineerName     String?
+  corenLicenseNumber    String?
+  corenCertificateUrl   String?
+  testReportUrl         String?
+  walkthroughVideoUrl   String?
+  proofSubmittedAt      DateTime?
+  reviewWindowExpiresAt DateTime?
+  approvalsCount        Int               @default(0)
+  disputesCount         Int               @default(0)
+  trancheAmount         Float             @default(0)
+  payoutStatus          String            @default("PENDING") // PENDING, IN_REVIEW, APPROVED, DISBURSED, DISPUTED, REMEDIATION_REQUIRED
+  payoutTransactionRef  String?
+  remediationNotes      String?
+
+  reviews               MilestoneReview[]
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 
   @@map("construction_milestones")
+}
+
+model MilestoneReview {
+  id            String                @id @default(uuid())
+  milestoneId   String
+  milestone     ConstructionMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  decision      String                // APPROVE, DISPUTE
+  comment       String?
+  proofMediaUrl String?               // Optional photo if dispute
+  createdAt     DateTime              @default(now())
+
+  @@unique([milestoneId, userId])
+  @@map("milestone_reviews")
 }
 
 model PaymentPlan {
