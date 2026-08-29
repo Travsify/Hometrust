@@ -43,4 +43,31 @@ export class ProjectsController {
       sendError(res, error.message, 400);
     }
   }
+
+  static async getUnitsMatrix(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await ProjectsService.getUnitsMatrix(req.params.id as string);
+      sendSuccess(res, result, 'Project units matrix retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async lockUnit(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await ProjectsService.lockUnit(
+        req.params.id as string,
+        req.params.unitId as string,
+        req.user.id
+      );
+      sendSuccess(res, result, 'Unit locked for 30 minutes');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }
+

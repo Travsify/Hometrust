@@ -60,4 +60,61 @@ export class PurchasesController {
       sendError(res, error.message, 400);
     }
   }
+
+  static async getAllocationLetter(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await PurchasesService.getAllocationLetter(req.params.id as string, req.user.id);
+      sendSuccess(res, result, 'Provisional Allocation Letter generated');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async getContractOfSale(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await PurchasesService.getContractOfSale(req.params.id as string, req.user.id);
+      sendSuccess(res, result, 'Contract of Sale retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async signContractOfSale(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await PurchasesService.signContractOfSale(
+        req.params.id as string,
+        req.user.id,
+        req.body.signatureText || `${req.user.firstName} ${req.user.lastName}`
+      );
+      sendSuccess(res, result, 'Contract of Sale executed successfully');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async getReceiptsLedger(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await PurchasesService.getReceiptsLedger(req.params.id as string, req.user.id);
+      sendSuccess(res, result, 'Receipts and amortisation ledger retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }
+

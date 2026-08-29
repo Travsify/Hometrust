@@ -7,6 +7,9 @@ import '../core/network/api_client.dart';
 import '../providers/purchase_provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import 'provisional_allocation_screen.dart';
+import 'contract_of_sale_screen.dart';
+import 'receipts_ledger_screen.dart';
 
 class PurchasesScreen extends StatefulWidget {
   const PurchasesScreen({super.key});
@@ -326,8 +329,83 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 14),
+                      // Document & Legal Assurance Action Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ProvisionalAllocationScreen(
+                                      purchaseId: p.id,
+                                      purchaseCode: p.purchaseCode,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.verified_outlined, size: 14, color: Color(0xFF059669)),
+                              label: const Text('Allocation', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF059669))),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFF34D399)),
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ContractOfSaleScreen(
+                                      purchaseId: p.id,
+                                      purchaseCode: p.purchaseCode,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.gavel_rounded, size: 14, color: Color(0xFF0284C7)),
+                              label: const Text('Contract', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF0284C7))),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFF38BDF8)),
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ReceiptsLedgerScreen(
+                                      purchaseId: p.id,
+                                      purchaseCode: p.purchaseCode,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.receipt_long_rounded, size: 14, color: Color(0xFFD97706)),
+                              label: const Text('Ledger', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFFD97706))),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFFFBBF24)),
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
                       if (p.outstandingBalance > 0 && p.nextPaymentAmount != null) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
                             Expanded(
@@ -335,8 +413,8 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                                 onPressed: () => _showPaymentOptions(context, p),
                                 icon: const Icon(Icons.payment_rounded, size: 16, color: Colors.white),
                                 label: Text(
-                                  'Pay (${CurrencyFormatter.format(p.nextPaymentAmount)})',
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11),
+                                  'Pay Next Tranche (${CurrencyFormatter.format(p.nextPaymentAmount)})',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
@@ -348,6 +426,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                           ],
                         ),
                       ],
+
                     ],
                   ),
                 );
