@@ -1,13 +1,27 @@
 import axios from 'axios';
 
-let rawUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api/v1';
-if (rawUrl && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
-  rawUrl = `https://${rawUrl}`;
-}
-if (rawUrl && !rawUrl.endsWith('/api/v1') && !rawUrl.endsWith('/api/v1/')) {
-  rawUrl = `${rawUrl.replace(/\/$/, '')}/api/v1`;
-}
-const API_BASE_URL = rawUrl;
+const getApiBaseUrl = () => {
+  const envUrl = (import.meta as any).env?.VITE_API_URL;
+  if (envUrl && envUrl.trim() !== '') {
+    let u = envUrl.trim();
+    if (!u.startsWith('http://') && !u.startsWith('https://')) {
+      u = `https://${u}`;
+    }
+    return u.endsWith('/api/v1') ? u : `${u.replace(/\/$/, '')}/api/v1`;
+  }
+
+  // In browser runtime, if on a domain like https://estateverify-app.onrender.com, use relative /api/v1
+  if (typeof window !== 'undefined' && window.location) {
+    if (window.location.hostname === 'localhost' && window.location.port === '3000') {
+      return 'http://localhost:5000/api/v1';
+    }
+    return `${window.location.origin}/api/v1`;
+  }
+
+  return 'http://localhost:5000/api/v1';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
