@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
+import fs from 'fs';
 
 import { authRoutes } from './modules/auth/auth.routes';
 import { propertyRoutes } from './modules/properties/properties.routes';
@@ -44,11 +45,17 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Static Admin Dashboard Assets
+const publicDir = path.resolve(__dirname, '../public');
+if (fs.existsSync(publicDir)) {
+  app.use(express.static(publicDir));
+}
+
 // Health Check
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'online',
-    platform: 'EstateVerify API',
+    platform: 'EstateVerify API & Admin Console',
     tagline: 'Verify. Buy. Pay. Track.',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
@@ -70,6 +77,22 @@ app.use(`${apiPrefix}/chat`, chatRoutes);
 app.use(`${apiPrefix}/notifications`, notificationRoutes);
 app.use(`${apiPrefix}/admin`, adminRoutes);
 app.use(`${apiPrefix}/storage`, storageRoutes);
+
+// Fallback to Admin Dashboard SPA if public/index.html exists
+app.get('*', (req: Request, res: Response, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  const indexHtml = path.join(publicDir, 'index.html');
+  if (fs.existsSync(indexHtml)) {
+    return res.sendFile(indexHtml);
+  }
+  res.status(200).json({
+    status: 'online',
+    platform: 'EstateVerify Platform',
+    tagline: 'Verify. Buy. Pay. Track.',
+    version: '1.0.0',
+    endpoints: '/api/v1',
+  });
+});
 
 // Error Middleware
 app.use(errorHandler);
