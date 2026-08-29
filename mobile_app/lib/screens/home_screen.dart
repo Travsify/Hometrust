@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
 import '../core/utils/currency_formatter.dart';
+import '../core/network/api_client.dart';
 import '../providers/property_provider.dart';
 import '../providers/purchase_provider.dart';
 import 'property_detail_screen.dart';
@@ -30,7 +31,7 @@ class HomeScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(
-                'EstateVerify',
+                'HomeVerify',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -60,10 +61,46 @@ class HomeScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('No unread notifications')),
-              );
+            onPressed: () async {
+              try {
+                final notifications = await ApiClient.get('/notifications?limit=10&unread=true');
+                if (!context.mounted) return;
+                final count = (notifications is List) ? notifications.length : 0;
+                if (count == 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('No unread notifications')),
+                  );
+                } else {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.white,
+                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                    builder: (_) => Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Notifications ($count unread)', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 12),
+                          ...(notifications as List).take(5).map((n) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.notifications_active_rounded, color: AppColors.primary),
+                            title: Text(n['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                            subtitle: Text(n['message'] ?? '', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                          )).toList(),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Could not load notifications')),
+                  );
+                }
+              }
             },
             icon: const Icon(Icons.notifications_none_rounded, color: AppColors.textPrimary),
           ),

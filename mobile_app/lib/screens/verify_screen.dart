@@ -1,7 +1,8 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../core/constants/colors.dart';
-import '../core/utils/currency_formatter.dart';
 import '../providers/verification_provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
@@ -16,13 +17,17 @@ class VerifyScreen extends StatefulWidget {
 class _VerifyScreenState extends State<VerifyScreen> {
   final _formKey = GlobalKey<FormState>();
   final _propNameCtrl = TextEditingController();
-  final _propAddressCtrl = TextEditingController();
+  final _propAddressCtrl = TextEditingController(text: '');
   final _cityCtrl = TextEditingController(text: 'Lekki');
   final _stateCtrl = TextEditingController(text: 'Lagos');
 
   String _selectedDocType = 'C_OF_O';
   String _urgency = 'STANDARD';
   bool _submitting = false;
+
+  // File picker state
+  Uint8List? _pickedFileBytes;
+  String? _pickedFileName;
 
   final List<Map<String, String>> _docTypes = [
     {'id': 'C_OF_O', 'name': 'Certificate of Occupancy (C of O)'},
@@ -45,9 +50,39 @@ class _VerifyScreenState extends State<VerifyScreen> {
   }
 
   @override
+  void dispose() {
+    _propNameCtrl.dispose();
+    _propAddressCtrl.dispose();
+    _cityCtrl.dispose();
+    _stateCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        withData: true,
+      );
+      if (result != null && result.files.single.bytes != null) {
+        setState(() {
+          _pickedFileBytes = result.files.single.bytes;
+          _pickedFileName = result.files.single.name;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not pick file: $e')),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final verifProvider = Provider.of<VerificationProvider>(context);
-    final auth = Provider.of<AuthProvider>(context);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -81,7 +116,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
                       Icon(Icons.shield_outlined, color: AppColors.accentGoldLight, size: 20),
                       SizedBox(width: 8),
                       Text(
-                        'ESTATEVERIFY LEGAL & REGISTRY CHECK',
+                        'HOMEVERIFY LEGAL & REGISTRY CHECK',
                         style: TextStyle(color: AppColors.accentGoldLight, fontWeight: FontWeight.w800, fontSize: 11),
                       ),
                     ],
@@ -152,12 +187,12 @@ class _VerifyScreenState extends State<VerifyScreen> {
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _propNameCtrl,
-                      validator: (v) => v?.isEmpty == true ? 'Required' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                       decoration: InputDecoration(
                         hintText: 'e.g. Plot 42, Block B, Lekki Phase 1',
                         filled: true,
                         fillColor: AppColors.background,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.cardBorder)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.cardBorder)),
                         isDense: true,
                       ),
                     ),
@@ -167,33 +202,57 @@ class _VerifyScreenState extends State<VerifyScreen> {
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _propAddressCtrl,
-                      validator: (v) => v?.isEmpty == true ? 'Required' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                       decoration: InputDecoration(
                         hintText: 'e.g. Admiralty Way, Lekki',
                         filled: true,
                         fillColor: AppColors.background,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.cardBorder)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.cardBorder)),
                         isDense: true,
                       ),
                     ),
 
                     const SizedBox(height: 18),
-                    // Upload Box Mock
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.primary.withOpacity(0.3), style: BorderStyle.solid),
-                      ),
-                      child: Column(
-                        children: const [
-                          Icon(Icons.upload_file_rounded, color: AppColors.primary, size: 28),
-                          SizedBox(height: 6),
-                          Text('Select Document File (PDF, JPG, PNG)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                          Text('Max size 25MB • Secure encrypted vault', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                        ],
+                    // File Upload — real picker
+                    const Text('Attach Title Document', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: _pickFile,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _pickedFileName != null ? AppColors.emeraldBg : AppColors.background,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _pickedFileName != null ? AppColors.emeraldBorder : AppColors.primary.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              _pickedFileName != null ? Icons.check_circle_rounded : Icons.upload_file_rounded,
+                              color: _pickedFileName != null ? AppColors.emeraldText : AppColors.primary,
+                              size: 28,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _pickedFileName ?? 'Tap to Select Document File',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: _pickedFileName != null ? AppColors.emeraldText : AppColors.textPrimary,
+                              ),
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _pickedFileName != null ? 'Tap to change file' : 'PDF, JPG, PNG — Max 25MB — Encrypted vault',
+                              style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
 
@@ -218,10 +277,12 @@ class _VerifyScreenState extends State<VerifyScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: Text(
-                          _submitting ? 'Submitting & Running Scan...' : 'Submit & Pay via Paystack',
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                        ),
+                        child: _submitting
+                            ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Text(
+                                'Submit Document for Verification',
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                              ),
                       ),
                     ),
                   ],
@@ -297,27 +358,45 @@ class _VerifyScreenState extends State<VerifyScreen> {
 
     if (_formKey.currentState?.validate() != true) return;
 
+    if (_pickedFileBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please attach a title document file before submitting.'),
+          backgroundColor: AppColors.roseText,
+        ),
+      );
+      return;
+    }
+
     setState(() => _submitting = true);
     final verifProvider = Provider.of<VerificationProvider>(context, listen: false);
 
     final req = await verifProvider.submitVerification(
-      propertyName: _propNameCtrl.text,
-      propertyAddress: _propAddressCtrl.text,
-      state: _stateCtrl.text,
-      city: _cityCtrl.text,
+      propertyName: _propNameCtrl.text.trim(),
+      propertyAddress: _propAddressCtrl.text.trim(),
+      state: _stateCtrl.text.trim(),
+      city: _cityCtrl.text.trim(),
       documentType: _selectedDocType,
       urgency: _urgency,
-      fileName: '${_propNameCtrl.text.replaceAll(' ', '_')}_doc.pdf',
+      fileName: _pickedFileName ?? 'document.pdf',
+      fileBytes: _pickedFileBytes,
     );
 
     setState(() => _submitting = false);
 
-    if (req != null) {
+    if (req != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Verification Request Submitted: ${req.verificationCode}')),
+        SnackBar(
+          content: Text('Verification Request Submitted: ${req.verificationCode}'),
+          backgroundColor: AppColors.emeraldText,
+        ),
       );
       _propNameCtrl.clear();
       _propAddressCtrl.clear();
+      setState(() {
+        _pickedFileBytes = null;
+        _pickedFileName = null;
+      });
     }
   }
 }

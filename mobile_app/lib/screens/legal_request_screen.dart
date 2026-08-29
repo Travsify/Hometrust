@@ -143,7 +143,7 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
       setState(() => _submitting = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Legal request submitted to EstateVerify Legal Team!')),
+          const SnackBar(content: Text('Legal request submitted to HomeVerify Legal Team!')),
         );
         Navigator.pop(context);
       }

@@ -26,7 +26,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: EstateVerify-Android-APK
+          name: HomeVerify-Android-APK
           path: mobile_app/build/app/outputs/flutter-apk/app-release.apk
 
   build-ios:
@@ -50,9 +50,9 @@ jobs:
         run: |
           mkdir -p Payload
           cp -r mobile_app/build/ios/iphoneos/Runner.app Payload/
-          zip -r EstateVerify-iOS.ipa Payload
+          zip -r HomeVerify-iOS.ipa Payload
       - name: Upload iOS App
         uses: actions/upload-artifact@v4
         with:
-          name: EstateVerify-iOS-IPA
-          path: EstateVerify-iOS.ipa
+          name: HomeVerify-iOS-IPA
+          path: HomeVerify-iOS.ipa

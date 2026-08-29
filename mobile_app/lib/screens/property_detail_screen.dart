@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
 import '../core/utils/currency_formatter.dart';
+import '../core/network/api_client.dart';
 import '../models/property_model.dart';
 import '../providers/purchase_provider.dart';
 import '../providers/auth_provider.dart';
@@ -322,7 +323,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'EstateVerify coordinates document verification and structured payment plans. Legal rights and allocations are governed by the executed purchase contract.',
+                            'HomeVerify coordinates document verification and structured payment plans. Legal rights and allocations are governed by the executed purchase contract.',
                             style: TextStyle(fontSize: 11, color: AppColors.amberText, height: 1.3),
                           ),
                         ),
@@ -380,35 +381,80 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     );
   }
 
-  void _showInspectionDialog(BuildContext context) {
-    showDialog(
+  void _showInspectionDialog(BuildContext context) async {
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 2));
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime.now().add(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 60)),
+      helpText: 'Select Inspection Date',
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (picked == null || !mounted) return;
+    selectedDate = picked;
+
+    // Confirm dialog
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Schedule Site Inspection', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+        title: const Text('Confirm Inspection Request', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text('Inspection Team: EstateVerify Technical Officers & Developer Rep.'),
-            SizedBox(height: 12),
-            Text('Available Days: Monday - Saturday (10:00 AM - 4:00 PM)'),
+          children: [
+            Text('Property: ${widget.property.title}'),
+            const SizedBox(height: 8),
+            Text('Date: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
+            const SizedBox(height: 8),
+            const Text('Team: HomeVerify Technical Officers & Developer Rep.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            const SizedBox(height: 4),
+            const Text('Hours: 10:00 AM – 4:00 PM', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Inspection request submitted successfully!')),
-              );
-            },
+            onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Confirm Date'),
+            child: const Text('Confirm', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await ApiClient.post('/inspections', {
+        'propertyId': widget.property.id,
+        'scheduledDate': selectedDate.toIso8601String(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Inspection request submitted! Our team will confirm within 24 hours.'),
+            backgroundColor: AppColors.emeraldText,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not submit inspection: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: AppColors.roseText,
+          ),
+        );
+      }
+    }
   }
 
   void _handleStartPurchase(BuildContext context) async {
@@ -424,9 +470,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       paymentPlanId: _selectedPlan?.id,
     );
 
-    if (purchase != null) {
+    if (purchase != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Purchase record created: ${purchase.purchaseCode}')),
+        SnackBar(
+          content: Text('Purchase created: ${purchase.purchaseCode} — Transfer to your dedicated account to begin.'),
+          backgroundColor: AppColors.emeraldText,
+        ),
       );
     }
   }

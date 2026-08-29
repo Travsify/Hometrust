@@ -125,7 +125,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Dedicated Virtual Account Card
             if (auth.isAuthenticated) ...[
               const SizedBox(height: 20),
-              if (_virtualAccount != null)
+              if (_loadingAccount)
+                const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(strokeWidth: 2)))
+              else if (_virtualAccount != null)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
@@ -150,7 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('ESTATEVERIFY DEDICATED ACCOUNT', style: TextStyle(color: Color(0xFF34D399), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                          const Text('HOMEVERIFY DEDICATED ACCOUNT', style: TextStyle(color: Color(0xFF34D399), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
@@ -189,7 +191,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            _virtualAccount!['accountName'] ?? 'EstateVerify / Valued Customer',
+                            _virtualAccount!['accountName'] ?? 'HomeVerify / Valued Customer',
                             style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
                           ),
                           Text(
@@ -285,9 +287,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const Divider(height: 1, color: AppColors.cardBorder),
                   _buildMenuItem(
                     icon: Icons.headset_mic_outlined,
-                    title: 'Contact EstateVerify Support',
-                    subtitle: 'support@estateverify.ng',
+                    title: 'Contact HomeVerify Support',
+                    subtitle: 'support@homeverify.ng',
                     onTap: () {},
+                  ),
+                  const Divider(height: 1, color: AppColors.cardBorder),
+                  _buildMenuItem(
+                    icon: Icons.privacy_tip_outlined,
+                    title: 'Privacy Policy & Terms',
+                    subtitle: 'How we handle your data',
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w800)),
+                          content: const SingleChildScrollView(
+                            child: Text(
+                              'HomeVerify collects your personal information (name, email, NIN, BVN) solely to provide property document verification, escrow payments, and dedicated virtual account services under Nigerian law (NDPR compliance).\n\n'
+                              'We do not share your data with third parties without consent, except where required by law or to fulfil our Fincra (banking) and Prembly (KYC) service agreements.\n\n'
+                              'Your documents are stored in an encrypted vault and are only accessible to our licensed legal verification team.\n\n'
+                              'For data requests or deletion: support@homeverify.ng\n\n'
+                              'Full policy: https://homeverify.ng/privacy',
+                              style: TextStyle(fontSize: 12, height: 1.6),
+                            ),
+                          ),
+                          actions: [
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                              child: const Text('Close', style: TextStyle(color: Colors.white)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

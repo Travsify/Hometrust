@@ -193,7 +193,7 @@ class _KycScreenState extends State<KycScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('ESTATEVERIFY DEDICATED ACCOUNT', style: TextStyle(color: AppColors.emeraldText, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                          const Text('HOMEVERIFY DEDICATED ACCOUNT', style: TextStyle(color: AppColors.emeraldText, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
@@ -216,7 +216,7 @@ class _KycScreenState extends State<KycScreen> {
                       ),
                       const Divider(height: 24, color: Color(0xFF334155)),
                       Text(
-                        _generatedAccount!['accountName'] ?? 'EstateVerify / Valued Customer',
+                        _generatedAccount!['accountName'] ?? 'HomeVerify / Valued Customer',
                         style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
                       ),
                     ],

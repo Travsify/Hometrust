@@ -1,7 +1,7 @@
 name: mobile_app
-description: "EstateVerify - Nigerian Real Estate Verification, Off-Plan & Pay-Small-Small Platform"
+description: "HomeVerify - Nigerian Real Estate Verification, Off-Plan & Pay-Small-Small Platform"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.10.4
@@ -14,11 +14,31 @@ dependencies:
   intl: ^0.20.2
   provider: ^6.1.2
   shared_preferences: ^2.3.5
+  file_picker: ^8.1.6
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.4
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#0F172A"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
+
+flutter_native_splash:
+  color: "#0F172A"
+  image: "assets/icon/app_icon.png"
+  android: true
+  ios: true
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/

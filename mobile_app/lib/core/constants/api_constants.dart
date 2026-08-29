@@ -1,15 +1,6 @@
-import 'package:flutter/foundation.dart';
-
 class ApiConstants {
-  // Live Cloud Production API on Render
-  static const String _productionUrl = 'https://estateverify-app.onrender.com/api/v1';
-  static const String _localUrl = 'http://localhost:5000/api/v1';
-
-  // Toggle between live production URL and local development
-  static String get baseUrl {
-    // In production or mobile physical testing, use live Render URL:
-    return _productionUrl;
-  }
+  // HomeVerify Production API
+  static const String baseUrl = 'https://estateverify-app.onrender.com/api/v1';
 
   static const String authRegister = '/auth/register';
   static const String authLogin = '/auth/login';

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../core/network/api_client.dart';
 import '../models/verification_model.dart';
@@ -38,28 +39,42 @@ class VerificationProvider with ChangeNotifier {
     required String documentType,
     String urgency = 'STANDARD',
     required String fileName,
+    Uint8List? fileBytes,
   }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final res = await ApiClient.post('/verifications', {
-        'propertyName': propertyName.trim(),
-        'propertyAddress': propertyAddress.trim(),
-        'state': state.trim(),
-        'city': city.trim(),
-        'documentType': documentType,
-        'urgency': urgency,
-        'documents': [
-          {
-            'fileName': fileName,
-            'fileUrl': 'http://localhost:5000/api/v1/storage/files/uploaded_doc.pdf',
-            'fileType': 'PDF',
-            'fileSize': 1850000,
+      dynamic res;
+
+      if (fileBytes != null) {
+        // Upload as multipart — backend receives the real file
+        res = await ApiClient.uploadFile(
+          '/verifications',
+          fileBytes: fileBytes,
+          fileName: fileName,
+          fieldName: 'document',
+          extraFields: {
+            'propertyName': propertyName.trim(),
+            'propertyAddress': propertyAddress.trim(),
+            'state': state.trim(),
+            'city': city.trim(),
+            'documentType': documentType,
+            'urgency': urgency,
           },
-        ],
-      });
+        );
+      } else {
+        // Fallback JSON (no file attached — shouldn't happen in UI, but safe)
+        res = await ApiClient.post('/verifications', {
+          'propertyName': propertyName.trim(),
+          'propertyAddress': propertyAddress.trim(),
+          'state': state.trim(),
+          'city': city.trim(),
+          'documentType': documentType,
+          'urgency': urgency,
+        });
+      }
 
       final newReq = VerificationRequestModel.fromJson(res);
       _userRequests.insert(0, newReq);

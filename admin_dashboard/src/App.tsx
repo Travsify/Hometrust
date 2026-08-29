@@ -93,7 +93,7 @@ export const App: React.FC = () => {
       case 'settings':
         return { title: 'Platform Fee & System Settings', subtitle: 'Configurable transaction service charges' };
       default:
-        return { title: 'EstateVerify Admin Console', subtitle: 'Management Dashboard' };
+        return { title: 'HomeVerify Admin Console', subtitle: 'Management Dashboard' };
     }
   };
 
