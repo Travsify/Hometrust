@@ -353,6 +353,8 @@ export class DevelopersService {
   }
 
   static async createProject(userId: string, data: {
+    projectType?: 'OFF_PLAN' | 'PAY_SMALL_SMALL';
+    propertyCategory?: 'LAND' | 'BUILDING' | 'APARTMENT' | 'TERRACE' | 'COMMERCIAL';
     name: string;
     description: string;
     state: string;
@@ -361,7 +363,10 @@ export class DevelopersService {
     address: string;
     expectedCompletion: string;
     totalUnits?: number;
+    videoUrl?: string;
+    virtualTourUrl?: string;
     images?: string[];
+    documentUrls?: Array<{ documentType: string; fileName: string; fileUrl: string }>;
     units?: Array<{
       unitType: string;
       name: string;
@@ -380,6 +385,84 @@ export class DevelopersService {
     const slug = `${data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString().slice(-4)}`;
 
     const totalUnitsCount = data.units?.reduce((sum, u) => sum + (u.totalUnits || 1), 0) || data.totalUnits || 1;
+    const isPaySmallSmall = data.projectType === 'PAY_SMALL_SMALL';
+
+    // Dynamic milestones depending on OFF_PLAN vs PAY_SMALL_SMALL
+    const defaultMilestones = isPaySmallSmall
+      ? [
+          {
+            title: 'Tranche 1: Commitment Deposit & Provisional Allocation',
+            description: 'Immediate generation of Stamped Provisional Allocation Certificate and Tri-Partite Agreement.',
+            percentage: 20,
+            orderIndex: 1,
+            status: 'COMPLETED',
+          },
+          {
+            title: 'Tranche 2: 50% Equity & Physical Site Possession / Key Release',
+            description: 'Buyer reaches 50% threshold and receives authorization for physical move-in or site demarcation.',
+            percentage: 30,
+            orderIndex: 2,
+            status: 'IN_PROGRESS',
+          },
+          {
+            title: 'Tranche 3: Continuous Instalment Amortisation (75%)',
+            description: 'Ongoing monthly escrow deductions with live amortisation receipts and running statement updates.',
+            percentage: 25,
+            orderIndex: 3,
+            status: 'PENDING',
+          },
+          {
+            title: 'Tranche 4: 100% Liquidation & Deed of Assignment Conveyance',
+            description: 'Final balance clearance, release of escrow funds to developer, and formal state title conveyance.',
+            percentage: 25,
+            orderIndex: 4,
+            status: 'PENDING',
+          },
+        ]
+      : [
+          {
+            title: 'Substructure & Foundation',
+            description: 'Excavation, casting of ground beams, DPC German floor and subterranean anti-termite treatment.',
+            percentage: 20,
+            orderIndex: 1,
+            status: 'COMPLETED',
+          },
+          {
+            title: 'Structural Framing & Lintels',
+            description: 'Reinforced concrete columns, beams, suspended floor slabs, and block masonry to lintel level.',
+            percentage: 25,
+            orderIndex: 2,
+            status: 'IN_PROGRESS',
+          },
+          {
+            title: 'Roofing & External Walling',
+            description: 'Roof trusses, 0.55mm stone-coated step-tiles, external boundary walls, and parapet fascia.',
+            percentage: 20,
+            orderIndex: 3,
+            status: 'PENDING',
+          },
+          {
+            title: 'Plumbing, Electrical & MEP',
+            description: 'Conduit piping, 100% pure copper electrical wiring, water reticulation, and bio-digester soakaway.',
+            percentage: 15,
+            orderIndex: 4,
+            status: 'PENDING',
+          },
+          {
+            title: 'Interior Plastering & Finishing',
+            description: 'Vitrified tiling, POP false ceilings, acrylic wall screeding, sanitary fittings, and Turkish security doors.',
+            percentage: 15,
+            orderIndex: 5,
+            status: 'PENDING',
+          },
+          {
+            title: 'Snagging, Landscaping & Handover',
+            description: 'External interlocking stone paving, solar street lighting, final snag audit, and issuance of Deed of Assignment.',
+            percentage: 5,
+            orderIndex: 6,
+            status: 'PENDING',
+          },
+        ];
 
     const project = await prisma.project.create({
       data: {
@@ -394,68 +477,27 @@ export class DevelopersService {
         totalUnits: totalUnitsCount,
         availableUnits: totalUnitsCount,
         expectedCompletion: data.expectedCompletion,
-        status: 'UNDER_CONSTRUCTION',
+        status: isPaySmallSmall ? 'COMPLETED' : 'UNDER_CONSTRUCTION',
         isVerified: true,
         images: JSON.stringify(data.images && data.images.length > 0 ? data.images : [
           'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80',
           'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80',
         ]),
+        renderings: data.videoUrl ? JSON.stringify([data.videoUrl]) : undefined,
+        architecturalPlans: data.documentUrls ? JSON.stringify(data.documentUrls) : undefined,
         milestones: {
-          create: [
-            {
-              title: 'Substructure & Foundation',
-              description: 'Excavation, casting of ground beams, DPC German floor and subterranean anti-termite treatment.',
-              percentage: 20,
-              orderIndex: 1,
-              status: 'COMPLETED',
-            },
-            {
-              title: 'Structural Framing & Lintels',
-              description: 'Reinforced concrete columns, beams, suspended floor slabs, and block masonry to lintel level.',
-              percentage: 25,
-              orderIndex: 2,
-              status: 'IN_PROGRESS',
-            },
-            {
-              title: 'Roofing & External Walling',
-              description: 'Roof trusses, 0.55mm stone-coated step-tiles, external boundary walls, and parapet fascia.',
-              percentage: 20,
-              orderIndex: 3,
-              status: 'PENDING',
-            },
-            {
-              title: 'Plumbing, Electrical & MEP',
-              description: 'Conduit piping, 100% pure copper electrical wiring, water reticulation, and bio-digester soakaway.',
-              percentage: 15,
-              orderIndex: 4,
-              status: 'PENDING',
-            },
-            {
-              title: 'Interior Plastering & Finishing',
-              description: 'Vitrified tiling, POP false ceilings, acrylic wall screeding, sanitary fittings, and Turkish security doors.',
-              percentage: 15,
-              orderIndex: 5,
-              status: 'PENDING',
-            },
-            {
-              title: 'Snagging, Landscaping & Handover',
-              description: 'External interlocking stone paving, solar street lighting, final snag audit, and issuance of Deed of Assignment.',
-              percentage: 5,
-              orderIndex: 6,
-              status: 'PENDING',
-            },
-          ],
+          create: defaultMilestones,
         },
         units: data.units && data.units.length > 0 ? {
           create: data.units.map(u => ({
             unitType: u.unitType,
             name: u.name,
-            size: u.size || '160 SQM',
+            size: u.size || (isPaySmallSmall ? 'Serviced Plot / 200 SQM' : '160 SQM'),
             bedrooms: u.bedrooms,
             bathrooms: u.bathrooms,
             price: u.price,
             initialDeposit: u.initialDeposit,
-            durationMonths: u.durationMonths || 12,
+            durationMonths: u.durationMonths || (isPaySmallSmall ? 24 : 12),
             monthlyInstalment: u.monthlyInstalment || Math.round((u.price - u.initialDeposit) / (u.durationMonths || 12)),
             totalUnits: u.totalUnits || 1,
             availableUnits: u.totalUnits || 1,
@@ -471,13 +513,14 @@ export class DevelopersService {
 
     await AuditService.log({
       adminEmail: developer.email || 'developer@hometrust.ng',
-      action: 'DEVELOPER_PROJECT_CREATED',
+      action: isPaySmallSmall ? 'DEVELOPER_PAY_SMALL_SMALL_PROJECT_CREATED' : 'DEVELOPER_PROJECT_CREATED',
       entityType: 'PROJECT',
       entityId: project.id,
       details: {
         developerId: developer.id,
         developerCompany: developer.companyName,
         projectName: project.name,
+        projectType: data.projectType || 'OFF_PLAN',
         totalUnits: totalUnitsCount,
         city: project.city,
       },
@@ -485,6 +528,7 @@ export class DevelopersService {
 
     return project;
   }
+
 
   static async addUnitToProject(userId: string, projectId: string, data: {
     unitType: string;

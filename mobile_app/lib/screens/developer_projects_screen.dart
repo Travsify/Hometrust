@@ -46,231 +46,470 @@ class _DeveloperProjectsScreenState extends State<DeveloperProjectsScreen> {
   }
 
   void _showAddProjectModal() {
+    String projectType = 'OFF_PLAN'; // OFF_PLAN or PAY_SMALL_SMALL
+    String propertyCategory = 'TERRACE'; // LAND, TERRACE, APARTMENT, DUPLEX, COMMERCIAL
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final addressCtrl = TextEditingController();
     final areaCtrl = TextEditingController();
     final completionCtrl = TextEditingController(text: 'Q4 2027');
+    final videoUrlCtrl = TextEditingController();
+    final virtualTourCtrl = TextEditingController();
+    final surveyPlanCtrl = TextEditingController();
+    final titleTypeCtrl = TextEditingController(text: 'Governor’s Consent / C of O');
     String selectedState = 'Lagos';
     String selectedCity = 'Lekki';
 
-    // Initial Unit
+    // Unit / Package details
     final unitNameCtrl = TextEditingController(text: '3 Bedroom Luxury Terrace');
     final unitPriceCtrl = TextEditingController(text: '75000000');
-    final unitDepositCtrl = TextEditingController(text: '20000000');
+    final unitDepositCtrl = TextEditingController(text: '15000000');
     final unitCountCtrl = TextEditingController(text: '8');
+    final durationMonthsCtrl = TextEditingController(text: '12');
+    final possessionThresholdCtrl = TextEditingController(text: '50');
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 24,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final isPaySmallSmall = projectType == 'PAY_SMALL_SMALL';
+
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('Publish New Project', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                    IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                const Text('List a new off-plan estate or residential development with milestone escrow protection.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Project Name (e.g. Ikate Luxury Heights)',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedState,
-                        decoration: InputDecoration(
-                          labelText: 'State',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          isPaySmallSmall ? 'Publish Pay-Small-Small Package' : 'Publish Off-Plan Project',
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
                         ),
-                        items: ['Lagos', 'Abuja FCT', 'Rivers', 'Ogun', 'Oyo', 'Enugu', 'Anambra', 'Delta']
-                            .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13))))
-                            .toList(),
-                        onChanged: (val) => selectedState = val!,
-                      ),
+                        IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: areaCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Area (e.g. Lekki Phase 1)',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isPaySmallSmall
+                          ? 'Sell existing houses or serviced land plots by structured monthly instalments.'
+                          : 'List a new off-plan estate development protected by Hometrust Milestone Escrow.',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: addressCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Site Address',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: completionCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Estimated Completion (e.g. Q4 2027)',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descCtrl,
-                  maxLines: 2,
-                  decoration: InputDecoration(
-                    labelText: 'Project Overview & Facilities',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text('Unit Configuration (Initial Batch)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: unitNameCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Unit Type Name',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: unitPriceCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Total Price (NGN)',
-                          prefixText: '₦ ',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
+                    const SizedBox(height: 16),
+
+                    // ── PROJECT TYPE TOGGLE ──
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: unitDepositCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Initial Deposit',
-                          prefixText: '₦ ',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: unitCountCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Total Number of Units',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      if (nameCtrl.text.isEmpty || addressCtrl.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please enter project name and address')),
-                        );
-                        return;
-                      }
-
-                      final price = double.tryParse(unitPriceCtrl.text) ?? 50000000;
-                      final deposit = double.tryParse(unitDepositCtrl.text) ?? 15000000;
-                      final count = int.tryParse(unitCountCtrl.text) ?? 4;
-
-                      final payload = {
-                        'name': nameCtrl.text.trim(),
-                        'description': descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : 'Luxury off-plan development protected by Hometrust Milestone Escrow.',
-                        'state': selectedState,
-                        'city': selectedCity,
-                        'area': areaCtrl.text.trim().isNotEmpty ? areaCtrl.text.trim() : 'Lekki',
-                        'address': addressCtrl.text.trim(),
-                        'expectedCompletion': completionCtrl.text.trim(),
-                        'units': [
-                          {
-                            'unitType': unitNameCtrl.text.trim(),
-                            'name': unitNameCtrl.text.trim(),
-                            'size': '180 SQM',
-                            'bedrooms': 3,
-                            'bathrooms': 3,
-                            'price': price,
-                            'initialDeposit': deposit,
-                            'durationMonths': 12,
-                            'monthlyInstalment': ((price - deposit) / 12).round(),
-                            'totalUnits': count,
-                          },
-                        ],
-                      };
-
-                      Navigator.pop(ctx);
-
-                      try {
-                        await ApiClient.post('/developers/my-projects', payload);
-                        _fetchProjects();
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Project published successfully with Milestone Escrow schedule!'),
-                              backgroundColor: Color(0xFF059669),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setModalState(() {
+                                  projectType = 'OFF_PLAN';
+                                  unitNameCtrl.text = '3 Bedroom Luxury Terrace';
+                                  completionCtrl.text = 'Q4 2027';
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: !isPaySmallSmall ? Colors.white : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(9),
+                                  boxShadow: !isPaySmallSmall
+                                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
+                                      : null,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '🏗️ Off-Plan (Milestones)',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: !isPaySmallSmall ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-                          );
-                        }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF059669),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setModalState(() {
+                                  projectType = 'PAY_SMALL_SMALL';
+                                  unitNameCtrl.text = '500 SQM Serviced Plot (or Finished Unit)';
+                                  completionCtrl.text = 'Immediate / Ready';
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: isPaySmallSmall ? Colors.white : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(9),
+                                  boxShadow: isPaySmallSmall
+                                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
+                                      : null,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '💳 Pay Small Small',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: isPaySmallSmall ? const Color(0xFF059669) : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: const Text('Publish Project to Hometrust', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                  ),
+                    const SizedBox(height: 16),
+
+                    // Property Sub-type Selector
+                    DropdownButtonFormField<String>(
+                      value: propertyCategory,
+                      decoration: InputDecoration(
+                        labelText: 'Property Category',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'TERRACE', child: Text('Terrace / Townhouse')),
+                        DropdownMenuItem(value: 'DUPLEX', child: Text('Semi-Detached / Detached Duplex')),
+                        DropdownMenuItem(value: 'APARTMENT', child: Text('Apartment / Flat')),
+                        DropdownMenuItem(value: 'LAND', child: Text('Serviced Land / Residential Plots')),
+                        DropdownMenuItem(value: 'COMMERCIAL', child: Text('Commercial Space / Office')),
+                      ],
+                      onChanged: (val) => setModalState(() => propertyCategory = val!),
+                    ),
+                    const SizedBox(height: 12),
+
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: InputDecoration(
+                        labelText: isPaySmallSmall ? 'Package / Estate Name (e.g. Greenwood Park Plots)' : 'Project Name (e.g. Ikate Luxury Heights)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: selectedState,
+                            decoration: InputDecoration(
+                              labelText: 'State',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            items: ['Lagos', 'Abuja FCT', 'Rivers', 'Ogun', 'Oyo', 'Enugu', 'Anambra', 'Delta']
+                                .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13))))
+                                .toList(),
+                            onChanged: (val) => selectedState = val!,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: areaCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Area (e.g. Lekki Phase 1)',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: addressCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Site Address',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (!isPaySmallSmall) ...[
+                      TextField(
+                        controller: completionCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'Estimated Completion (e.g. Q4 2027)',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    TextField(
+                      controller: descCtrl,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        labelText: 'Description & Infrastructure (Roads, Drainage, Power)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── MEDIA & VIDEO ATTACHMENTS ──
+                    const Text('Media & Site Walkthrough', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: videoUrlCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Video Walkthrough URL (YouTube, Vimeo, MP4 Drone)',
+                        hintText: 'https://youtube.com/watch?v=...',
+                        prefixIcon: const Icon(Icons.video_collection_rounded, color: Color(0xFFEF4444)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: virtualTourCtrl,
+                      decoration: InputDecoration(
+                        labelText: '3D Virtual Tour URL (Matterport / 360°)',
+                        hintText: 'https://my.matterport.com/show/?m=...',
+                        prefixIcon: const Icon(Icons.view_in_ar_rounded, color: Color(0xFF0284C7)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── SECURE TITLE DOCUMENTS (READ-ONLY VAULT) ──
+                    const Text('Title Root Documents (Secure Read-Only Vault)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Attached documents are protected in Hometrust Secure Read-Only Vault with dynamic watermarking. Buyers cannot download raw files.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: titleTypeCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Root of Title (e.g. Governor’s Consent / C of O / Gazette)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: surveyPlanCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Registered Cadastral Survey Plan Number',
+                        hintText: 'e.g. LA/2024/098/SURV',
+                        prefixIcon: const Icon(Icons.radar_rounded, color: Color(0xFF059669)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── UNIT / PACKAGE FINANCIAL CONFIGURATION ──
+                    Text(
+                      isPaySmallSmall ? 'Installment Financial Terms' : 'Unit Financial Configuration',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: unitNameCtrl,
+                      decoration: InputDecoration(
+                        labelText: isPaySmallSmall ? 'Package / Plot Name' : 'Unit Type Name',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: unitPriceCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Total Price (NGN)',
+                              prefixText: '₦ ',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: unitDepositCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Initial Deposit (NGN)',
+                              prefixText: '₦ ',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: durationMonthsCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Tenor (Months)',
+                              hintText: isPaySmallSmall ? '24' : '12',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: unitCountCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Total Units/Plots',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    if (isPaySmallSmall) ...[
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: possessionThresholdCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Move-In / Site Demarcation Threshold (%)',
+                          hintText: '50',
+                          suffixText: '% paid',
+                          helperText: 'Buyer receives physical possession or fencing rights once this % is cleared into escrow.',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (nameCtrl.text.isEmpty || addressCtrl.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please enter project name and address')),
+                            );
+                            return;
+                          }
+
+                          final price = double.tryParse(unitPriceCtrl.text) ?? 50000000;
+                          final deposit = double.tryParse(unitDepositCtrl.text) ?? 15000000;
+                          final count = int.tryParse(unitCountCtrl.text) ?? 4;
+                          final tenor = int.tryParse(durationMonthsCtrl.text) ?? (isPaySmallSmall ? 24 : 12);
+                          final monthly = (price - deposit) > 0 ? (price - deposit) / tenor : 0.0;
+
+                          final payload = {
+                            'projectType': projectType,
+                            'propertyCategory': propertyCategory,
+                            'name': nameCtrl.text.trim(),
+                            'description': descCtrl.text.trim().isNotEmpty
+                                ? descCtrl.text.trim()
+                                : (isPaySmallSmall
+                                    ? 'Serviced plots & residential packages with structured monthly instalment plans.'
+                                    : 'Luxury off-plan development protected by Hometrust Milestone Escrow.'),
+                            'state': selectedState,
+                            'city': selectedCity,
+                            'area': areaCtrl.text.trim().isNotEmpty ? areaCtrl.text.trim() : 'Lekki',
+                            'address': addressCtrl.text.trim(),
+                            'expectedCompletion': isPaySmallSmall ? 'Immediate / Ready' : completionCtrl.text.trim(),
+                            'videoUrl': videoUrlCtrl.text.trim().isNotEmpty ? videoUrlCtrl.text.trim() : null,
+                            'virtualTourUrl': virtualTourCtrl.text.trim().isNotEmpty ? virtualTourCtrl.text.trim() : null,
+                            'documentUrls': [
+                              {
+                                'documentType': 'TITLE_DEED',
+                                'fileName': titleTypeCtrl.text.trim(),
+                                'fileUrl': 'https://vault.hometrust.ng/docs/title.pdf',
+                              },
+                              if (surveyPlanCtrl.text.trim().isNotEmpty)
+                                {
+                                  'documentType': 'SURVEY_PLAN',
+                                  'fileName': 'Registered Survey Plan: ${surveyPlanCtrl.text.trim()}',
+                                  'fileUrl': 'https://vault.hometrust.ng/docs/survey.pdf',
+                                },
+                            ],
+                            'units': [
+                              {
+                                'unitType': unitNameCtrl.text.trim(),
+                                'name': unitNameCtrl.text.trim(),
+                                'size': isPaySmallSmall ? '500 SQM Serviced Plot' : '180 SQM',
+                                'bedrooms': propertyCategory == 'LAND' ? 0 : 3,
+                                'bathrooms': propertyCategory == 'LAND' ? 0 : 3,
+                                'price': price,
+                                'initialDeposit': deposit,
+                                'durationMonths': tenor,
+                                'monthlyInstalment': monthly,
+                                'totalUnits': count,
+                              },
+                            ],
+                          };
+
+                          try {
+                            await ApiClient.post('/developers/projects', payload);
+                            if (mounted) {
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('🎉 ${isPaySmallSmall ? "Pay-Small-Small Package" : "Off-Plan Project"} published successfully!'),
+                                  backgroundColor: const Color(0xFF059669),
+                                ),
+                              );
+                              _fetchProjects();
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(e.toString().replaceAll('Exception: ', '')),
+                                  backgroundColor: const Color(0xFFDC2626),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isPaySmallSmall ? const Color(0xFF059669) : const Color(0xFF0F172A),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(
+                          isPaySmallSmall ? 'Publish Pay-Small-Small Package' : 'Publish Off-Plan Project',
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
