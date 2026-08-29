@@ -1,4 +1,4 @@
-package com.homeverify.app
+package com.hometrust.app
 
 import io.flutter.embedding.android.FlutterActivity
 
