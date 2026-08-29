@@ -30,7 +30,7 @@ export class AiDocumentAnalyzer {
     extractedText?: string
   ): Promise<AiAnalysisResult> {
     const openRouterKey = process.env.OPENROUTER_API_KEY || config.openai.apiKey;
-    const model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
+    const model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct:free';
 
     // 1. If OpenRouter / OpenAI API Key is provided, call OpenRouter Free Models
     if (openRouterKey && openRouterKey.startsWith('sk-')) {

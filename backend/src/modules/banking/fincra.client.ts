@@ -76,7 +76,7 @@ export class FincraClient {
         }),
       });
 
-      const json = await response.json();
+      const json = (await response.json()) as any;
       if (json.status && json.data?.accountInformation) {
         return json;
       }
@@ -132,7 +132,7 @@ export class FincraClient {
         }),
       });
 
-      const json = await response.json();
+      const json = (await response.json()) as any;
       if (json.status && json.data?.accountInformation) {
         return json;
       }
@@ -143,7 +143,7 @@ export class FincraClient {
     const deterministicNum = '08' + Math.floor(10000000 + Math.random() * 90000000).toString();
     return {
       status: true,
-      message: 'Dedicated corporate business account generated',
+      message: 'Corporate virtual account created successfully',
       data: {
         accountInformation: {
           accountNumber: deterministicNum,
@@ -173,7 +173,7 @@ export class FincraClient {
         }),
       });
 
-      const json = await response.json();
+      const json = (await response.json()) as any;
       if (json.status) {
         return json;
       }
@@ -190,6 +190,10 @@ export class FincraClient {
         bankCode,
       },
     };
+  }
+
+  static async resolveBankAccount(accountNumber: string, bankCode: string): Promise<FincraNameEnquiryResponse> {
+    return this.resolveAccount(bankCode, accountNumber);
   }
 
   /**
@@ -228,7 +232,7 @@ export class FincraClient {
         }),
       });
 
-      const json = await response.json();
+      const json = (await response.json()) as any;
       if (json.status) {
         return json;
       }

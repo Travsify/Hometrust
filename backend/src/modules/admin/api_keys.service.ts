@@ -152,7 +152,7 @@ export class ApiKeysService {
           method: 'GET',
           headers: { Authorization: `Bearer ${key.keyValue}` },
         });
-        const json = await res.json();
+        const json = (await res.json()) as any;
         isHealthy = json.status === true || res.status === 200;
         message = isHealthy ? 'Paystack API key connected and verified successfully!' : (json.message || 'Paystack validation failed');
       } else if (key.service === 'FLUTTERWAVE') {
@@ -160,7 +160,7 @@ export class ApiKeysService {
           method: 'GET',
           headers: { Authorization: `Bearer ${key.keyValue}` },
         });
-        const json = await res.json();
+        const json = (await res.json()) as any;
         isHealthy = json.status === 'success' || res.status === 200;
         message = isHealthy ? 'Flutterwave API key connected and verified successfully!' : (json.message || 'Flutterwave validation failed');
       } else if (key.service === 'OPENROUTER') {
