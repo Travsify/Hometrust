@@ -1,13 +1,14 @@
 import 'package:flutter/foundation.dart';
 
 class ApiConstants {
-  // Use localhost on Web/Desktop, or 10.0.2.2 on Android Emulator
+  // Live Cloud Production API on Render
+  static const String _productionUrl = 'https://estateverify-app.onrender.com/api/v1';
+  static const String _localUrl = 'http://localhost:5000/api/v1';
+
+  // Toggle between live production URL and local development
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:5000/api/v1';
-    }
-    // Default standard local endpoint
-    return 'http://localhost:5000/api/v1';
+    // In production or mobile physical testing, use live Render URL:
+    return _productionUrl;
   }
 
   static const String authRegister = '/auth/register';
