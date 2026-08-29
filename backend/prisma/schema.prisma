@@ -1,0 +1,510 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  passwordHash      String
+  firstName         String
+  lastName          String
+  phone             String?
+  role              String    @default("BUYER") // BUYER, DEVELOPER, ADMIN, LEGAL_MANAGER, VERIFICATION_MANAGER, FINANCE_MANAGER, SUPPORT_AGENT, SUPER_ADMIN
+  isActive          Boolean   @default(true)
+  isEmailVerified   Boolean   @default(false)
+  avatarUrl         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  profile           UserProfile?
+  developer         Developer?
+  purchases         Purchase[]
+  payments          Payment[]
+  verifications     VerificationRequest[]
+  legalRequests     LegalRequest[]
+  inspections       Inspection[]
+  sentMessages      Message[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nin             String?
+  bvnVerified     Boolean   @default(false)
+  state           String?
+  city            String?
+  address         String?
+  occupation      String?
+  nextOfKinName   String?
+  nextOfKinPhone  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("user_profiles")
+}
+
+model Developer {
+  id                  String              @id @default(uuid())
+  userId              String              @unique
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName         String
+  cacNumber           String              @unique
+  businessType        String              @default("LTD") // LTD, PLC, ENTERPRISE
+  contactPerson       String
+  phone               String
+  email               String
+  officeAddress       String
+  yearsOperating      Int                 @default(1)
+  website             String?
+  isVerified          Boolean             @default(false)
+  verificationStatus  String              @default("PENDING") // PENDING, UNDER_REVIEW, VERIFIED, VERIFIED_WITH_LIMITATIONS, REJECTED, SUSPENDED
+  verificationDate    DateTime?
+  verifiedCategories  String?             // JSON array string: ["CORPORATE", "IDENTITY", "PROJECTS", "BUSINESS"]
+  logoUrl             String?
+  about               String?
+  completedProjectsCount Int              @default(0)
+  ongoingProjectsCount   Int              @default(0)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  directors           Director[]
+  documents           DeveloperDocument[]
+  properties          Property[]
+  projects            Project[]
+  payments            Payment[]
+
+  @@map("developers")
+}
+
+model Director {
+  id            String     @id @default(uuid())
+  developerId   String
+  developer     Developer  @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  name          String
+  role          String     @default("Director")
+  phone         String?
+  email         String?
+  idType        String?    // NIN, PASSPORT, DRIVERS_LICENSE, VOTERS_CARD
+  idNumber      String?
+  createdAt     DateTime   @default(now())
+
+  @@map("directors")
+}
+
+model DeveloperDocument {
+  id            String     @id @default(uuid())
+  developerId   String
+  developer     Developer  @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  documentType  String     // CAC_CERTIFICATE, MEMART, TAX_CLEARANCE, PROJECT_APPROVAL, TITLE_DEED, OTHER
+  fileName      String
+  fileUrl       String
+  mimeType      String?
+  fileSize      Int?
+  isVerified    Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+
+  @@map("developer_documents")
+}
+
+model Property {
+  id                  String              @id @default(uuid())
+  developerId         String
+  developer           Developer           @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  title               String
+  slug                String              @unique
+  description         String
+  propertyType        String              // LAND, RESIDENTIAL, APARTMENT, HOUSE, COMMERCIAL, OFF_PLAN, PAY_SMALL_SMALL, DEVELOPMENT_OPPORTUNITY
+  listingType         String              // OUTRIGHT, OFF_PLAN, PAY_SMALL_SMALL
+  state               String
+  city                String
+  area                String
+  address             String
+  price               Float
+  bedrooms            Int?                @default(0)
+  bathrooms           Int?                @default(0)
+  landSize            String?             // e.g. "600 SQM", "2 Plots"
+  landTitle           String              // C_OF_O, DEED_OF_ASSIGNMENT, GOVERNORS_CONSENT, GAZETTE, SURVEY_PLAN, EXCISION
+  verificationStatus  String              @default("VERIFIED") // UNVERIFIED, PENDING_REVIEW, VERIFIED, VERIFIED_WITH_ISSUES, REJECTED
+  isPublished         Boolean             @default(true)
+  isFeatured          Boolean             @default(false)
+  images              String              // JSON string of image URLs
+  videoUrl            String?
+  virtualTourUrl      String?
+  completionDate      String?             // e.g. "December 2027"
+  completionStatus    String              @default("COMPLETED") // NOT_STARTED, IN_PROGRESS, NEAR_COMPLETION, COMPLETED
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  documents           PropertyDocument[]
+  paymentPlans        PaymentPlan[]
+  purchases           Purchase[]
+  inspections         Inspection[]
+
+  @@map("properties")
+}
+
+model PropertyDocument {
+  id            String     @id @default(uuid())
+  propertyId    String
+  property      Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  documentType  String     // SURVEY_PLAN, TITLE_DOCUMENT, BUILDING_APPROVAL, DEED
+  fileName      String
+  fileUrl       String
+  fileSize      Int?
+  isPublic      Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+
+  @@map("property_documents")
+}
+
+model Project {
+  id                  String                 @id @default(uuid())
+  developerId         String
+  developer           Developer              @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  name                String
+  slug                String                 @unique
+  description         String
+  state               String
+  city                String
+  area                String
+  address             String
+  totalUnits          Int                    @default(1)
+  availableUnits      Int                    @default(1)
+  images              String                 // JSON string of image URLs
+  renderings          String?                // JSON string of rendering URLs
+  architecturalPlans  String?                // JSON string
+  floorPlans          String?                // JSON string
+  expectedCompletion  String                 // e.g. "Q4 2027"
+  status              String                 @default("UNDER_CONSTRUCTION") // PLANNING, UNDER_CONSTRUCTION, NEAR_COMPLETION, COMPLETED
+  isVerified          Boolean                @default(true)
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  units               ProjectUnit[]
+  milestones          ConstructionMilestone[]
+  inspections         Inspection[]
+
+  @@map("projects")
+}
+
+model ProjectUnit {
+  id                  String        @id @default(uuid())
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  unitType            String        // 2 Bedroom Flat, 3 Bedroom Terrace, 4 Bedroom Duplex
+  name                String
+  size                String?       // "180 SQM"
+  bedrooms            Int           @default(1)
+  bathrooms           Int           @default(1)
+  price               Float
+  initialDeposit      Float
+  durationMonths      Int           @default(12)
+  monthlyInstalment   Float
+  availableUnits      Int           @default(1)
+  totalUnits          Int           @default(1)
+  floorPlanUrl        String?
+  status              String        @default("AVAILABLE") // AVAILABLE, SOLD_OUT, RESERVED
+  createdAt           DateTime      @default(now())
+
+  paymentPlans        PaymentPlan[]
+  purchases           Purchase[]
+
+  @@map("project_units")
+}
+
+model ConstructionMilestone {
+  id              String      @id @default(uuid())
+  projectId       String
+  project         Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title           String      // Foundation, Structural Framing, Roofing, Plumbing & Electrical, Finishing, External Works
+  description     String?
+  percentage      Int         @default(0) // 0 - 100
+  status          String      @default("PENDING") // PENDING, IN_PROGRESS, SUBMITTED, VERIFIED, COMPLETED
+  orderIndex      Int         @default(0)
+  completionDate  String?
+  proofPhotos     String?     // JSON string of URLs
+  verifiedBy      String?     // Name or internal badge
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("construction_milestones")
+}
+
+model PaymentPlan {
+  id                String        @id @default(uuid())
+  propertyId        String?
+  property          Property?     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  projectUnitId     String?
+  projectUnit       ProjectUnit?  @relation(fields: [projectUnitId], references: [id], onDelete: Cascade)
+  name              String        // "24 Months Flexible Plan"
+  totalPrice        Float
+  initialDeposit    Float
+  durationMonths    Int           @default(12)
+  monthlyPayment    Float
+  paymentFrequency  String        @default("MONTHLY") // MONTHLY, QUARTERLY, BIANNUAL
+  platformFee       Float         @default(5000)
+  serviceCharge     Float         @default(0)
+  isActive          Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+
+  purchases         Purchase[]
+
+  @@map("payment_plans")
+}
+
+model Purchase {
+  id                    String        @id @default(uuid())
+  purchaseCode          String        @unique // e.g. "EV-PUR-2026-001"
+  userId                String
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId            String?
+  property              Property?     @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  projectUnitId         String?
+  projectUnit           ProjectUnit?  @relation(fields: [projectUnitId], references: [id], onDelete: SetNull)
+  paymentPlanId         String?
+  paymentPlan           PaymentPlan?  @relation(fields: [paymentPlanId], references: [id], onDelete: SetNull)
+  status                String        @default("INITIATED") // INITIATED, KYC_SUBMITTED, AGREEMENT_PENDING, AGREEMENT_SIGNED, ACTIVE, COMPLETED, CANCELLED, DEFAULTED
+  totalPrice            Float
+  initialDeposit        Float
+  amountPaid            Float         @default(0)
+  outstandingBalance    Float
+  nextPaymentAmount     Float?
+  nextPaymentDueDate    DateTime?
+  agreementDocumentUrl  String?
+  signatureDate         DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  payments              Payment[]
+
+  @@map("purchases")
+}
+
+model Payment {
+  id                      String        @id @default(uuid())
+  paymentReference        String        @unique // Internal unique ref "EV-PAY-..."
+  purchaseId              String?
+  purchase                Purchase?     @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  userId                  String
+  user                    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  developerId             String?
+  developer               Developer?    @relation(fields: [developerId], references: [id], onDelete: SetNull)
+  verificationRequestId   String?
+  verificationRequest     VerificationRequest? @relation(fields: [verificationRequestId], references: [id], onDelete: SetNull)
+  legalRequestId          String?
+  legalRequest            LegalRequest? @relation(fields: [legalRequestId], references: [id], onDelete: SetNull)
+  amount                  Float         // Core property amount or fee
+  platformFee             Float         @default(0)
+  processingFee           Float         @default(0)
+  totalAmount             Float         // amount + platformFee + processingFee
+  currency                String        @default("NGN")
+  purpose                 String        // INITIAL_DEPOSIT, INSTALMENT, VERIFICATION_FEE, LEGAL_DOCUMENT_FEE, SERVICE_FEE
+  status                  String        @default("PENDING") // PENDING, SUCCESS, FAILED, CANCELLED, REFUNDED
+  paystackReference       String?       @unique
+  paystackChannel         String?       // card, bank, ussd, transfer
+  paidAt                  DateTime?
+  verifiedAt              DateTime?
+  receiptNumber           String?       @unique
+  receiptUrl              String?
+  rawWebhookData          String?       // JSON string
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  @@map("payments")
+}
+
+model VerificationRequest {
+  id                    String                  @id @default(uuid())
+  verificationCode      String                  @unique // e.g. "EV-VER-000123"
+  userId                String
+  user                  User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyName          String
+  propertyAddress       String
+  state                 String
+  city                  String
+  documentType          String                  // C_OF_O, DEED_OF_ASSIGNMENT, SURVEY_PLAN, GOVERNORS_CONSENT, POWER_OF_ATTORNEY, ALLOCATION_LETTER, SALE_AGREEMENT, LEASE_AGREEMENT, OTHER
+  status                String                  @default("SUBMITTED") // SUBMITTED, PAYMENT_CONFIRMED, AI_REVIEWED, LEGAL_REVIEW, EXTERNAL_CHECK, ADDITIONAL_INFORMATION_REQUIRED, VERIFIED, VERIFIED_WITH_ISSUES, UNVERIFIED, REJECTED, COMPLETED
+  urgency               String                  @default("STANDARD") // STANDARD, EXPRESS
+  feeAmount             Float                   @default(25000)
+  isPaid                Boolean                 @default(false)
+  assignedTo            String?                 // Legal officer name/id
+  externalRegistryChecked Boolean               @default(false)
+  externalRegistryNotes String?
+  finalFindings         String?
+  reportUrl             String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  documents             VerificationDocument[]
+  checks                VerificationCheckItem[]
+  payments              Payment[]
+
+  @@map("verification_requests")
+}
+
+model VerificationDocument {
+  id                      String              @id @default(uuid())
+  verificationRequestId   String
+  verificationRequest     VerificationRequest @relation(fields: [verificationRequestId], references: [id], onDelete: Cascade)
+  fileName                String
+  fileUrl                 String
+  fileType                String?             // PDF, PNG, JPG
+  fileSize                Int?
+  aiScanSummary           String?             // AI Heuristic extracted summary
+  aiInconsistencies       String?             // JSON string of potential flagged items
+  aiExtractedFields       String?             // JSON string of parsed names, dates, plot numbers
+  createdAt               DateTime            @default(now())
+
+  @@map("verification_documents")
+}
+
+model VerificationCheckItem {
+  id                      String              @id @default(uuid())
+  verificationRequestId   String
+  verificationRequest     VerificationRequest @relation(fields: [verificationRequestId], references: [id], onDelete: Cascade)
+  checkName               String              // e.g. "CAC Corporate Status", "Survey Coordinates Match", "Governor's Consent Authentic"
+  category                String              // IDENTITY, SURVEY, TITLE, REGISTRY, LEGAL_ENCUMBRANCE
+  status                  String              @default("PENDING") // PASS, WARNING, FAIL, PENDING
+  notes                   String?
+  createdAt               DateTime            @default(now())
+
+  @@map("verification_check_items")
+}
+
+model LegalRequest {
+  id                    String        @id @default(uuid())
+  requestCode           String        @unique // e.g. "EV-LEG-00045"
+  userId                String
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentCategory      String        // DEED, LEASE, SALE_AGREEMENT, TENANCY_AGREEMENT, ASSIGNMENT, DEVELOPMENT_AGREEMENT, OTHER
+  title                 String
+  requirements          String
+  supportingDocuments   String?       // JSON string of URLs
+  status                String        @default("REQUESTED") // REQUESTED, PAYMENT_CONFIRMED, LEGAL_REVIEW, DRAFTING, CUSTOMER_REVIEW, REVISION_REQUESTED, FINALIZED, DELIVERED
+  feeAmount             Float         @default(45000)
+  isPaid                Boolean       @default(false)
+  draftDocumentUrl      String?
+  finalDocumentUrl      String?
+  customerFeedback      String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  payments              Payment[]
+
+  @@map("legal_requests")
+}
+
+model Inspection {
+  id                String      @id @default(uuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId        String?
+  property          Property?   @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  projectId         String?
+  project           Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  preferredDate     String
+  preferredTime     String
+  attendeeName      String
+  attendeePhone     String
+  attendeeEmail     String
+  status            String      @default("REQUESTED") // REQUESTED, CONFIRMED, COMPLETED, CANCELLED
+  notes             String?
+  developerNotes    String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@map("inspections")
+}
+
+model Conversation {
+  id              String      @id @default(uuid())
+  user1Id         String
+  user2Id         String
+  propertyId      String?
+  projectId       String?
+  lastMessageAt   DateTime    @default(now())
+  createdAt       DateTime    @default(now())
+
+  messages        Message[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id              String        @id @default(uuid())
+  conversationId  String
+  conversation    Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId        String
+  sender          User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content         String
+  attachmentUrl   String?
+  attachmentType  String?       // IMAGE, DOCUMENT
+  isRead          Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+
+  @@map("messages")
+}
+
+model Notification {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  message     String
+  type        String      @default("SYSTEM") // PAYMENT, VERIFICATION, LEGAL, MILESTONE, INSPECTION, CHAT, SYSTEM
+  isRead      Boolean     @default(false)
+  linkUrl     String?
+  createdAt   DateTime    @default(now())
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  adminId     String?
+  admin       User?       @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  adminEmail  String
+  action      String      // DEVELOPER_VERIFIED, REPORT_GENERATED, PAYMENT_VERIFIED, FEE_UPDATED, etc.
+  entityType  String      // DEVELOPER, VERIFICATION_REQUEST, PAYMENT, PROPERTY, SETTING
+  entityId    String
+  details     String?     // JSON string
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+
+  @@map("audit_logs")
+}
+
+model PlatformFeeConfig {
+  id                  String      @id @default(uuid())
+  name                String      // e.g. "Standard Document Verification", "Property Transaction Fee"
+  feeType             String      @default("FLAT") // FLAT, PERCENTAGE
+  amount              Float       // e.g. 25000 (flat) or 1.5 (percentage)
+  applicableService   String      // VERIFICATION, LEGAL, PROPERTY_TRANSACTION, DEVELOPER_LISTING
+  isActive            Boolean     @default(true)
+  effectiveDate       DateTime    @default(now())
+  createdAt           DateTime    @default(now())
+
+  @@map("platform_fee_configs")
+}
+
+model SystemSetting {
+  id          String      @id @default(uuid())
+  key         String      @unique
+  value       String
+  description String?
+  updatedAt   DateTime    @updatedAt
+
+  @@map("system_settings")
+}

@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-slate-900 text-slate-100 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+:root {
+  --primary: #0D5C3A;
+  --primary-hover: #09472C;
+  --accent: #C9A227;
+}

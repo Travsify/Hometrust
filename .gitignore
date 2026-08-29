@@ -1,0 +1,29 @@
+# Node.js dependencies & builds
+node_modules/
+dist/
+build/
+.npm
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Database
+*.db
+*.db-journal
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+*.apk
+*.aab
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

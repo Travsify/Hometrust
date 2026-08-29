@@ -1,0 +1,51 @@
+services:
+  # 1. Backend REST API Service
+  - type: web
+    name: estateverify-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        value: postgresql://postgres.towshylvowvmhvhzghoh:Forgetpassword2026.@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
+      - key: DIRECT_URL
+        value: postgresql://postgres.towshylvowvmhvhzghoh:Forgetpassword2026.@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
+      - key: SUPABASE_URL
+        value: https://towshylvowvmhvhzghoh.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: sb_publishable_-7svy3hEA47G7KLAxVV7mg_LlevL4eX
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        value: sb_publishable_-7svy3hEA47G7KLAxVV7mg_LlevL4eX
+      - key: OPENROUTER_MODEL
+        value: meta-llama/llama-3.1-8b-instruct:free
+      - key: OPENROUTER_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: JWT_SECRET
+        generateValue: true
+
+  # 2. Admin Dashboard Static Site
+  - type: static
+    name: estateverify-admin
+    plan: free
+    region: frankfurt
+    rootDir: admin_dashboard
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: estateverify-api
+          property: host
+          path: /api/v1
