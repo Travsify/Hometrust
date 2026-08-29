@@ -77,7 +77,7 @@ export class FlutterwaveClient {
         redirect_url: params.redirect_url,
         customer: params.customer,
         customizations: params.customizations || {
-          title: 'EstateVerify Real Estate Payment',
+          title: 'Hometrust Real Estate Payment',
           description: 'Verified property and verification fees payment',
         },
       }),

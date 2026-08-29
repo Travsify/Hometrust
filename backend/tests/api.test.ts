@@ -10,7 +10,7 @@ describe('EstateVerify API Integration Test Suite', () => {
   beforeAll(async () => {
     // Clean up any test user if exists
     await prisma.user.deleteMany({
-      where: { email: 'testbuyer@estateverify.ng' },
+      where: { email: { in: ['testbuyer@hometrust.ng', 'testbuyer@estateverify.ng'] } },
     });
   });
 
@@ -21,13 +21,13 @@ describe('EstateVerify API Integration Test Suite', () => {
   it('GET /health should return 200 with platform info', async () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
-    expect(res.body.platform).toContain('EstateVerify API');
+    expect(res.body.platform).toContain('Hometrust API');
     expect(res.body.tagline).toBe('Verify. Buy. Pay. Track.');
   });
 
   it('POST /api/v1/auth/register should create a new buyer user', async () => {
     const res = await request(app).post('/api/v1/auth/register').send({
-      email: 'testbuyer@estateverify.ng',
+      email: 'testbuyer@hometrust.ng',
       password: 'Password123!',
       firstName: 'Tunde',
       lastName: 'Bakare',
@@ -38,13 +38,13 @@ describe('EstateVerify API Integration Test Suite', () => {
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
     expect(res.body.data.token).toBeDefined();
-    expect(res.body.data.user.email).toBe('testbuyer@estateverify.ng');
+    expect(res.body.data.user.email).toBe('testbuyer@hometrust.ng');
     authToken = res.body.data.token;
   });
 
   it('POST /api/v1/auth/login should authenticate user and return token', async () => {
     const res = await request(app).post('/api/v1/auth/login').send({
-      email: 'testbuyer@estateverify.ng',
+      email: 'testbuyer@hometrust.ng',
       password: 'Password123!',
     });
 

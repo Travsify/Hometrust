@@ -35,7 +35,7 @@ export class PdfReportService {
 
       // Header Brand
       doc.rect(40, 40, 515, 60).fill('#0D5C3A');
-      doc.fillColor('#FFFFFF').fontSize(20).font('Helvetica-Bold').text('ESTATEVERIFY', 55, 55);
+      doc.fillColor('#FFFFFF').fontSize(20).font('Helvetica-Bold').text('Hometrust', 55, 55);
       doc.fontSize(10).font('Helvetica').text('Property & Legal Document Verification Report', 55, 80);
       doc.fontSize(9).text(`Code: ${data.verificationCode}`, 420, 58, { align: 'right' });
       doc.text(`Date: ${data.completedAt.toLocaleDateString()}`, 420, 75, { align: 'right' });
@@ -66,7 +66,7 @@ export class PdfReportService {
       y += 20;
 
       doc.fillColor('#334155').fontSize(9).font('Helvetica');
-      const findings = data.finalFindings || 'All primary title, boundary coordinates, and statutory registration checks completed by EstateVerify Legal Team.';
+      const findings = data.finalFindings || 'All primary title, boundary coordinates, and statutory registration checks completed by Hometrust Legal Team.';
       doc.text(findings, 40, y, { width: 515, align: 'justify' });
       y += 40;
 
@@ -114,7 +114,7 @@ export class PdfReportService {
       );
 
       // Sign-off
-      doc.fontSize(8).fillColor('#64748B').text('EstateVerify Legal & Verification Team • www.estateverify.ng', 40, 775, { align: 'center', width: 515 });
+      doc.fontSize(8).fillColor('#64748B').text('Hometrust Legal & Verification Team • www.Hometrust.ng', 40, 775, { align: 'center', width: 515 });
 
       doc.end();
 

@@ -58,7 +58,7 @@ if (fs.existsSync(publicDir)) {
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'online',
-    platform: 'EstateVerify API & Admin Console',
+    platform: 'Hometrust API & Admin Console',
     tagline: 'Verify. Buy. Pay. Track.',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
@@ -93,7 +93,7 @@ app.get('*', (req: Request, res: Response, next) => {
   }
   res.status(200).json({
     status: 'online',
-    platform: 'EstateVerify Platform',
+    platform: 'Hometrust Platform',
     tagline: 'Verify. Buy. Pay. Track.',
     version: '1.0.0',
     endpoints: '/api/v1',

@@ -112,7 +112,7 @@ export class DevelopersService {
         userId: developer.userId,
         title: `Developer Onboarding Status: ${status}`,
         message: isVerified
-          ? `Congratulations! ${developer.companyName} has been verified on EstateVerify.`
+          ? `Congratulations! ${developer.companyName} has been verified on Hometrust.`
           : `Your onboarding status was updated to ${status}.`,
         type: 'SYSTEM',
       },

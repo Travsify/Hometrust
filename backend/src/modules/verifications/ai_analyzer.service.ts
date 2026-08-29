@@ -54,7 +54,7 @@ export class AiDocumentAnalyzer {
     extractedText?: string
   ): Promise<AiAnalysisResult> {
     const prompt = `
-You are an expert Nigerian property & title document analysis assistant for EstateVerify.
+You are an expert Nigerian property & title document analysis assistant for Hometrust.
 Analyze the following document metadata and text (if available) for preliminary inspection:
 - File Name: "${fileName}"
 - Declared Document Type: "${documentType}"
@@ -95,8 +95,8 @@ Perform preliminary heuristic verification:
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://estateverify.ng',
-        'X-Title': 'EstateVerify Nigerian Proptech',
+        'HTTP-Referer': 'https://Hometrust.ng',
+        'X-Title': 'Hometrust Nigerian Proptech',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

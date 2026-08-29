@@ -206,7 +206,7 @@ export class VerificationsService {
         city: request.city,
         documentType: request.documentType,
         status: data.status,
-        assignedTo: data.assignedTo || 'EstateVerify Legal Team',
+        assignedTo: data.assignedTo || 'Hometrust Legal Team',
         externalRegistryChecked: data.externalRegistryChecked ?? request.externalRegistryChecked,
         externalRegistryNotes: data.externalRegistryNotes || request.externalRegistryNotes || undefined,
         finalFindings: data.finalFindings || request.finalFindings || undefined,

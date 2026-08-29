@@ -6,7 +6,7 @@ dotenv.config();
 export const config = {
   port: parseInt(process.env.PORT || '5000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
-  jwtSecret: process.env.JWT_SECRET || 'estateverify_super_secure_jwt_secret_dev_2026',
+  jwtSecret: process.env.JWT_SECRET || 'Hometrust_super_secure_jwt_secret_dev_2026',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   
   paystack: {
@@ -20,7 +20,7 @@ export const config = {
     baseUrl: process.env.STORAGE_BASE_URL || 'http://localhost:5000/api/v1/storage',
     supabaseUrl: process.env.SUPABASE_URL || '',
     supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '',
-    supabaseBucket: process.env.SUPABASE_STORAGE_BUCKET || 'estateverify-documents',
+    supabaseBucket: process.env.SUPABASE_STORAGE_BUCKET || 'Hometrust-documents',
   },
 
   openai: {
