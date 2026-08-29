@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function run() {
-  console.log('Synchronizing Platform Fee Rules & Named API Keys in Supabase...');
+  console.log('Synchronizing Platform Fee Rules, Named API Keys & Fincra Virtual Accounts in Supabase...');
 
   await prisma.platformFeeConfig.deleteMany();
   await prisma.platformFeeConfig.createMany({
@@ -66,6 +66,15 @@ async function run() {
   await prisma.apiKeyConfig.createMany({
     data: [
       {
+        name: 'Fincra Production Banking API Key',
+        service: 'FINCRA',
+        keyType: 'SECRET',
+        keyValue: 'gel847St1V9DvVk40Ec6Vfm869Yw63Ue',
+        environment: 'LIVE',
+        description: 'Fincra API for Buyer Dedicated Virtual Accounts, KYB/KYC and Commercial Bank Disbursements',
+        isActive: true,
+      },
+      {
         name: 'Paystack Production Secret Key',
         service: 'PAYSTACK',
         keyType: 'SECRET',
@@ -104,7 +113,62 @@ async function run() {
     ],
   });
 
-  console.log('✅ Successfully seeded Platform Fees and API Keys in Supabase!');
+  // Seed Initial Dedicated Virtual Accounts for existing developers and buyers
+  const developers = await prisma.developer.findMany({ take: 3 });
+  const buyers = await prisma.user.findMany({ where: { role: 'BUYER' }, take: 3 });
+
+  for (const dev of developers) {
+    await prisma.virtualAccount.upsert({
+      where: { accountNumber: `08${dev.cacNumber.replace(/[^0-9]/g, '').slice(0, 8)}` },
+      update: {},
+      create: {
+        developerId: dev.id,
+        accountName: `EstateVerify / ${dev.companyName}`,
+        accountNumber: `08${dev.cacNumber.replace(/[^0-9]/g, '').slice(0, 8)}`,
+        bankName: 'Providus Bank',
+        accountType: 'CORPORATE',
+        currency: 'NGN',
+        status: 'ACTIVE',
+        balance: 15400000,
+      },
+    });
+  }
+
+  for (const buyer of buyers) {
+    const num = '02' + Math.floor(10000000 + Math.random() * 90000000).toString();
+    await prisma.virtualAccount.create({
+      data: {
+        userId: buyer.id,
+        accountName: `EstateVerify / ${buyer.firstName} ${buyer.lastName}`,
+        accountNumber: num,
+        bankName: 'Wema Bank',
+        accountType: 'INDIVIDUAL',
+        currency: 'NGN',
+        status: 'ACTIVE',
+        balance: 2500000,
+      },
+    });
+  }
+
+  // Seed sample developer withdrawal
+  if (developers.length > 0) {
+    await prisma.withdrawal.create({
+      data: {
+        developerId: developers[0].id,
+        amount: 5000000,
+        fee: 50,
+        netAmount: 4999950,
+        bankCode: '058',
+        bankName: 'Guaranty Trust Bank (GTBank)',
+        accountNumber: '0129482910',
+        accountName: `${developers[0].companyName} Operations Account`,
+        reference: `EV-WD-${Date.now()}`,
+        status: 'SUCCESS',
+      },
+    });
+  }
+
+  console.log('✅ Successfully seeded Platform Fees, Named API Keys, and Fincra Banking in Supabase!');
 }
 
 run()

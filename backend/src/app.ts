@@ -18,6 +18,7 @@ import { chatRoutes } from './modules/chat/chat.routes';
 import { notificationRoutes } from './modules/notifications/notifications.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
 import { storageRoutes } from './modules/storage/storage.routes';
+import { bankingRoutes } from './modules/banking/banking.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -77,6 +78,7 @@ app.use(`${apiPrefix}/chat`, chatRoutes);
 app.use(`${apiPrefix}/notifications`, notificationRoutes);
 app.use(`${apiPrefix}/admin`, adminRoutes);
 app.use(`${apiPrefix}/storage`, storageRoutes);
+app.use(`${apiPrefix}/banking`, bankingRoutes);
 
 // Fallback to Admin Dashboard SPA if public/index.html exists
 app.get('*', (req: Request, res: Response, next) => {

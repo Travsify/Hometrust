@@ -161,3 +161,18 @@ export const updateUserRole = async (id: string, role: string) => {
   const response = await api.patch(`/admin/users/${id}/role`, { role });
   return response.data.data;
 };
+
+export const getVirtualAccounts = async () => {
+  const response = await api.get('/banking/admin/accounts');
+  return response.data.data;
+};
+
+export const getWithdrawals = async () => {
+  const response = await api.get('/banking/admin/withdrawals');
+  return response.data.data;
+};
+
+export const resolveAccount = async (bankCode: string, accountNumber: string) => {
+  const response = await api.post('/banking/resolve-account', { bankCode, accountNumber });
+  return response.data.data;
+};

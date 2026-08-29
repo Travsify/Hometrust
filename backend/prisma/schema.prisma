@@ -32,6 +32,9 @@ model User {
   sentMessages      Message[]
   notifications     Notification[]
   auditLogs         AuditLog[]
+  virtualAccounts   VirtualAccount[]
+  kycVerifications  KycVerification[]
+  withdrawals       Withdrawal[]
 
   @@map("users")
 }
@@ -83,6 +86,9 @@ model Developer {
   properties          Property[]
   projects            Project[]
   payments            Payment[]
+  virtualAccounts     VirtualAccount[]
+  kycVerifications    KycVerification[]
+  withdrawals         Withdrawal[]
 
   @@map("developers")
 }
@@ -505,8 +511,8 @@ model PlatformFeeConfig {
 
 model ApiKeyConfig {
   id          String      @id @default(uuid())
-  name        String      // e.g. "Paystack Live Production Key", "Flutterwave Live Secret Key"
-  service     String      // PAYSTACK, FLUTTERWAVE, OPENROUTER, VERIFICATION_API, PREMBLY, SUPABASE
+  name        String      // e.g. "Paystack Live Production Key", "Flutterwave Live Secret Key", "Fincra API Key"
+  service     String      // FINCRA, PAYSTACK, FLUTTERWAVE, OPENROUTER, VERIFICATION_API, PREMBLY, SUPABASE
   keyType     String      @default("SECRET") // SECRET, PUBLIC, ENCRYPTION, WEBHOOK_SECRET
   keyValue    String
   environment String      @default("LIVE") // LIVE, TEST
@@ -517,6 +523,73 @@ model ApiKeyConfig {
   updatedAt   DateTime    @updatedAt
 
   @@map("api_key_configs")
+}
+
+model VirtualAccount {
+  id              String      @id @default(uuid())
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  developerId     String?
+  developer       Developer?  @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  accountName     String      // e.g. "EstateVerify / Babatunde Adeleke" or "EstateVerify / Mixta Africa Real Estate"
+  accountNumber   String      @unique
+  bankName        String      // e.g. "Wema Bank", "Titan Bank", "Providus Bank"
+  bankCode        String?
+  currency        String      @default("NGN")
+  accountType     String      @default("INDIVIDUAL") // INDIVIDUAL, CORPORATE
+  fincraAccountId String?     // Fincra virtual account reference
+  status          String      @default("ACTIVE") // ACTIVE, FROZEN, CLOSED
+  balance         Float       @default(0) // Available funded balance in Naira
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("virtual_accounts")
+}
+
+model KycVerification {
+  id              String      @id @default(uuid())
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  developerId     String?
+  developer       Developer?  @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  kycType         String      @default("INDIVIDUAL_KYC") // INDIVIDUAL_KYC, CORPORATE_KYB
+  nin             String?     // National Identity Number
+  bvn             String?     // Bank Verification Number
+  cacNumber       String?     // Corporate Affairs Commission RC Number (for KYB)
+  companyName     String?
+  tinNumber       String?     // Tax Identification Number
+  residentialAddress String?
+  documentUrl     String?     // Scanned ID card / CAC Certificate URL
+  status          String      @default("VERIFIED") // PENDING, VERIFIED, REJECTED
+  rejectionReason String?
+  verifiedAt      DateTime?   @default(now())
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("kyc_verifications")
+}
+
+model Withdrawal {
+  id              String      @id @default(uuid())
+  developerId     String?
+  developer       Developer?  @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount          Float
+  fee             Float       @default(50) // Transfer fee
+  netAmount       Float
+  bankCode        String      // Nigerian bank sort code (e.g. 058 for GTBank, 057 for Zenith)
+  bankName        String      // e.g. "Guaranty Trust Bank"
+  accountNumber   String      // 10 digit NUBAN
+  accountName     String      // Verified recipient account name
+  reference       String      @unique
+  fincraPayoutId  String?
+  status          String      @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED
+  failureReason   String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("withdrawals")
 }
 
 model SystemSetting {

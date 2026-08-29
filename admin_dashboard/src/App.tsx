@@ -8,6 +8,7 @@ import { DevelopersPage } from './pages/Developers';
 import { PropertiesPage } from './pages/Properties';
 import { ProjectsPage } from './pages/Projects';
 import { PaymentsPage } from './pages/Payments';
+import { BankingPage } from './pages/Banking';
 import { LegalRequestsPage } from './pages/LegalRequests';
 import { InspectionsPage } from './pages/Inspections';
 import { UsersPage } from './pages/Users';
@@ -78,7 +79,9 @@ export const App: React.FC = () => {
       case 'projects':
         return { title: 'Off-Plan Construction Projects', subtitle: 'Architectural milestones and construction progress tracking' };
       case 'payments':
-        return { title: 'Paystack Payment Reconciliation', subtitle: 'Non-custodial merchant settlement tracking and fee splits' };
+        return { title: 'Payments & Revenue Ledger', subtitle: 'Paystack, Flutterwave & Fincra reconciliation records' };
+      case 'banking':
+        return { title: 'Dedicated Virtual Banking & KYB/KYC', subtitle: 'Fincra Dedicated NUBAN Accounts & Developer Bank Payouts' };
       case 'legal':
         return { title: 'Legal Drafting Console', subtitle: 'EstateVerify internal legal team drafting & document delivery' };
       case 'inspections':
@@ -118,6 +121,7 @@ export const App: React.FC = () => {
           {currentTab === 'properties' && <PropertiesPage />}
           {currentTab === 'projects' && <ProjectsPage />}
           {currentTab === 'payments' && <PaymentsPage />}
+          {currentTab === 'banking' && <BankingPage />}
           {currentTab === 'legal' && <LegalRequestsPage />}
           {currentTab === 'inspections' && <InspectionsPage />}
           {currentTab === 'users' && <UsersPage />}
