@@ -1,5 +1,6 @@
 import { prisma } from '../../utils/prisma';
 import { FincraClient } from './fincra.client';
+import { PremblyClient } from './prembly.client';
 import { AuditService } from '../audit/audit.service';
 
 export class BankingService {
@@ -174,7 +175,18 @@ export class BankingService {
    */
   static async triggerAutomatedPremblyKyc(
     userId: string,
-    params?: { idType?: string; idNumber?: string; companyName?: string; cacNumber?: string }
+    params?: {
+      nin?: string;
+      bvn?: string;
+      idType?: string;
+      idNumber?: string;
+      dob?: string;
+      residentialAddress?: string;
+      cacNumber?: string;
+      companyName?: string;
+      tinNumber?: string;
+      officeAddress?: string;
+    }
   ) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -186,9 +198,14 @@ export class BankingService {
     const isDeveloper = user.role === 'DEVELOPER';
 
     if (isDeveloper && user.developer) {
-      // 1. Corporate Prembly KYB Automated Pipeline
-      const cac = params?.cacNumber || `RC-${Math.floor(1000000 + Math.random() * 9000000)}`;
+      // 1. Corporate KYB Pipeline via Prembly IdentityPass (CAC Validation)
+      const cac = params?.cacNumber || user.developer.cacNumber || `RC-${Math.floor(1000000 + Math.random() * 9000000)}`;
       const company = params?.companyName || user.developer.companyName || `${user.firstName} ${user.lastName} Developments Ltd`;
+      const tin = params?.tinNumber;
+      const officeAddr = params?.officeAddress || user.developer.officeAddress;
+
+      // Verify CAC with Prembly
+      await PremblyClient.verifyCAC(cac, company);
 
       const kyb = await prisma.kycVerification.create({
         data: {
@@ -196,6 +213,8 @@ export class BankingService {
           kycType: 'CORPORATE_KYB',
           cacNumber: cac,
           companyName: company,
+          tinNumber: tin,
+          residentialAddress: officeAddr,
           status: 'VERIFIED',
           verifiedAt: new Date(),
         },
@@ -204,6 +223,9 @@ export class BankingService {
       await prisma.developer.update({
         where: { id: user.developer.id },
         data: {
+          companyName: company,
+          cacNumber: cac,
+          officeAddress: officeAddr,
           isVerified: true,
           verificationStatus: 'VERIFIED',
           verificationDate: new Date(),
@@ -212,7 +234,7 @@ export class BankingService {
 
       let account = user.virtualAccounts?.[0];
       if (!account) {
-        const ref = `EV-VBA-DEV-${Date.now()}`;
+        const ref = `HT-VBA-DEV-${Date.now()}`;
         try {
           const fincraRes = await FincraClient.createCorporateVirtualAccount({
             companyName: company,
@@ -228,7 +250,7 @@ export class BankingService {
               developerId: user.developer.id,
               userId: user.id,
               accountNumber: acctInfo?.accountNumber || `99${Math.floor(10000000 + Math.random() * 90000000)}`,
-              accountName: acctInfo?.accountName || `${company} (HomeVerify Escrow)`,
+              accountName: acctInfo?.accountName || `${company} (Hometrust Escrow)`,
               bankName: acctInfo?.bankName || 'Providus Bank',
               currency: 'NGN',
               accountType: 'CORPORATE',
@@ -243,7 +265,7 @@ export class BankingService {
               developerId: user.developer.id,
               userId: user.id,
               accountNumber: acctNum,
-              accountName: `${company} (HomeVerify Escrow)`,
+              accountName: `${company} (Hometrust Escrow)`,
               bankName: 'Providus Bank',
               currency: 'NGN',
               accountType: 'CORPORATE',
@@ -258,14 +280,17 @@ export class BankingService {
         success: true,
         kycStatus: 'VERIFIED',
         verificationType: 'CORPORATE_KYB',
-        provider: 'PREMBLY_IDENTITYPASS',
         verifiedAt: new Date(),
         virtualAccount: account,
       };
     } else {
-      // 2. Individual Prembly KYC Automated Pipeline
-      const nin = params?.idNumber || `NIN-${Math.floor(10000000000 + Math.random() * 90000000000)}`;
-      const bvn = `BVN-${Math.floor(10000000000 + Math.random() * 90000000000)}`;
+      // 2. Individual KYC Pipeline via Prembly IdentityPass (NIN & BVN)
+      const nin = params?.nin || params?.idNumber || `NIN-${Math.floor(10000000000 + Math.random() * 90000000000)}`;
+      const bvn = params?.bvn || `BVN-${Math.floor(10000000000 + Math.random() * 90000000000)}`;
+      const resAddr = params?.residentialAddress;
+
+      // Verify NIN with Prembly
+      await PremblyClient.verifyNIN(nin, user.firstName, user.lastName);
 
       const kyc = await prisma.kycVerification.create({
         data: {
@@ -273,6 +298,7 @@ export class BankingService {
           kycType: 'INDIVIDUAL_KYC',
           nin,
           bvn,
+          residentialAddress: resAddr,
           status: 'VERIFIED',
           verifiedAt: new Date(),
         },
@@ -280,13 +306,13 @@ export class BankingService {
 
       await prisma.userProfile.upsert({
         where: { userId: user.id },
-        update: { nin, bvnVerified: true },
-        create: { userId: user.id, nin, bvnVerified: true },
+        update: { nin, bvnVerified: true, address: resAddr },
+        create: { userId: user.id, nin, bvnVerified: true, address: resAddr },
       });
 
       let account = user.virtualAccounts?.[0];
       if (!account) {
-        const ref = `EV-VBA-USR-${Date.now()}`;
+        const ref = `HT-VBA-USR-${Date.now()}`;
         const fullName = `${user.firstName} ${user.lastName}`;
         try {
           const fincraRes = await FincraClient.createIndividualVirtualAccount({
@@ -294,8 +320,8 @@ export class BankingService {
             lastName: user.lastName,
             email: user.email,
             phone: user.phone || '08012345678',
-            bvn: '22234567890',
-            nin,
+            bvn: bvn.startsWith('BVN-') ? '22234567890' : bvn,
+            nin: nin.startsWith('NIN-') ? '12345678901' : nin,
             reference: ref,
           });
 
@@ -304,7 +330,7 @@ export class BankingService {
             data: {
               userId: user.id,
               accountNumber: acctInfo?.accountNumber || `99${Math.floor(10000000 + Math.random() * 90000000)}`,
-              accountName: acctInfo?.accountName || `${fullName} (HomeVerify Escrow)`,
+              accountName: acctInfo?.accountName || `${fullName} (Hometrust Escrow)`,
               bankName: acctInfo?.bankName || 'Providus Bank',
               currency: 'NGN',
               accountType: 'INDIVIDUAL',
@@ -318,7 +344,7 @@ export class BankingService {
             data: {
               userId: user.id,
               accountNumber: acctNum,
-              accountName: `${fullName} (HomeVerify Escrow)`,
+              accountName: `${fullName} (Hometrust Escrow)`,
               bankName: 'Providus Bank',
               currency: 'NGN',
               accountType: 'INDIVIDUAL',
@@ -333,7 +359,6 @@ export class BankingService {
         success: true,
         kycStatus: 'VERIFIED',
         verificationType: 'INDIVIDUAL_KYC',
-        provider: 'PREMBLY_IDENTITYPASS',
         verifiedAt: new Date(),
         virtualAccount: account,
       };

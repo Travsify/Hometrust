@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/in_app_call_modal.dart';
 import 'chat_screen.dart';
+import 'login_screen.dart';
 
 class DevelopersScreen extends StatefulWidget {
   const DevelopersScreen({super.key});
@@ -344,6 +347,11 @@ class _DevelopersScreenState extends State<DevelopersScreen> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () {
+                      final auth = Provider.of<AuthProvider>(context, listen: false);
+                      if (!auth.isAuthenticated) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                        return;
+                      }
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -371,6 +379,11 @@ class _DevelopersScreenState extends State<DevelopersScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
+                      final auth = Provider.of<AuthProvider>(context, listen: false);
+                      if (!auth.isAuthenticated) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                        return;
+                      }
                       InAppCallModal.show(
                         context,
                         entityName: companyName,

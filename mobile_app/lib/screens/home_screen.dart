@@ -15,6 +15,7 @@ import 'kyc_screen.dart';
 import 'login_screen.dart';
 import 'developers_screen.dart';
 import 'real_estate_dictionary_screen.dart';
+import 'purchases_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -258,15 +259,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // 6. EVERYTHING REAL ESTATE (AI Real Estate Dictionary & Lexicon)
               _buildRealEstateDictionaryBanner(context),
+              const SizedBox(height: 14),
 
-              // 7. ACTIVE PURCHASES SNAPSHOT (If user has ongoing purchases)
+              // 7. PURCHASES & INSTALMENTS PORTAL
+              _buildPurchasesBanner(context, purchaseProvider),
+
+              // 8. ACTIVE PURCHASES SNAPSHOT (If user has ongoing purchases)
               if (purchaseProvider.userPurchases.isNotEmpty) ...[
                 const SizedBox(height: 24),
-                const Text(
-                  'My Active Purchases & Instalments',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'My Active Purchases & Instalments',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        final auth = Provider.of<AuthProvider>(context, listen: false);
+                        if (!auth.isAuthenticated) {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                          return;
+                        }
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchasesScreen()));
+                      },
+                      child: const Text('View All →', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.primary)),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 SizedBox(
                   height: 135,
                   child: ListView.separated(
@@ -924,6 +945,143 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       'Explore',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
+                    ),
+                    SizedBox(width: 2),
+                    Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 7. PURCHASES & INSTALMENTS QUICK ACCESS PORTAL
+  Widget _buildPurchasesBanner(BuildContext context, PurchaseProvider purchaseProvider) {
+    final activeCount = purchaseProvider.userPurchases.where((p) => p.status == 'ACTIVE' || p.status == 'INITIATED').length;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          final auth = Provider.of<AuthProvider>(context, listen: false);
+          if (!auth.isAuthenticated) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PurchasesScreen()),
+          );
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFEFF6FF), Color(0xFFF8FAFC), Colors.white],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(color: const Color(0xFF93C5FD), width: 1.3),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF3B82F6).withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(Icons.receipt_long_rounded, color: Colors.white, size: 26),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'ESCROW ORDERS & SCHEDULES',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF2563EB),
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                        if (activeCount > 0) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '$activeCount Active',
+                              style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w900, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Purchases & Instalments 💳',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Track all off-plan purchases, Pay-Small-Small instalment balances, milestone receipts & contracts.',
+                      style: TextStyle(fontSize: 10, color: Color(0xFF64748B), height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2563EB),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'View',
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
                     ),
                     SizedBox(width: 2),

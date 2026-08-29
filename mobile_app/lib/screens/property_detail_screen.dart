@@ -8,6 +8,7 @@ import '../providers/purchase_provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'chat_screen.dart';
+import 'kyc_screen.dart';
 import '../widgets/in_app_call_modal.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -332,6 +333,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: () {
+                                    final auth = Provider.of<AuthProvider>(context, listen: false);
+                                    if (!auth.isAuthenticated) {
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                                      return;
+                                    }
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -355,6 +361,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: () {
+                                    final auth = Provider.of<AuthProvider>(context, listen: false);
+                                    if (!auth.isAuthenticated) {
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                                      return;
+                                    }
                                     InAppCallModal.show(
                                       context,
                                       entityName: prop.developer!.companyName,
@@ -477,6 +488,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             subtitle: const Text('Send instant messages to developer rep', style: TextStyle(fontSize: 12)),
                             onTap: () {
                               Navigator.pop(ctx);
+                              final auth = Provider.of<AuthProvider>(context, listen: false);
+                              if (!auth.isAuthenticated) {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                                return;
+                              }
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -502,6 +518,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             subtitle: const Text('Encrypted audio relay (no phone number required)', style: TextStyle(fontSize: 12)),
                             onTap: () {
                               Navigator.pop(ctx);
+                              final auth = Provider.of<AuthProvider>(context, listen: false);
+                              if (!auth.isAuthenticated) {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                                return;
+                              }
                               InAppCallModal.show(context, entityName: devName);
                             },
                           ),
@@ -672,6 +693,45 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+
+    // Mandatory KYC Verification Gate for Property Purchases & Escrow
+    if (auth.user?.isVerified != true) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: const [
+              Icon(Icons.verified_user_outlined, color: Color(0xFF059669)),
+              SizedBox(width: 8),
+              Text('KYC Verification Required', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          content: const Text(
+            'Under CBN real estate escrow regulations, all property purchases (Off-Plan & Pay-Small-Small) require a verified identity.\n\nPlease complete your quick KYC verification to activate your dedicated bank account and proceed with this purchase.',
+            style: TextStyle(fontSize: 12.5, height: 1.4, color: Color(0xFF475569)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF059669),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Verify KYC Now 🛡️', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+      );
       return;
     }
 

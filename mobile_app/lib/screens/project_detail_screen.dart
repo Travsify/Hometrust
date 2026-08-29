@@ -355,6 +355,11 @@ class ProjectDetailScreen extends StatelessWidget {
                             subtitle: const Text('Send instant messages to developer rep', style: TextStyle(fontSize: 12)),
                             onTap: () {
                               Navigator.pop(ctx);
+                              final auth = Provider.of<AuthProvider>(context, listen: false);
+                              if (!auth.isAuthenticated) {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                                return;
+                              }
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -380,6 +385,11 @@ class ProjectDetailScreen extends StatelessWidget {
                             subtitle: const Text('Encrypted audio relay (no phone number required)', style: TextStyle(fontSize: 12)),
                             onTap: () {
                               Navigator.pop(ctx);
+                              final auth = Provider.of<AuthProvider>(context, listen: false);
+                              if (!auth.isAuthenticated) {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                                return;
+                              }
                               InAppCallModal.show(context, entityName: devName);
                             },
                           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
@@ -13,17 +14,47 @@ class KycScreen extends StatefulWidget {
 }
 
 class _KycScreenState extends State<KycScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  // Individual KYC Controllers
+  final _ninCtrl = TextEditingController();
+  final _bvnCtrl = TextEditingController();
+  final _dobCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
+  String _selectedIdType = 'NIN Slip / Card';
+
+  // Corporate KYB Controllers
+  final _companyNameCtrl = TextEditingController();
+  final _cacCtrl = TextEditingController();
+  final _tinCtrl = TextEditingController();
+  final _officeAddressCtrl = TextEditingController();
+  final _directorBvnCtrl = TextEditingController();
+
   bool _isLoading = false;
   String? _error;
   bool _isSuccess = false;
   Map<String, dynamic>? _generatedAccount;
   String _currentStep = '';
 
-  void _startAutomatedKyc(bool isDeveloper) async {
+  @override
+  void initState() {
+    super.initState();
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final user = auth.user;
+    if (user != null) {
+      if (user.role == 'DEVELOPER') {
+        _companyNameCtrl.text = '${user.firstName} ${user.lastName} Developments Ltd';
+      }
+    }
+  }
+
+  void _submitVerification(bool isDeveloper) async {
+    if (!_formKey.currentState!.validate()) return;
+
     setState(() {
       _isLoading = true;
       _error = null;
-      _currentStep = 'Connecting to National Identity Gateway...';
+      _currentStep = 'Connecting to National Identity & CAC Gateway...';
     });
 
     try {
@@ -31,18 +62,34 @@ class _KycScreenState extends State<KycScreen> {
       if (mounted) {
         setState(() {
           _currentStep = isDeveloper
-              ? 'Validating Corporate CAC & RC Registration...'
-              : 'Validating National Identity Register (NIN & BVN)...';
+              ? 'Validating CAC Registration (${_cacCtrl.text.trim()}) & Director Records...'
+              : 'Verifying National Identity (NIN: ${_ninCtrl.text.trim()} & BVN)...';
         });
       }
 
-      final res = await ApiClient.post('/banking/kyc/auto-verify', {
-        'verificationType': isDeveloper ? 'CORPORATE_KYB' : 'INDIVIDUAL_KYC',
-      });
+      final payload = isDeveloper
+          ? {
+              'verificationType': 'CORPORATE_KYB',
+              'companyName': _companyNameCtrl.text.trim(),
+              'cacNumber': _cacCtrl.text.trim(),
+              'tinNumber': _tinCtrl.text.trim(),
+              'officeAddress': _officeAddressCtrl.text.trim(),
+              'directorBvn': _directorBvnCtrl.text.trim(),
+            }
+          : {
+              'verificationType': 'INDIVIDUAL_KYC',
+              'idType': _selectedIdType,
+              'nin': _ninCtrl.text.trim(),
+              'bvn': _bvnCtrl.text.trim(),
+              'dob': _dobCtrl.text.trim(),
+              'residentialAddress': _addressCtrl.text.trim(),
+            };
+
+      final res = await ApiClient.post('/banking/kyc/auto-verify', payload);
 
       if (mounted) {
         setState(() {
-          _currentStep = 'Issuing Dedicated CBN-Regulated Virtual NUBAN Account...';
+          _currentStep = 'Activating Dedicated CBN-Regulated Virtual NUBAN Account...';
         });
       }
 
@@ -68,6 +115,20 @@ class _KycScreenState extends State<KycScreen> {
         });
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _ninCtrl.dispose();
+    _bvnCtrl.dispose();
+    _dobCtrl.dispose();
+    _addressCtrl.dispose();
+    _companyNameCtrl.dispose();
+    _cacCtrl.dispose();
+    _tinCtrl.dispose();
+    _officeAddressCtrl.dispose();
+    _directorBvnCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -163,7 +224,7 @@ class _KycScreenState extends State<KycScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -191,7 +252,7 @@ class _KycScreenState extends State<KycScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Your identity is officially verified. Your dedicated CBN-regulated Virtual Bank Account is now live.',
+                      'Your identity is officially verified. Your dedicated CBN-regulated Virtual Bank Account is now live and ready for property escrow transactions.',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
                     ),
@@ -239,14 +300,28 @@ class _KycScreenState extends State<KycScreen> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Text(
-                            _generatedAccount?['accountNumber'] ?? '9938472910',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 2.0,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _generatedAccount?['accountNumber'] ?? '9938472910',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 2.0,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.copy_rounded, color: Color(0xFF38BDF8), size: 20),
+                                onPressed: () {
+                                  Clipboard.setData(ClipboardData(text: _generatedAccount?['accountNumber'] ?? '9938472910'));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Account number copied to clipboard!')),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 8),
                           Row(
@@ -285,61 +360,40 @@ class _KycScreenState extends State<KycScreen> {
                 ),
               ),
             ] else ...[
-              // PRE-VERIFICATION FLOW
+              // FORM FLOW
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.security_rounded, color: Color(0xFF059669), size: 24),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isDeveloper ? 'Corporate KYB Gateway' : 'Identity Verification (KYC)',
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-                              ),
-                              const SizedBox(height: 2),
-                              const Text(
-                                'Bank-Grade National Identity & CAC Check',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF059669)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.shield_rounded, color: Color(0xFF059669), size: 24),
                     ),
-                    const SizedBox(height: 16),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    const SizedBox(height: 16),
-                    Text(
-                      isDeveloper
-                          ? 'Corporate Verification:\nYour CAC registration and corporate identity will be validated in real time against the business registry. Once verified, a dedicated corporate escrow account is provisioned for receiving milestone disbursements.'
-                          : 'Identity Verification:\nYour NIN and BVN identity records will be validated in real time against the national identity register. This instantly activates your dedicated Nigerian Virtual Bank Account for funding property purchases.',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF475569), height: 1.5),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isDeveloper ? 'Corporate KYB Registration' : 'National Identity Verification (KYC)',
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Enter your registered details for instant API validation & bank account issuance.',
+                            style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.3),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -347,55 +401,201 @@ class _KycScreenState extends State<KycScreen> {
 
               const SizedBox(height: 20),
 
-              // USER PROFILE SNAPSHOT
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
+              Form(
+                key: _formKey,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Registered Name:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                        Text(
-                          '${user.firstName} ${user.lastName}',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                    if (!isDeveloper) ...[
+                      // INDIVIDUAL KYC FIELDS
+                      const Text('Identification Document Type', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<String>(
+                        value: _selectedIdType,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Account Type:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                        Text(
-                          isDeveloper ? 'Corporate Developer (KYB)' : 'Individual Buyer (KYC)',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
+                        items: ['NIN Slip / Card', 'Bank Verification Number (BVN)', "International Passport", "Driver's License", "Voter's Card"]
+                            .map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13))))
+                            .toList(),
+                        onChanged: (val) => setState(() => _selectedIdType = val!),
+                      ),
+                      const SizedBox(height: 16),
+
+                      const Text('National Identity Number (NIN)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _ninCtrl,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(11)],
+                        validator: (val) {
+                          if (val == null || val.trim().length < 11) return 'Please enter a valid 11-digit NIN';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Enter 11-digit NIN (e.g. 12345678901)',
+                          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: const Icon(Icons.badge_outlined, size: 20, color: Color(0xFF64748B)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Current Status:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEF4444).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'UNVERIFIED ⚠️',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFDC2626)),
-                          ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      const Text('Bank Verification Number (BVN)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _bvnCtrl,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(11)],
+                        validator: (val) {
+                          if (val == null || val.trim().length < 11) return 'Please enter a valid 11-digit BVN';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Enter 11-digit BVN (e.g. 22234567890)',
+                          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: const Icon(Icons.account_balance_outlined, size: 20, color: Color(0xFF64748B)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      const Text('Date of Birth', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _dobCtrl,
+                        keyboardType: TextInputType.datetime,
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) return 'Please enter your date of birth (YYYY-MM-DD)';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'YYYY-MM-DD (e.g. 1990-05-14)',
+                          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF64748B)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      const Text('Residential Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _addressCtrl,
+                        maxLines: 2,
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) return 'Please enter your current residential address';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Street address, City, State',
+                          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: const Icon(Icons.home_outlined, size: 20, color: Color(0xFF64748B)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        ),
+                      ),
+                    ] else ...[
+                      // CORPORATE DEVELOPER KYB FIELDS
+                      const Text('Registered Company Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _companyNameCtrl,
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) return 'Please enter registered company name';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'e.g. Megamound Investment Ltd',
+                          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: const Icon(Icons.business_outlined, size: 20, color: Color(0xFF64748B)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      const Text('CAC Registration (RC / BN Number)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _cacCtrl,
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) return 'Please enter CAC RC Number';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'e.g. RC-1849201',
+                          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: const Icon(Icons.assignment_outlined, size: 20, color: Color(0xFF64748B)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      const Text('Tax Identification Number (TIN)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _tinCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'e.g. 23819482-0001 (Optional)',
+                          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: const Icon(Icons.receipt_long_outlined, size: 20, color: Color(0xFF64748B)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      const Text('Registered Commercial Office Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _officeAddressCtrl,
+                        maxLines: 2,
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) return 'Please enter registered office address';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Plot number, Street, City, State',
+                          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: const Icon(Icons.location_on_outlined, size: 20, color: Color(0xFF64748B)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      const Text('Lead Director / Contact Person BVN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _directorBvnCtrl,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(11)],
+                        decoration: InputDecoration(
+                          hintText: '11-digit BVN of Managing Director',
+                          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: const Icon(Icons.person_pin_outlined, size: 20, color: Color(0xFF64748B)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -409,13 +609,21 @@ class _KycScreenState extends State<KycScreen> {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: const Color(0xFFFECACA)),
                   ),
-                  child: Text(_error!, style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12)),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(_error!, style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12)),
+                      ),
+                    ],
+                  ),
                 ),
               ],
 
               const SizedBox(height: 28),
 
-              // AUTOMATED VERIFICATION BUTTON / PROGRESS
+              // SUBMIT BUTTON / PROGRESS
               if (_isLoading)
                 Container(
                   padding: const EdgeInsets.all(20),
@@ -441,7 +649,7 @@ class _KycScreenState extends State<KycScreen> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: () => _startAutomatedKyc(isDeveloper),
+                    onPressed: () => _submitVerification(isDeveloper),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF059669),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -451,10 +659,10 @@ class _KycScreenState extends State<KycScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 22),
+                        const Icon(Icons.verified_user_rounded, color: Colors.white, size: 20),
                         const SizedBox(width: 10),
                         Text(
-                          isDeveloper ? 'Launch KYB' : 'Launch KYC',
+                          isDeveloper ? 'Submit & Verify KYB' : 'Submit & Verify Identity (KYC)',
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
                         ),
                       ],

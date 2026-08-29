@@ -35,8 +35,8 @@ export const config = {
   },
   
   platform: {
-    name: process.env.PLATFORM_NAME || 'EstateVerify',
+    name: process.env.PLATFORM_NAME || 'Hometrust',
     tagline: 'Verify. Buy. Pay. Track.',
-    supportEmail: process.env.SUPPORT_EMAIL || 'support@estateverify.ng',
+    supportEmail: process.env.SUPPORT_EMAIL || 'support@hometrust.ng',
   },
 };

@@ -92,8 +92,8 @@ export class FincraClient {
       data: {
         accountInformation: {
           accountNumber: deterministicNum,
-          accountName: `EstateVerify / ${params.firstName} ${params.lastName}`,
-          bankName: 'Wema Bank',
+          accountName: `Hometrust / ${params.firstName} ${params.lastName}`,
+          bankName: 'Providus Bank',
         },
         reference: params.reference,
         currency: 'NGN',
@@ -147,7 +147,7 @@ export class FincraClient {
       data: {
         accountInformation: {
           accountNumber: deterministicNum,
-          accountName: `EstateVerify / ${params.companyName}`,
+          accountName: `Hometrust / ${params.companyName}`,
           bankName: 'Providus Bank',
         },
         reference: params.reference,
