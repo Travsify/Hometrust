@@ -12,6 +12,9 @@ import 'land_radar_screen.dart';
 import 'material_index_screen.dart';
 import 'notifications_screen.dart';
 import 'kyc_screen.dart';
+import 'login_screen.dart';
+import 'developers_screen.dart';
+import 'real_estate_dictionary_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -165,7 +168,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     // ACCURATE VERIFIED / UNVERIFIED BADGE
                     GestureDetector(
                       onTap: () {
-                        if (!isVerified) {
+                        if (!auth.isAuthenticated) {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                        } else if (!isVerified) {
                           Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
                         }
                       },
@@ -249,8 +254,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // 5. BOLDER PREPARE DOCUMENTS BOX UNDERNEATH GRID
               _buildPrepareDocumentsBanner(context),
+              const SizedBox(height: 14),
 
-              // 6. ACTIVE PURCHASES SNAPSHOT (If user has ongoing purchases)
+              // 6. EVERYTHING REAL ESTATE (AI Real Estate Dictionary & Lexicon)
+              _buildRealEstateDictionaryBanner(context),
+
+              // 7. ACTIVE PURCHASES SNAPSHOT (If user has ongoing purchases)
               if (purchaseProvider.userPurchases.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 const Text(
@@ -479,7 +488,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Complete 1-click Prembly KYC to activate your dedicated bank account.',
+                        'Complete quick KYC to activate your dedicated bank account.',
                         style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
                       ),
                     ],
@@ -488,7 +497,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
+                    final auth = Provider.of<AuthProvider>(context, listen: false);
+                    if (!auth.isAuthenticated) {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                    } else {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF059669),
@@ -550,8 +564,10 @@ class _HomeScreenState extends State<HomeScreen> {
         'cardBg': const [Color(0xFFFFFBEB), Color(0xFFFEF3C7), Colors.white],
         'borderColor': const Color(0xFFFDE68A),
         'onTap': () {
-          propProvider.setFilters(listingType: 'OFF_PLAN');
-          widget.onNavigateTab?.call(1);
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const DevelopersScreen()),
+          );
         },
       },
     ];
@@ -790,6 +806,124 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       'Draft',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
+                    ),
+                    SizedBox(width: 2),
+                    Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 6. EVERYTHING REAL ESTATE — AI REAL ESTATE DICTIONARY & LEXICON
+  Widget _buildRealEstateDictionaryBanner(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const RealEstateDictionaryScreen()),
+          );
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Colors.white],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0F172A), Color(0xFF334155)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(Icons.menu_book_rounded, color: Color(0xFF38BDF8), size: 26),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Row(
+                      children: [
+                        Text(
+                          'AI-POWERED LEXICON',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF0284C7),
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.auto_awesome_rounded, size: 10, color: Color(0xFF0284C7)),
+                      ],
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Everything Real Estate 📚',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Concise real estate dictionary, title documents, cadastral terms & Nigerian property jargon.',
+                      style: TextStyle(fontSize: 10, color: Color(0xFF64748B), height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Explore',
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
                     ),
                     SizedBox(width: 2),

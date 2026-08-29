@@ -119,7 +119,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(width: 8),
                               GestureDetector(
                                 onTap: () {
-                                  if (user?.isVerified != true) {
+                                  if (!auth.isAuthenticated) {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                                  } else if (user?.isVerified != true) {
                                     Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
                                   }
                                 },

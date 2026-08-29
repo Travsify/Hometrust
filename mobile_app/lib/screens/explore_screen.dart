@@ -103,25 +103,142 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                // PRIMARY SEGMENT SWITCHER (All / Off-Plan / Pay Small Small)
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      // 1. All Properties
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            propProvider.setFilters(listingType: 'ALL');
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: (propProvider.selectedListingType == null || propProvider.selectedListingType == 'ALL')
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: (propProvider.selectedListingType == null || propProvider.selectedListingType == 'ALL')
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Text(
+                              'All',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: (propProvider.selectedListingType == null || propProvider.selectedListingType == 'ALL')
+                                    ? AppColors.primary
+                                    : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // 2. Off-Plan Projects
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            propProvider.setFilters(listingType: 'OFF_PLAN');
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: propProvider.selectedListingType == 'OFF_PLAN' ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: propProvider.selectedListingType == 'OFF_PLAN'
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Text(
+                              '🏗️ Off-Plan',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: propProvider.selectedListingType == 'OFF_PLAN'
+                                    ? const Color(0xFF0284C7)
+                                    : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // 3. Pay Small Small
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            propProvider.setFilters(listingType: 'PAY_SMALL_SMALL');
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: propProvider.selectedListingType == 'PAY_SMALL_SMALL' ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: propProvider.selectedListingType == 'PAY_SMALL_SMALL'
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Text(
+                              '💳 Pay-Small-Small',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: propProvider.selectedListingType == 'PAY_SMALL_SMALL'
+                                    ? const Color(0xFF059669)
+                                    : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
                 // Category Pills
                 SizedBox(
-                  height: 32,
+                  height: 30,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _categories.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 8),
                     itemBuilder: (context, index) {
                       final cat = _categories[index];
-                      final isSelected = (propProvider.selectedType == cat) ||
-                          (cat == 'All' && propProvider.selectedType == null && propProvider.selectedListingType == null) ||
-                          (cat == 'Off-Plan' && propProvider.selectedListingType == 'OFF_PLAN') ||
-                          (cat == 'Pay-Small-Small' && propProvider.selectedListingType == 'PAY_SMALL_SMALL');
+                      final isSelected = (propProvider.selectedType == cat.toUpperCase()) ||
+                          (cat == 'All' && propProvider.selectedType == null);
 
                       return InkWell(
                         onTap: () {
                           if (cat == 'All') {
-                            propProvider.clearFilters();
+                            propProvider.setFilters(propertyType: 'All');
                           } else if (cat == 'Off-Plan') {
                             propProvider.setFilters(listingType: 'OFF_PLAN');
                           } else if (cat == 'Pay-Small-Small') {
@@ -132,7 +249,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         },
                         borderRadius: BorderRadius.circular(20),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                           decoration: BoxDecoration(
                             color: isSelected ? AppColors.primary : Colors.transparent,
                             borderRadius: BorderRadius.circular(20),

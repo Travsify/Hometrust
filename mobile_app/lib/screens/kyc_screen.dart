@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../providers/auth_provider.dart';
+import 'login_screen.dart';
 
 class KycScreen extends StatefulWidget {
   const KycScreen({super.key});
@@ -18,11 +19,11 @@ class _KycScreenState extends State<KycScreen> {
   Map<String, dynamic>? _generatedAccount;
   String _currentStep = '';
 
-  void _startAutomatedPremblyKyc(bool isDeveloper) async {
+  void _startAutomatedKyc(bool isDeveloper) async {
     setState(() {
       _isLoading = true;
       _error = null;
-      _currentStep = 'Connecting to Prembly Identity Gateway...';
+      _currentStep = 'Connecting to National Identity Gateway...';
     });
 
     try {
@@ -31,7 +32,7 @@ class _KycScreenState extends State<KycScreen> {
         setState(() {
           _currentStep = isDeveloper
               ? 'Validating Corporate CAC & RC Registration...'
-              : 'Verifying National Identity Register (NIN & BVN)...';
+              : 'Validating National Identity Register (NIN & BVN)...';
         });
       }
 
@@ -75,11 +76,83 @@ class _KycScreenState extends State<KycScreen> {
     final user = auth.user;
     final isDeveloper = user?.role == 'DEVELOPER';
 
+    // 1. MUST SIGN IN FIRST GATE
+    if (!auth.isAuthenticated || user == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        appBar: AppBar(
+          title: const Text(
+            'Identity Verification',
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF0F172A)),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: Color(0xFF0F172A)),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.lock_person_rounded, color: Color(0xFF059669), size: 36),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Account Required',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Please sign in or register an account before proceeding with identity verification (KYC/KYB).',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text(
+                      'Sign In / Register',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: Text(
-          isDeveloper ? 'Corporate KYB (Prembly API)' : 'Automated KYC (Prembly API)',
+          isDeveloper ? 'Corporate Verification (KYB)' : 'Identity Verification (KYC)',
           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF0F172A)),
         ),
         backgroundColor: Colors.white,
@@ -118,7 +191,7 @@ class _KycScreenState extends State<KycScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Your identity is officially verified via Prembly. Your dedicated CBN-regulated Virtual Bank Account is now live.',
+                      'Your identity is officially verified. Your dedicated CBN-regulated Virtual Bank Account is now live.',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
                     ),
@@ -184,7 +257,7 @@ class _KycScreenState extends State<KycScreen> {
                                 style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.w600),
                               ),
                               Text(
-                                _generatedAccount?['accountName'] ?? (user != null ? '${user.firstName} ${user.lastName}' : 'HomeVerify Escrow'),
+                                _generatedAccount?['accountName'] ?? '${user.firstName} ${user.lastName}',
                                 style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.w500),
                               ),
                             ],
@@ -212,7 +285,7 @@ class _KycScreenState extends State<KycScreen> {
                 ),
               ),
             ] else ...[
-              // PRE-VERIFICATION AUTOMATED FLOW
+              // PRE-VERIFICATION FLOW
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -251,7 +324,7 @@ class _KycScreenState extends State<KycScreen> {
                               ),
                               const SizedBox(height: 2),
                               const Text(
-                                'Powered by Prembly Identitypass API',
+                                'Bank-Grade National Identity & CAC Check',
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF059669)),
                               ),
                             ],
@@ -264,8 +337,8 @@ class _KycScreenState extends State<KycScreen> {
                     const SizedBox(height: 16),
                     Text(
                       isDeveloper
-                          ? 'Automated Corporate Verification:\nYour CAC registration and corporate identity will be validated through the Prembly business intelligence registry. Once verified, a dedicated corporate escrow account is provisioned for receiving milestone disbursements.'
-                          : 'Automated Identity Verification:\nYour NIN and BVN identity records will be validated in real-time through the Prembly national identity gateway. This instantly activates your dedicated Nigerian Virtual Bank Account for funding property purchases.',
+                          ? 'Corporate Verification:\nYour CAC registration and corporate identity will be validated in real time against the business registry. Once verified, a dedicated corporate escrow account is provisioned for receiving milestone disbursements.'
+                          : 'Identity Verification:\nYour NIN and BVN identity records will be validated in real time against the national identity register. This instantly activates your dedicated Nigerian Virtual Bank Account for funding property purchases.',
                       style: const TextStyle(fontSize: 12, color: Color(0xFF475569), height: 1.5),
                     ),
                   ],
@@ -289,7 +362,7 @@ class _KycScreenState extends State<KycScreen> {
                       children: [
                         const Text('Registered Name:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                         Text(
-                          user != null ? '${user.firstName} ${user.lastName}' : 'HomeVerify User',
+                          '${user.firstName} ${user.lastName}',
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                         ),
                       ],
@@ -368,7 +441,7 @@ class _KycScreenState extends State<KycScreen> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: () => _startAutomatedPremblyKyc(isDeveloper),
+                    onPressed: () => _startAutomatedKyc(isDeveloper),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF059669),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -381,7 +454,7 @@ class _KycScreenState extends State<KycScreen> {
                         const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 22),
                         const SizedBox(width: 10),
                         Text(
-                          isDeveloper ? 'Launch Automated Prembly KYB' : 'Launch Automated Prembly KYC',
+                          isDeveloper ? 'Launch KYB' : 'Launch KYC',
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
                         ),
                       ],

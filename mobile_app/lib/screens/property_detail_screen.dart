@@ -7,6 +7,8 @@ import '../models/property_model.dart';
 import '../providers/purchase_provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import 'chat_screen.dart';
+import '../widgets/in_app_call_modal.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final PropertyModel property;
@@ -324,6 +326,52 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                               ],
                             ),
                           ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ChatScreen(
+                                          recipientName: prop.developer!.companyName,
+                                          propertyTitle: prop.title,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 14, color: AppColors.primary),
+                                  label: const Text('Chat In-App', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    side: const BorderSide(color: AppColors.primary, width: 1.2),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    InAppCallModal.show(
+                                      context,
+                                      entityName: prop.developer!.companyName,
+                                    );
+                                  },
+                                  icon: const Icon(Icons.phone_in_talk_rounded, size: 14, color: Colors.white),
+                                  label: const Text('Call In-App', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF059669),
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    elevation: 0,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -383,6 +431,96 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         child: SafeArea(
           child: Row(
             children: [
+              // In-App Chat / Call Action Trigger
+              InkWell(
+                onTap: () {
+                  final devName = widget.property.developer?.companyName ?? 'Verified Developer';
+                  showModalBottomSheet(
+                    context: context,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (ctx) => Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            devName,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Encrypted In-App Communication • Phone Numbers Masked',
+                            style: TextStyle(fontSize: 11, color: Color(0xFF059669), fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 20),
+                          ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.chat_bubble_outline_rounded, color: AppColors.primary),
+                            ),
+                            title: const Text('Chat In-App', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                            subtitle: const Text('Send instant messages to developer rep', style: TextStyle(fontSize: 12)),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChatScreen(
+                                    recipientName: devName,
+                                    propertyTitle: widget.property.title,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const Divider(),
+                          ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFF059669)),
+                            ),
+                            title: const Text('Call In-App', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                            subtitle: const Text('Encrypted audio relay (no phone number required)', style: TextStyle(fontSize: 12)),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              InAppCallModal.show(context, entityName: devName);
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.forum_rounded, color: Colors.white, size: 20),
+                ),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => _showInspectionDialog(context),
@@ -392,10 +530,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Book Inspection', style: TextStyle(fontWeight: FontWeight.w700)),
+                  child: const Text('Book Inspection', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton(
                   onPressed: () => _handleStartPurchase(context),
@@ -405,7 +543,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Start Purchase', style: TextStyle(fontWeight: FontWeight.w800)),
+                  child: const Text('Start Purchase', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
                 ),
               ),
             ],
