@@ -96,7 +96,7 @@ async function run() {
         name: 'Prembly / IdentityPass CAC Registry Key',
         service: 'PREMBLY',
         keyType: 'SECRET',
-        keyValue: 'sec_live_prembly_identitypass_cac_registry',
+        keyValue: 'live_sk_2a238fff60994964b3f8d9a5a6178d23',
         environment: 'LIVE',
         description: 'Automated CAC RC corporate registry and Director NIN verification',
         isActive: true,
