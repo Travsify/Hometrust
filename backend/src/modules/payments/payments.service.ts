@@ -15,13 +15,31 @@ export interface InitializePaymentParams {
 
 export class PaymentsService {
   static async calculateFees(amount: number, purpose: string) {
-    // Check if there is an active fee config
     let platformFee = 5000;
+
     if (purpose === 'VERIFICATION_FEE' || purpose === 'LEGAL_DOCUMENT_FEE') {
-      platformFee = 0; // Fee is already the core service amount
+      platformFee = 0; // The base amount itself is the verification fee
+    } else {
+      // Lookup active fee rule for property transactions
+      const feeConfig = await prisma.platformFeeConfig.findFirst({
+        where: { isActive: true, applicableService: { in: ['PROPERTY_TRANSACTION', 'ESCROW', 'PAYMENT'] } },
+      });
+
+      if (feeConfig) {
+        if (feeConfig.feeType === 'FIXED') {
+          platformFee = feeConfig.fixedAmount || feeConfig.amount || 5000;
+        } else if (feeConfig.feeType === 'PERCENTAGE') {
+          const percentFee = (amount * (feeConfig.percentage || 1.5)) / 100;
+          platformFee = feeConfig.capAmount ? Math.min(percentFee, feeConfig.capAmount) : percentFee;
+        } else if (feeConfig.feeType === 'BOTH') {
+          const percentFee = (amount * (feeConfig.percentage || 1.5)) / 100;
+          const combined = (feeConfig.fixedAmount || 0) + percentFee;
+          platformFee = feeConfig.capAmount ? Math.min(combined, feeConfig.capAmount) : combined;
+        }
+      }
     }
 
-    // Paystack standard fee: 1.5% + N100 (capped at N2000 for NGN transactions)
+    // Processing gateway fee: 1.5% + N100 (capped at N2000 for local NGN payments)
     const rawProcessingFee = (amount * 0.015) + (amount > 2500 ? 100 : 0);
     const processingFee = Math.min(rawProcessingFee, 2000);
 
@@ -29,7 +47,7 @@ export class PaymentsService {
 
     return {
       amount,
-      platformFee,
+      platformFee: Math.round(platformFee * 100) / 100,
       processingFee: Math.round(processingFee * 100) / 100,
       totalAmount: Math.round(totalAmount * 100) / 100,
     };

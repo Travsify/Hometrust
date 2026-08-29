@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AdminService } from './admin.service';
+import { ApiKeysService } from './api_keys.service';
 import { AuditService } from '../audit/audit.service';
 import { sendSuccess, sendError } from '../../utils/response';
 import { AuthRequest } from '../../middlewares/auth.middleware';
@@ -76,10 +77,24 @@ export class AdminController {
     }
   }
 
+  // Fees
   static async getPlatformFees(req: Request, res: Response): Promise<void> {
     try {
       const fees = await AdminService.getPlatformFees();
       sendSuccess(res, fees, 'Platform fee configurations retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async createPlatformFee(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const fee = await AdminService.createPlatformFee(req.body, req.user);
+      sendSuccess(res, fee, 'Platform fee configuration created', 201);
     } catch (error: any) {
       sendError(res, error.message, 400);
     }
@@ -91,13 +106,66 @@ export class AdminController {
         sendError(res, 'Unauthorized', 401);
         return;
       }
-      const fee = await AdminService.updatePlatformFee(
-        req.params.id as string,
-        parseFloat(req.body.amount),
-        req.body.isActive,
-        req.user
-      );
+      const fee = await AdminService.updatePlatformFee(req.params.id as string, req.body, req.user);
       sendSuccess(res, fee, 'Platform fee configuration updated');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  // Dynamic API Keys Management
+  static async getApiKeys(req: Request, res: Response): Promise<void> {
+    try {
+      const keys = await ApiKeysService.listApiKeys();
+      sendSuccess(res, keys, 'API keys retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async addApiKey(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const key = await ApiKeysService.addApiKey(req.body, req.user);
+      sendSuccess(res, key, 'API key added successfully', 201);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async updateApiKey(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const key = await ApiKeysService.updateApiKey(req.params.id as string, req.body, req.user);
+      sendSuccess(res, key, 'API key updated successfully');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async deleteApiKey(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await ApiKeysService.deleteApiKey(req.params.id as string, req.user);
+      sendSuccess(res, result, result.message);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async testApiKey(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await ApiKeysService.testApiKey(req.params.id as string);
+      sendSuccess(res, result, result.message);
     } catch (error: any) {
       sendError(res, error.message, 400);
     }

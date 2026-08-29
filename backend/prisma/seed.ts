@@ -8,16 +8,105 @@ async function main() {
 
   // 1. Create Default Platform Fees
   const fees = [
-    { name: 'Standard Document Verification', feeType: 'FLAT', amount: 25000, applicableService: 'VERIFICATION' },
-    { name: 'Express Document Verification', feeType: 'FLAT', amount: 45000, applicableService: 'VERIFICATION' },
-    { name: 'Legal Document Drafting (Deed / Agreement)', feeType: 'FLAT', amount: 45000, applicableService: 'LEGAL' },
-    { name: 'Developer Annual Listing Tier 1', feeType: 'FLAT', amount: 150000, applicableService: 'DEVELOPER_LISTING' },
-    { name: 'Property Transaction Platform Service Fee', feeType: 'FLAT', amount: 5000, applicableService: 'PROPERTY_TRANSACTION' },
+    {
+      name: 'Standard Document Verification',
+      feeType: 'FIXED',
+      fixedAmount: 25000,
+      percentage: 0,
+      amount: 25000,
+      applicableService: 'VERIFICATION',
+      description: 'C of O, Governor Consent, Registered Deed title search',
+      isActive: true,
+    },
+    {
+      name: 'Express Document Verification (24h Expedited)',
+      feeType: 'FIXED',
+      fixedAmount: 45000,
+      percentage: 0,
+      amount: 45000,
+      applicableService: 'VERIFICATION',
+      description: 'Expedited cadastral search with physical surveyor site check',
+      isActive: true,
+    },
+    {
+      name: 'Legal Document Drafting (Custom Contract / Deed)',
+      feeType: 'FIXED',
+      fixedAmount: 45000,
+      percentage: 0,
+      amount: 45000,
+      applicableService: 'LEGAL',
+      description: 'Lawyer-certified Contract of Sale & Deed of Assignment drafting',
+      isActive: true,
+    },
+    {
+      name: 'Property Purchase Transaction Fee',
+      feeType: 'BOTH',
+      fixedAmount: 5000,
+      percentage: 1.0,
+      capAmount: 50000,
+      amount: 5000,
+      applicableService: 'PROPERTY_TRANSACTION',
+      description: 'Platform escrow management fee (₦5,000 + 1.0%, capped at ₦50,000)',
+      isActive: true,
+    },
+    {
+      name: 'Developer Annual Listing Tier 1',
+      feeType: 'FIXED',
+      fixedAmount: 150000,
+      percentage: 0,
+      amount: 150000,
+      applicableService: 'DEVELOPER_LISTING',
+      description: 'Annual verified developer badge and off-plan listing tier',
+      isActive: true,
+    },
   ];
 
   for (const fee of fees) {
     await prisma.platformFeeConfig.create({ data: fee });
   }
+
+  // 1b. Seed System Named API Keys
+  await prisma.apiKeyConfig.createMany({
+    data: [
+      {
+        name: 'Paystack Production Secret Key',
+        service: 'PAYSTACK',
+        keyType: 'SECRET',
+        keyValue: process.env.PAYSTACK_SECRET_KEY || 'sk_test_paystack_secret_sample',
+        environment: 'LIVE',
+        description: 'Primary Paystack secret key for card debits and DVA bank transfers',
+        isActive: true,
+      },
+      {
+        name: 'Flutterwave Live Secret Key',
+        service: 'FLUTTERWAVE',
+        keyType: 'SECRET',
+        keyValue: process.env.FLUTTERWAVE_SECRET_KEY || 'FLWSECK_LIVE-sample_secret_key',
+        environment: 'LIVE',
+        description: 'Secondary gateway for direct debit and bank checkout',
+        isActive: true,
+      },
+      {
+        name: 'OpenRouter Free AI Scanner Key',
+        service: 'OPENROUTER',
+        keyType: 'SECRET',
+        keyValue: process.env.OPENROUTER_API_KEY || 'sk-or-v1-openrouter-free-models',
+        environment: 'LIVE',
+        description: 'OpenRouter API key powering free Llama 3.1 & Gemini 2.0 document legal scans',
+        isActive: true,
+      },
+      {
+        name: 'Prembly / IdentityPass CAC Registry Key',
+        service: 'PREMBLY',
+        keyType: 'SECRET',
+        keyValue: 'sec_live_prembly_identitypass_cac_registry',
+        environment: 'LIVE',
+        description: 'Automated CAC RC corporate registry and Director NIN verification',
+        isActive: true,
+      },
+    ],
+    skipDuplicates: true,
+  });
 
   // 2. Create Users
   const passwordHash = await bcrypt.hash('Password123!', 10);

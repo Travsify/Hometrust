@@ -161,14 +161,52 @@ export class AdminService {
 
   static async getPlatformFees() {
     return prisma.platformFeeConfig.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
     });
   }
 
-  static async updatePlatformFee(id: string, amount: number, isActive: boolean, adminUser: any) {
+  static async createPlatformFee(data: any, adminUser: any) {
+    const fee = await prisma.platformFeeConfig.create({
+      data: {
+        name: data.name,
+        feeType: data.feeType || 'FIXED',
+        fixedAmount: parseFloat(data.fixedAmount || 0),
+        percentage: parseFloat(data.percentage || 0),
+        capAmount: data.capAmount ? parseFloat(data.capAmount) : null,
+        amount: parseFloat(data.fixedAmount || data.amount || 0),
+        applicableService: data.applicableService || 'PROPERTY_TRANSACTION',
+        description: data.description,
+        isActive: data.isActive !== undefined ? data.isActive : true,
+      },
+    });
+
+    await AuditService.log({
+      adminId: adminUser.id,
+      adminEmail: adminUser.email,
+      action: 'PLATFORM_FEE_CREATED',
+      entityType: 'SETTING',
+      entityId: fee.id,
+      details: { name: fee.name, feeType: fee.feeType, fixedAmount: fee.fixedAmount, percentage: fee.percentage },
+    });
+
+    return fee;
+  }
+
+  static async updatePlatformFee(id: string, data: any, adminUser: any) {
+    const updateData: any = {};
+    if (data.name) updateData.name = data.name;
+    if (data.feeType) updateData.feeType = data.feeType;
+    if (data.fixedAmount !== undefined) updateData.fixedAmount = parseFloat(data.fixedAmount);
+    if (data.percentage !== undefined) updateData.percentage = parseFloat(data.percentage);
+    if (data.capAmount !== undefined) updateData.capAmount = data.capAmount ? parseFloat(data.capAmount) : null;
+    if (data.amount !== undefined) updateData.amount = parseFloat(data.amount);
+    if (data.applicableService) updateData.applicableService = data.applicableService;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (typeof data.isActive === 'boolean') updateData.isActive = data.isActive;
+
     const fee = await prisma.platformFeeConfig.update({
       where: { id },
-      data: { amount, isActive },
+      data: updateData,
     });
 
     await AuditService.log({
@@ -177,7 +215,7 @@ export class AdminService {
       action: 'PLATFORM_FEE_UPDATED',
       entityType: 'SETTING',
       entityId: id,
-      details: { name: fee.name, amount, isActive },
+      details: { name: fee.name, feeType: fee.feeType, fixedAmount: fee.fixedAmount, percentage: fee.percentage, isActive: fee.isActive },
     });
 
     return fee;

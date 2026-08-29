@@ -109,8 +109,38 @@ export const getPlatformFees = async () => {
   return response.data.data;
 };
 
-export const updatePlatformFee = async (id: string, amount: number, isActive: boolean) => {
-  const response = await api.patch(`/admin/platform-fees/${id}`, { amount, isActive });
+export const createPlatformFee = async (data: any) => {
+  const response = await api.post('/admin/platform-fees', data);
+  return response.data.data;
+};
+
+export const updatePlatformFee = async (id: string, data: any) => {
+  const response = await api.patch(`/admin/platform-fees/${id}`, data);
+  return response.data.data;
+};
+
+export const getApiKeys = async () => {
+  const response = await api.get('/admin/api-keys');
+  return response.data.data;
+};
+
+export const addApiKey = async (data: any) => {
+  const response = await api.post('/admin/api-keys', data);
+  return response.data.data;
+};
+
+export const updateApiKey = async (id: string, data: any) => {
+  const response = await api.patch(`/admin/api-keys/${id}`, data);
+  return response.data.data;
+};
+
+export const deleteApiKey = async (id: string) => {
+  const response = await api.delete(`/admin/api-keys/${id}`);
+  return response.data.data;
+};
+
+export const testApiKey = async (id: string) => {
+  const response = await api.post(`/admin/api-keys/${id}/test`);
   return response.data.data;
 };
 

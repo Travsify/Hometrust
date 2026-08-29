@@ -488,15 +488,35 @@ model AuditLog {
 
 model PlatformFeeConfig {
   id                  String      @id @default(uuid())
-  name                String      // e.g. "Standard Document Verification", "Property Transaction Fee"
-  feeType             String      @default("FLAT") // FLAT, PERCENTAGE
-  amount              Float       // e.g. 25000 (flat) or 1.5 (percentage)
+  name                String      // e.g. "Standard Document Verification", "Property Purchase Escrow Fee"
+  feeType             String      @default("FIXED") // FIXED, PERCENTAGE, BOTH
+  fixedAmount         Float       @default(0) // Flat naira fee (e.g. 25000)
+  percentage          Float       @default(0) // Percentage fee (e.g. 1.5)
+  capAmount           Float?      // Optional maximum fee cap
+  amount              Float       @default(0) // Compatibility field
   applicableService   String      // VERIFICATION, LEGAL, PROPERTY_TRANSACTION, DEVELOPER_LISTING
+  description         String?
   isActive            Boolean     @default(true)
   effectiveDate       DateTime    @default(now())
   createdAt           DateTime    @default(now())
 
   @@map("platform_fee_configs")
+}
+
+model ApiKeyConfig {
+  id          String      @id @default(uuid())
+  name        String      // e.g. "Paystack Live Production Key", "Flutterwave Live Secret Key"
+  service     String      // PAYSTACK, FLUTTERWAVE, OPENROUTER, VERIFICATION_API, PREMBLY, SUPABASE
+  keyType     String      @default("SECRET") // SECRET, PUBLIC, ENCRYPTION, WEBHOOK_SECRET
+  keyValue    String
+  environment String      @default("LIVE") // LIVE, TEST
+  isActive    Boolean     @default(true)
+  description String?
+  lastTestedAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("api_key_configs")
 }
 
 model SystemSetting {
