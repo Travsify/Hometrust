@@ -1,4 +1,5 @@
 import { prisma } from '../../utils/prisma';
+import { AuditService } from '../audit/audit.service';
 
 export interface CreatePurchaseParams {
   userId: string;
@@ -88,6 +89,24 @@ export class PurchasesService {
       },
     });
 
+    const user = await prisma.user.findUnique({ where: { id: params.userId } });
+    if (user) {
+      await AuditService.log({
+        adminId: user.id,
+        adminEmail: user.email,
+        action: 'PURCHASE_INITIATED',
+        entityType: 'PURCHASE',
+        entityId: purchase.id,
+        details: {
+          purchaseCode: purchase.purchaseCode,
+          propertyId: params.propertyId,
+          projectUnitId: params.projectUnitId,
+          totalPrice,
+          initialDeposit,
+        },
+      });
+    }
+
     return purchase;
   }
 
@@ -155,13 +174,30 @@ export class PurchasesService {
   }
 
   static async signAgreement(id: string, agreementDocumentUrl: string) {
-    return prisma.purchase.update({
+    const updated = await prisma.purchase.update({
       where: { id },
       data: {
         status: 'AGREEMENT_SIGNED',
         agreementDocumentUrl,
         signatureDate: new Date(),
       },
+      include: { user: true },
     });
+
+    if (updated.user) {
+      await AuditService.log({
+        adminId: updated.user.id,
+        adminEmail: updated.user.email,
+        action: 'PURCHASE_AGREEMENT_SIGNED',
+        entityType: 'PURCHASE',
+        entityId: updated.id,
+        details: {
+          purchaseCode: updated.purchaseCode,
+          agreementDocumentUrl,
+        },
+      });
+    }
+
+    return updated;
   }
 }

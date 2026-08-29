@@ -169,7 +169,7 @@ class _InAppCallModalState extends State<InAppCallModal> {
 
               // Call Status
               Text(
-                _isConnected ? _formattedTime : 'Calling via HomeVerify Secure Relay...',
+                _isConnected ? _formattedTime : 'Calling via Hometrust Secure Relay...',
                 style: TextStyle(
                   color: _isConnected ? const Color(0xFF34D399) : const Color(0xFF38BDF8),
                   fontSize: _isConnected ? 16 : 12,

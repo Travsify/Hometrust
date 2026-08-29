@@ -6,12 +6,55 @@ export interface CreateLegalRequestParams {
   documentCategory: string;
   title: string;
   requirements: string;
+  agreedAmount?: number;
   supportingDocuments?: string[];
 }
 
 export class LegalService {
+  /**
+   * Get Active Legal Drafting Fee Percentage (Admin configured, default 3%)
+   */
+  static async getLegalFeePercentage(): Promise<number> {
+    try {
+      const config = await prisma.platformFeeConfig.findFirst({
+        where: {
+          applicableService: 'LEGAL',
+          isActive: true,
+        },
+      });
+
+      if (config && config.percentage > 0) {
+        return config.percentage;
+      }
+      return 3.0; // Default 3.0%
+    } catch {
+      return 3.0;
+    }
+  }
+
+  /**
+   * Calculate Legal Drafting Fee Quote based on property transaction value
+   */
+  static async getFeeQuote(agreedAmount: number) {
+    const feePercentage = await this.getLegalFeePercentage();
+    const cleanAmount = Math.max(0, Number(agreedAmount) || 0);
+    const feeAmount = (cleanAmount * feePercentage) / 100;
+
+    return {
+      agreedAmount: cleanAmount,
+      feePercentage,
+      feeAmount,
+    };
+  }
+
+  /**
+   * Create Legal Drafting Request with calculated 3% fee
+   */
   static async create(params: CreateLegalRequestParams) {
-    const requestCode = `EV-LEG-${Math.floor(10000 + Math.random() * 90000)}`;
+    const requestCode = `HT-LEG-${Math.floor(10000 + Math.random() * 90000)}`;
+    const feePercentage = await this.getLegalFeePercentage();
+    const agreedAmount = Math.max(0, Number(params.agreedAmount) || 0);
+    const feeAmount = agreedAmount > 0 ? (agreedAmount * feePercentage) / 100 : 45000;
 
     const request = await prisma.legalRequest.create({
       data: {
@@ -20,14 +63,144 @@ export class LegalService {
         documentCategory: params.documentCategory,
         title: params.title,
         requirements: params.requirements,
+        agreedAmount,
+        feePercentage,
+        feeAmount,
         supportingDocuments: params.supportingDocuments ? JSON.stringify(params.supportingDocuments) : undefined,
-        feeAmount: 45000,
         status: 'REQUESTED',
         isPaid: false,
       },
     });
 
+    const user = await prisma.user.findUnique({ where: { id: params.userId } });
+    if (user) {
+      await AuditService.log({
+        adminId: user.id,
+        adminEmail: user.email,
+        action: 'LEGAL_DOCUMENT_REQUESTED',
+        entityType: 'LEGAL_REQUEST',
+        entityId: request.id,
+        details: {
+          requestCode,
+          title: params.title,
+          category: params.documentCategory,
+          agreedAmount,
+          feePercentage: `${feePercentage}%`,
+          feeAmount,
+        },
+      });
+    }
+
     return request;
+  }
+
+  /**
+   * Pay Legal Fee from Dedicated Virtual Account Wallet
+   */
+  static async payWithWallet(requestId: string, userId: string) {
+    const request = await prisma.legalRequest.findUnique({
+      where: { id: requestId },
+      include: { user: true },
+    });
+
+    if (!request) {
+      throw new Error('Legal request not found');
+    }
+
+    if (request.userId !== userId) {
+      throw new Error('Unauthorized access to this legal request');
+    }
+
+    if (request.isPaid) {
+      return { success: true, message: 'Legal fee has already been paid.', request };
+    }
+
+    // Find User's Dedicated Virtual Account
+    const virtualAccount = await prisma.virtualAccount.findFirst({
+      where: { userId },
+    });
+
+    const currentBalance = virtualAccount?.balance || 0;
+    const requiredAmount = request.feeAmount;
+
+    if (!virtualAccount || currentBalance < requiredAmount) {
+      return {
+        success: false,
+        code: 'INSUFFICIENT_FUNDS',
+        requiredAmount,
+        currentBalance,
+        deficit: Math.max(0, requiredAmount - currentBalance),
+        virtualAccount: virtualAccount
+          ? {
+              accountNumber: virtualAccount.accountNumber,
+              bankName: virtualAccount.bankName,
+              accountName: virtualAccount.accountName,
+            }
+          : null,
+      };
+    }
+
+    // Deduct fee and confirm payment atomically
+    const [updatedAccount, updatedRequest, payment] = await prisma.$transaction([
+      prisma.virtualAccount.update({
+        where: { id: virtualAccount.id },
+        data: {
+          balance: { decrement: requiredAmount },
+        },
+      }),
+      prisma.legalRequest.update({
+        where: { id: requestId },
+        data: {
+          isPaid: true,
+          status: 'PAYMENT_CONFIRMED',
+        },
+      }),
+      prisma.payment.create({
+        data: {
+          userId,
+          legalRequestId: request.id,
+          amount: requiredAmount,
+          currency: 'NGN',
+          purpose: 'LEGAL_DOCUMENT_FEE',
+          paystackChannel: 'wallet_transfer',
+          paymentReference: `HT-PAY-LEG-${Date.now()}`,
+          receiptNumber: `HT-RCP-LEG-${Date.now()}`,
+          status: 'SUCCESS',
+          totalAmount: requiredAmount,
+          paidAt: new Date(),
+        },
+      }),
+    ]);
+
+    await AuditService.log({
+      adminId: request.user.id,
+      adminEmail: request.user.email,
+      action: 'LEGAL_FEE_PAID_VIA_WALLET',
+      entityType: 'LEGAL_REQUEST',
+      entityId: request.id,
+      details: {
+        requestCode: request.requestCode,
+        amount: requiredAmount,
+        paymentReference: payment.paymentReference,
+        remainingBalance: updatedAccount.balance,
+      },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId,
+        title: `Legal Fee Paid: ${request.title}`,
+        message: `Your payment of ₦${requiredAmount.toLocaleString()} (3% drafting fee) for ${request.requestCode} was successful. Our legal team is now drafting your document.`,
+        type: 'LEGAL',
+      },
+    });
+
+    return {
+      success: true,
+      request: updatedRequest,
+      payment,
+      remainingBalance: updatedAccount.balance,
+    };
   }
 
   static async getById(idOrCode: string) {

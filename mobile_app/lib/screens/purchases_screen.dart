@@ -58,7 +58,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
 
       final bankName = res['bankName'] ?? res['bank']?['name'] ?? 'Providus Bank';
       final accountNumber = res['accountNumber'] ?? res['account_number'] ?? '';
-      final accountName = res['accountName'] ?? res['account_name'] ?? user?.fullName ?? 'HomeVerify Customer';
+      final accountName = res['accountName'] ?? res['account_name'] ?? user?.fullName ?? 'Hometrust Customer';
 
       if (!mounted) return;
       showDialog(
@@ -220,7 +220,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                         ),
                         SizedBox(height: 3),
                         Text(
-                          'All payments must be made strictly via your dedicated HomeVerify virtual bank account. Direct payments to developers void all escrow warranties and cannot be refunded.',
+                          'All payments must be made strictly via your dedicated Hometrust virtual bank account. Direct payments to developers void all escrow warranties and cannot be refunded.',
                           style: TextStyle(fontSize: 11, color: Color(0xFFB91C1C), height: 1.35, fontWeight: FontWeight.w600),
                         ),
                       ],

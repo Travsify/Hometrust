@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../../utils/prisma';
 import { config } from '../../config';
+import { AuditService } from '../audit/audit.service';
 
 export class AuthService {
   static async register(data: any) {
@@ -51,6 +52,15 @@ export class AuthService {
       });
     }
 
+    await AuditService.log({
+      adminId: user.id,
+      adminEmail: user.email,
+      action: 'USER_REGISTERED',
+      entityType: 'USER',
+      entityId: user.id,
+      details: { role: user.role, name: `${user.firstName} ${user.lastName}`, phone: user.phone },
+    });
+
     const token = this.generateToken(user);
 
     return {
@@ -89,6 +99,19 @@ export class AuthService {
     }
 
     const token = this.generateToken(user);
+
+    await AuditService.log({
+      adminId: user.id,
+      adminEmail: user.email,
+      action: 'USER_LOGIN',
+      entityType: 'AUTH',
+      entityId: user.id,
+      details: {
+        role: user.role,
+        fullName: `${user.firstName} ${user.lastName}`,
+        loginAt: new Date().toISOString(),
+      },
+    });
 
     return {
       user: {

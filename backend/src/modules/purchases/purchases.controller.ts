@@ -22,9 +22,17 @@ export class PurchasesController {
     }
   }
 
-  static async getById(req: Request, res: Response): Promise<void> {
+  static async getById(req: AuthRequest, res: Response): Promise<void> {
     try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
       const result = await PurchasesService.getById(req.params.idOrCode as string);
+      if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPERADMIN' && result.userId !== req.user.id) {
+        sendError(res, 'Access denied: You can only view your own property purchases.', 403);
+        return;
+      }
       sendSuccess(res, result, 'Purchase details retrieved');
     } catch (error: any) {
       sendError(res, error.message, 404);

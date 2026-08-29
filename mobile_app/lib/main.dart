@@ -23,11 +23,11 @@ void main() async {
     navigatorKey.currentState?.popUntil((route) => route.isFirst);
   };
 
-  runApp(const HomeVerifyApp());
+  runApp(const HometrustApp());
 }
 
-class HomeVerifyApp extends StatelessWidget {
-  const HomeVerifyApp({super.key});
+class HometrustApp extends StatelessWidget {
+  const HometrustApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +40,7 @@ class HomeVerifyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: MaterialApp(
-        title: 'HomeVerify',
+        title: 'Hometrust',
         debugShowCheckedModeBanner: false,
         navigatorKey: navigatorKey,
         theme: ThemeData(

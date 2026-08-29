@@ -57,7 +57,7 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() {
           _messages.add({
             'sender': 'rep',
-            'text': 'Thank you for your message! Our designated corporate representative has received your inquiry: "$msg".\n\nAll escrow milestones and payment schedules are handled directly through HomeVerify to safeguard your funds.',
+            'text': 'Thank you for your message! Our designated corporate representative has received your inquiry: "$msg".\n\nAll escrow milestones and payment schedules are handled directly through Hometrust to safeguard your funds.',
             'time': 'Just now',
           });
         });
@@ -163,7 +163,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Protect your money: NEVER transfer funds directly outside HomeVerify. All milestone payments must be made to your dedicated virtual account.',
+                    'Protect your money: NEVER transfer funds directly outside Hometrust. All milestone payments must be made to your dedicated virtual account.',
                     style: TextStyle(fontSize: 10, color: Color(0xFF92400E), fontWeight: FontWeight.w600, height: 1.3),
                   ),
                 ),

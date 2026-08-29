@@ -116,7 +116,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
                       Icon(Icons.shield_outlined, color: AppColors.accentGoldLight, size: 20),
                       SizedBox(width: 8),
                       Text(
-                        'HOMEVERIFY LEGAL & REGISTRY CHECK',
+                        'HOMETRUST LEGAL & REGISTRY CHECK',
                         style: TextStyle(color: AppColors.accentGoldLight, fontWeight: FontWeight.w800, fontSize: 11),
                       ),
                     ],

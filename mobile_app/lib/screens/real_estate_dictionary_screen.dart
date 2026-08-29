@@ -797,195 +797,67 @@ Return a valid JSON object with the following schema:
                   ],
                 ),
                 const SizedBox(height: 12),
-
-                if (results.isEmpty && !_isSearchingAi && _aiSearchResult == null) ...[
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: Column(
-                        children: [
-                          const Icon(Icons.search_off_rounded, size: 48, color: Color(0xFFCBD5E1)),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No preloaded term found for "${_searchCtrl.text}"',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'Tap below to run a deep AI search across all Nigerian real estate registers & land laws.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: () => _triggerAiSearchDefinition(_searchCtrl.text),
-                            icon: const Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.white),
-                            label: Text('Search AI for "${_searchCtrl.text}"'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0F172A),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-
-                // MASTER A-Z LIST ITEMS
                 ...results.map((item) {
                   final term = item['term'] as String;
                   final isExpanded = _expandedTerm == term;
-                  final firstChar = term[0].toUpperCase();
-
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isExpanded ? const Color(0xFF059669) : const Color(0xFFE2E8F0),
-                        width: isExpanded ? 1.5 : 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      border: Border.all(color: isExpanded ? const Color(0xFF059669) : const Color(0xFFE2E8F0)),
                     ),
                     child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _expandedTerm = isExpanded ? null : term;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => setState(() => _expandedTerm = isExpanded ? null : term),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Alphabet Initial Badge
-                                Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF0F172A),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      firstChar,
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF38BDF8)),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        term,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w900,
-                                          color: Color(0xFF0F172A),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        item['category'] as String,
-                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF059669)),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                                  color: const Color(0xFF64748B),
-                                ),
+                                Expanded(child: Text(term, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900))),
+                                Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
                               ],
                             ),
-
                             const SizedBox(height: 10),
-
-                            // Plain Definition
-                            Text(
-                              item['definition'] as String,
-                              style: const TextStyle(fontSize: 12.5, color: Color(0xFF334155), height: 1.4),
-                            ),
-
-                            // EXPANDED NIGERIAN CONTEXT & RISK
+                            Text(item['definition'] as String, style: const TextStyle(fontSize: 12.5, color: Color(0xFF334155))),
                             if (isExpanded) ...[
-                              const SizedBox(height: 14),
-                              const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                              const SizedBox(height: 12),
-
-                              // 🇳🇬 Nigerian Context
+                              const SizedBox(height: 16),
                               Container(
                                 padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Row(
-                                      children: [
-                                        Text('🇳🇬 ', style: TextStyle(fontSize: 13)),
-                                        Text(
-                                          'Nigerian Real Estate & Legal Context',
-                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      item['nigerianContext'] as String,
-                                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569), height: 1.35),
-                                    ),
-                                  ],
-                                ),
+                                decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12)),
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  const Text('🇳🇬 Nigerian Context', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11)),
+                                  Text(item['nigerianContext'] as String, style: const TextStyle(fontSize: 11.5)),
+                                ]),
                               ),
-
                               const SizedBox(height: 10),
-
-                              // ⚠️ Risk Breakdown
                               Container(
                                 padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFFBEB),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0xFFFDE68A)),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Row(
-                                      children: [
-                                        Icon(Icons.warning_amber_rounded, size: 14, color: Color(0xFFD97706)),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Key Legal & Financial Risk to Watch Out For',
-                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFB45309)),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      item['risk'] as String,
-                                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF92400E), height: 1.35),
-                                    ),
-                                  ],
-                                ),
+                                decoration: BoxDecoration(color: const Color(0xFFECFDF5), borderRadius: BorderRadius.circular(12)),
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  const Text('✅ Verification Checklist', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11)),
+                                  Text(item['whatToCheck'] as String, style: const TextStyle(fontSize: 11.5)),
+                                ]),
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(color: const Color(0xFFF0F9FF), borderRadius: BorderRadius.circular(12)),
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  const Text('❓ Questions To Ask', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11)),
+                                  Text(item['questionsToAsk'] as String, style: const TextStyle(fontSize: 11.5)),
+                                ]),
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(color: const Color(0xFFFFF1F2), borderRadius: BorderRadius.circular(12)),
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  const Text('🚨 Red Flags', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11)),
+                                  Text(item['redFlags'] as String, style: const TextStyle(fontSize: 11.5)),
+                                ]),
                               ),
                             ],
                           ],
@@ -1028,7 +900,7 @@ Return a valid JSON object with the following schema:
                   const Icon(Icons.auto_awesome_rounded, size: 16, color: Color(0xFF0284C7)),
                   const SizedBox(width: 6),
                   Text(
-                    'AI SEARCH RESULT: ${data['term']}',
+                    'AI SEARCH RESULT: ${data['term'] ?? 'Term'}',
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF0284C7)),
                   ),
                 ],
@@ -1043,40 +915,8 @@ Return a valid JSON object with the following schema:
           ),
           const SizedBox(height: 10),
           Text(
-            data['plainDefinition'] ?? '',
+            data['plainDefinition'] ?? data['definition'] ?? '',
             style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A), height: 1.4, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('🇳🇬 Nigerian Legal Context:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
-                const SizedBox(height: 2),
-                Text(data['nigerianContext'] ?? '', style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569), height: 1.35)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('⚠️ Risk Alert:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFB45309))),
-                const SizedBox(height: 2),
-                Text(data['riskWarning'] ?? '', style: const TextStyle(fontSize: 11.5, color: Color(0xFF92400E), height: 1.35)),
-              ],
-            ),
           ),
         ],
       ),

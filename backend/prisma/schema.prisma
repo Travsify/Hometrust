@@ -398,7 +398,9 @@ model LegalRequest {
   requirements          String
   supportingDocuments   String?       // JSON string of URLs
   status                String        @default("REQUESTED") // REQUESTED, PAYMENT_CONFIRMED, LEGAL_REVIEW, DRAFTING, CUSTOMER_REVIEW, REVISION_REQUESTED, FINALIZED, DELIVERED
-  feeAmount             Float         @default(45000)
+  agreedAmount          Float?        // Transaction value (e.g. 30,000,000)
+  feePercentage         Float         @default(3.0) // Admin configurable legal drafting fee percentage (default 3%)
+  feeAmount             Float         @default(45000) // Calculated legal fee (e.g. 3% of 30m = 900,000)
   isPaid                Boolean       @default(false)
   draftDocumentUrl      String?
   finalDocumentUrl      String?

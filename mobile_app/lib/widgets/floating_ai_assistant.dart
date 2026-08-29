@@ -115,7 +115,7 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
   final List<Map<String, String>> _messages = [
     {
       'role': 'assistant',
-      'text': 'Hello! 👋 I am your HomeVerify AI Legal & Property Advisor for Nigerian real estate. Ask me anything about verifying land titles (C-of-O, Gazette, Governor\'s Consent), scanning GPS beacon coordinates across 36 states, milestone escrow protection, or live construction costs.',
+      'text': 'Hello! 👋 I am your Hometrust AI Legal & Property Advisor for Nigerian real estate. Ask me anything about verifying land titles (C-of-O, Gazette, Governor\'s Consent), scanning GPS beacon coordinates across 36 states, milestone escrow protection, or live construction costs.',
     },
   ];
 
@@ -141,7 +141,7 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
         lower.startsWith('hi ') ||
         lower.startsWith('hello ') ||
         lower.startsWith('hey ')) {
-      return 'Hello there! 👋 Welcome to HomeVerify.\n\n'
+      return 'Hello there! 👋 Welcome to Hometrust.\n\n'
           'I am your AI Property & Legal Advisor. How can I assist you with your Nigerian property transaction today?\n\n'
           'Here are a few things I can help you with:\n'
           '• 🛡️ Verify C-of-O, Gazette, Governor\'s Consent, or Survey Plans\n'
@@ -153,7 +153,7 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
 
     // 2. WHO ARE YOU / WHAT CAN YOU DO
     if (lower.contains('who are you') || lower.contains('what can you do') || lower.contains('help me')) {
-      return 'I am the HomeVerify AI Legal & Real Estate Advisor for Nigeria.\n\n'
+      return 'I am the Hometrust AI Legal & Real Estate Advisor for Nigeria.\n\n'
           'My purpose is to protect property buyers, investors, and developers from real estate fraud, double-allocation, and contractor abandonment.\n\n'
           'Feel free to ask any question about property titles, Nigerian land laws, escrow milestones, or building material costs!';
     }
@@ -182,11 +182,11 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
         lower.contains('fraud') ||
         lower.contains('safe') ||
         lower.contains('money')) {
-      return 'How HomeVerify Milestone Escrow Protects Buyers:\n\n'
+      return 'How Hometrust Milestone Escrow Protects Buyers:\n\n'
           '• Zero Upfront Developer Risk: Funds are held in a secure CBN-regulated escrow trust account.\n'
           '• Stage-by-Stage Verification: The developer does NOT receive money until a certified structural engineer audits and approves the on-site milestone.\n'
           '• 100% Dedicated NUBAN Accounts: Every buyer is issued a unique virtual bank account for automated, trackable instalment payments.\n'
-          '• Critical Security Policy: NEVER transfer funds directly to developers or agents outside HomeVerify, as off-app payments void all escrow warranties and cannot be recovered.';
+          '• Critical Security Policy: NEVER transfer funds directly to developers or agents outside Hometrust, as off-app payments void all escrow warranties and cannot be recovered.';
     }
 
     // 5. GAZETTE VS C-OF-O VS EXCISION
@@ -226,13 +226,13 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
     }
 
     // 8. GENERAL INTELLIGENT LEGAL ADVISORY
-    return 'HomeVerify Legal & Real Estate Advisory:\n\n'
+    return 'Hometrust Legal & Real Estate Advisory:\n\n'
         'Regarding: "$userMsg"\n\n'
         'In Nigerian real estate, complete legal due diligence and milestone escrow are crucial before committing funds. Key recommended actions:\n\n'
         '1. Run the beacon coordinates through our Free Land Radar (covering all 36 States + FCT).\n'
         '2. Conduct a certified title search at the State Ministry of Lands.\n'
         '3. Ensure all agreements are drafted by a certified property solicitor (available via Document Prep).\n'
-        '4. Always channel payments through your dedicated HomeVerify virtual account.';
+        '4. Always channel payments through your dedicated Hometrust virtual account.';
   }
 
   void _sendMessage(String text) async {
@@ -340,7 +340,7 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
                       Text(
-                        'HomeVerify Legal AI Advisor',
+                        'Hometrust Legal AI Advisor',
                         style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.textPrimary),
                       ),
                       Text(

@@ -20,14 +20,24 @@ class PurchaseProvider with ChangeNotifier {
       final res = await ApiClient.get('/purchases/my-purchases');
       if (res is List) {
         _userPurchases = res.map((p) => PurchaseModel.fromJson(p)).toList();
+      } else {
+        _userPurchases = [];
       }
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       _isLoading = false;
+      _userPurchases = [];
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
     }
+  }
+
+  void clear() {
+    _userPurchases = [];
+    _isLoading = false;
+    _errorMessage = null;
+    notifyListeners();
   }
 
   Future<PurchaseModel?> initiatePurchase({

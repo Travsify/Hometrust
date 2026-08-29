@@ -44,8 +44,8 @@
 		<key>UIStatusBarHidden</key>
 		<false/>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>HomeVerify needs access to your photo library to let you upload property title documents for verification.</string>
+		<string>Hometrust needs access to your photo library to let you upload property title documents for verification.</string>
 		<key>NSCameraUsageDescription</key>
-		<string>HomeVerify needs camera access to let you photograph property documents for verification.</string>
+		<string>Hometrust needs camera access to let you photograph property documents for verification.</string>
 	</dict>
 </plist>

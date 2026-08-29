@@ -1,5 +1,6 @@
 import { prisma } from '../../utils/prisma';
 import { PaystackClient } from './paystack.client';
+import { AuditService } from '../audit/audit.service';
 
 export interface InitializePaymentParams {
   userId: string;
@@ -202,6 +203,22 @@ export class PaymentsService {
         type: 'PAYMENT',
       },
     });
+
+    if (payment.user) {
+      await AuditService.log({
+        adminId: payment.user.id,
+        adminEmail: payment.user.email,
+        action: 'PAYMENT_CONFIRMED',
+        entityType: 'PAYMENT',
+        entityId: updatedPayment.id,
+        details: {
+          receiptNumber,
+          purpose: payment.purpose,
+          totalAmount: payment.totalAmount,
+          paystackChannel: paystackRes.data.channel,
+        },
+      });
+    }
 
     return updatedPayment;
   }

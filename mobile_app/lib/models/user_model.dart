@@ -10,6 +10,9 @@ class UserModel {
   final String? nin;
   final String? virtualAccountNumber;
   final String? virtualBankName;
+  final String? virtualAccountName;
+  final double virtualAccountBalance;
+  final String? developerCompanyName;
 
   UserModel({
     required this.id,
@@ -23,9 +26,13 @@ class UserModel {
     this.nin,
     this.virtualAccountNumber,
     this.virtualBankName,
+    this.virtualAccountName,
+    this.virtualAccountBalance = 0.0,
+    this.developerCompanyName,
   });
 
   String get fullName => '$firstName $lastName';
+  String get displayName => developerCompanyName != null && developerCompanyName!.isNotEmpty ? developerCompanyName! : fullName;
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     final profile = json['profile'] as Map<String, dynamic>?;
@@ -39,6 +46,16 @@ class UserModel {
         (developer != null && (developer['isVerified'] == true || developer['verificationStatus'] == 'VERIFIED')) ||
         json['isVerified'] == true;
 
+    final String? accName = firstAccount?['accountName'] ??
+        json['virtualAccountName'] ??
+        (developer != null && developer['companyName'] != null
+            ? 'Hometrust / ${developer['companyName']}'
+            : 'Hometrust / ${json['firstName'] ?? ''} ${json['lastName'] ?? ''}'.trim());
+
+    final double balance = (firstAccount?['balance'] as num?)?.toDouble() ??
+        (json['virtualAccountBalance'] as num?)?.toDouble() ??
+        0.0;
+
     return UserModel(
       id: json['id'] ?? '',
       email: json['email'] ?? '',
@@ -51,6 +68,9 @@ class UserModel {
       nin: profile?['nin'],
       virtualAccountNumber: firstAccount?['accountNumber'] ?? json['virtualAccountNumber'],
       virtualBankName: firstAccount?['bankName'] ?? json['virtualBankName'] ?? 'Providus Bank',
+      virtualAccountName: accName,
+      virtualAccountBalance: balance,
+      developerCompanyName: developer?['companyName'],
     );
   }
 
@@ -67,6 +87,9 @@ class UserModel {
       'nin': nin,
       'virtualAccountNumber': virtualAccountNumber,
       'virtualBankName': virtualBankName,
+      'virtualAccountName': virtualAccountName,
+      'virtualAccountBalance': virtualAccountBalance,
+      'developerCompanyName': developerCompanyName,
     };
   }
 }

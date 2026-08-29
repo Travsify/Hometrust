@@ -202,7 +202,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                               ),
                               SizedBox(height: 3),
                               Text(
-                                'Always make all payments exclusively through HomeVerify in-app escrow. NEVER pay directly to developers or agents. Payments made outside HomeVerify cannot be tracked, protected, or refunded.',
+                                'Always make all payments exclusively through Hometrust in-app escrow. NEVER pay directly to developers or agents. Payments made outside Hometrust cannot be tracked, protected, or refunded.',
                                 style: TextStyle(fontSize: 11, color: Color(0xFFB91C1C), height: 1.35, fontWeight: FontWeight.w600),
                               ),
                             ],
@@ -416,7 +416,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'HomeVerify coordinates document verification and structured payment plans. Legal rights and allocations are governed by the executed purchase contract.',
+                            'Hometrust coordinates document verification and structured payment plans. Legal rights and allocations are governed by the executed purchase contract.',
                             style: TextStyle(fontSize: 11, color: AppColors.amberText, height: 1.3),
                           ),
                         ),
@@ -646,7 +646,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             const SizedBox(height: 8),
             Text('Date: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
             const SizedBox(height: 8),
-            const Text('Team: HomeVerify Technical Officers & Developer Rep.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            const Text('Team: Hometrust Technical Officers & Developer Rep.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
             const SizedBox(height: 4),
             const Text('Hours: 10:00 AM – 4:00 PM', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],

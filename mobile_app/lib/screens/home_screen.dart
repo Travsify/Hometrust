@@ -31,6 +31,20 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentSpotlightIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final purchaseProvider = Provider.of<PurchaseProvider>(context, listen: false);
+      if (auth.isAuthenticated) {
+        purchaseProvider.fetchMyPurchases();
+      } else {
+        purchaseProvider.clear();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _spotlightController.dispose();
     super.dispose();
@@ -46,7 +60,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final userName = user?.firstName != null && user!.firstName.isNotEmpty ? user.firstName : null;
     final bool isVerified = user?.isVerified ?? false;
     final String? virtualAccountNumber = user?.virtualAccountNumber;
+    final String? virtualAccountName = user?.virtualAccountName;
     final String bankName = user?.virtualBankName ?? 'Providus Bank';
+    final double virtualAccountBalance = user?.virtualAccountBalance ?? 0.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -55,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         title: Row(
           children: [
-            // HomeVerify Official App Icon
+            // Hometrust Official App Icon
             Container(
               width: 32,
               height: 32,
@@ -143,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            userName != null ? 'Hi, $userName 👋' : 'Hi, Welcome to HomeVerify 👋',
+                            userName != null ? 'Hi, $userName 👋' : 'Hi, Welcome to Hometrust 👋',
                             style: const TextStyle(
                               fontSize: 19,
                               fontWeight: FontWeight.w900,
@@ -213,7 +229,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               // 2. ESCROW WALLET & DEDICATED BANK ACCOUNT CARD
-              _buildWalletAccountCard(context, isVerified, virtualAccountNumber, bankName),
+              _buildWalletAccountCard(context, isVerified, virtualAccountNumber, virtualAccountName, bankName, virtualAccountBalance),
               const SizedBox(height: 16),
 
               // 3. SLIDEABLE SPOTLIGHT FEATURED HERO BANNER CAROUSEL
@@ -373,8 +389,14 @@ class _HomeScreenState extends State<HomeScreen> {
     BuildContext context,
     bool isVerified,
     String? virtualAccountNumber,
+    String? virtualAccountName,
     String bankName,
+    double virtualAccountBalance,
   ) {
+    final effectiveAccName = virtualAccountName != null && virtualAccountName.isNotEmpty
+        ? virtualAccountName
+        : 'Hometrust Dedicated Account';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -396,6 +418,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -404,7 +427,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF38BDF8), size: 16),
                   SizedBox(width: 6),
                   Text(
-                    'ESCROW WALLET & NUBAN',
+                    'HOMETRUST DEDICATED NUBAN',
                     style: TextStyle(
                       color: Color(0xFF94A3B8),
                       fontSize: 10,
@@ -415,7 +438,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                 decoration: BoxDecoration(
                   color: isVerified
                       ? const Color(0xFF10B981).withValues(alpha: 0.2)
@@ -423,9 +446,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  isVerified ? 'CBN REGULATED' : 'KYC REQUIRED',
+                  isVerified ? 'FINCRA / CBN REGULATED' : 'KYC REQUIRED',
                   style: TextStyle(
-                    fontSize: 8,
+                    fontSize: 8.5,
                     fontWeight: FontWeight.w900,
                     color: isVerified ? const Color(0xFF34D399) : const Color(0xFFF87171),
                   ),
@@ -433,65 +456,170 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+
           if (isVerified && virtualAccountNumber != null) ...[
+            // 1. Account Number Row with 1-Tap Copy
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Dedicated Account Number', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+                    const Text('Dedicated Account Number', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Text(
-                          virtualAccountNumber,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () {
-                            Clipboard.setData(ClipboardData(text: virtualAccountNumber));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Dedicated Account Number copied to clipboard!'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Icon(Icons.copy_rounded, size: 14, color: Color(0xFF38BDF8)),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      virtualAccountNumber,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 1.5,
+                      ),
                     ),
-                    Text(bankName, style: const TextStyle(fontSize: 11, color: Color(0xFFCBD5E1), fontWeight: FontWeight.w600)),
                   ],
                 ),
-                ElevatedButton(
+                IconButton(
+                  icon: const Icon(Icons.copy_rounded, color: Color(0xFF34D399), size: 20),
+                  tooltip: 'Copy Account Number',
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: virtualAccountNumber));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Account number copied. Transfer from your bank app to fund your escrow wallet.')),
+                      const SnackBar(
+                        content: Text('Account Number copied to clipboard!'),
+                        duration: Duration(seconds: 2),
+                      ),
                     );
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // 2. Bank Name & Account Name with Individual Copy Buttons
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              ),
+              child: Column(
+                children: [
+                  // Bank Name
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.account_balance_rounded, color: Color(0xFF94A3B8), size: 13),
+                          const SizedBox(width: 6),
+                          Text('Bank: ', style: TextStyle(color: const Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.w600)),
+                          Text(bankName, style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: bankName));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Bank Name copied!'), duration: Duration(seconds: 1)),
+                          );
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Icon(Icons.copy_rounded, color: Color(0xFF38BDF8), size: 14),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text('Fund Wallet', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+                  const SizedBox(height: 6),
+                  // Account / Business Name
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const Icon(Icons.badge_rounded, color: Color(0xFF94A3B8), size: 13),
+                            const SizedBox(width: 6),
+                            Text('Name: ', style: TextStyle(color: const Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.w600)),
+                            Expanded(
+                              child: Text(
+                                effectiveAccName,
+                                style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: effectiveAccName));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Account Name copied!'), duration: Duration(seconds: 1)),
+                          );
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Icon(Icons.copy_rounded, color: Color(0xFF38BDF8), size: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // 3. Quick Action Buttons: Copy All Details & Fund Wallet
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      final fullDetails = 'Bank: $bankName\nAccount Number: $virtualAccountNumber\nAccount Name: $effectiveAccName';
+                      Clipboard.setData(ClipboardData(text: fullDetails));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Full bank account details copied to clipboard!'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_all_rounded, size: 14, color: Color(0xFF38BDF8)),
+                    label: const Text('Copy All Details', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF38BDF8))),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF38BDF8), width: 1),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      final fullDetails = 'Bank: $bankName\nAccount Number: $virtualAccountNumber\nAccount Name: $effectiveAccName';
+                      Clipboard.setData(ClipboardData(text: fullDetails));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Details copied! Open your bank app and transfer funds directly to this NUBAN.'),
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.add_card_rounded, size: 14, color: Colors.white),
+                    label: const Text('Fund Wallet', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900, color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -509,7 +637,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Complete quick KYC to activate your dedicated bank account.',
+                        'Complete quick Prembly KYC to activate your dedicated Fincra bank account.',
                         style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
                       ),
                     ],

@@ -1,5 +1,5 @@
 class ApiConstants {
-  // HomeVerify Production API
+  // Hometrust Production API
   static const String baseUrl = 'https://estateverify-app.onrender.com/api/v1';
 
   static const String authRegister = '/auth/register';

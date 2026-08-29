@@ -122,7 +122,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     ),
                     const SizedBox(height: 28),
                     const Text(
-                      'HomeVerify',
+                      'Hometrust',
                       style: TextStyle(
                         fontSize: 34,
                         fontWeight: FontWeight.w900,

@@ -5,6 +5,7 @@ import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
 import '../providers/auth_provider.dart';
+import '../providers/purchase_provider.dart';
 import 'login_screen.dart';
 import 'legal_request_screen.dart';
 import 'kyc_screen.dart';
@@ -193,7 +194,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('HOMEVERIFY DEDICATED ACCOUNT', style: TextStyle(color: Color(0xFF34D399), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                          const Text('HOMETRUST DEDICATED ACCOUNT', style: TextStyle(color: Color(0xFF34D399), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
@@ -232,7 +233,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            _virtualAccount!['accountName'] ?? 'HomeVerify / Valued Customer',
+                            _virtualAccount!['accountName'] ?? 'Hometrust / Valued Customer',
                             style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
                           ),
                           Text(
@@ -328,8 +329,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const Divider(height: 1, color: AppColors.cardBorder),
                   _buildMenuItem(
                     icon: Icons.headset_mic_outlined,
-                    title: 'Contact HomeVerify Support',
-                    subtitle: 'support@homeverify.ng',
+                    title: 'Contact Hometrust Support',
+                    subtitle: 'support@hometrust.ng',
                     onTap: () {},
                   ),
                   const Divider(height: 1, color: AppColors.cardBorder),
@@ -344,11 +345,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w800)),
                           content: const SingleChildScrollView(
                             child: Text(
-                              'HomeVerify collects your personal information (name, email, NIN, BVN) solely to provide property document verification, escrow payments, and dedicated virtual account services under Nigerian law (NDPR compliance).\n\n'
+                              'Hometrust collects your personal information (name, email, NIN, BVN) solely to provide property document verification, escrow payments, and dedicated virtual account services under Nigerian law (NDPR compliance).\n\n'
                               'We do not share your data with third parties without consent, except where required by law or to fulfil our Fincra (banking) and Prembly (KYC) service agreements.\n\n'
                               'Your documents are stored in an encrypted vault and are only accessible to our licensed legal verification team.\n\n'
-                              'For data requests or deletion: support@homeverify.ng\n\n'
-                              'Full policy: https://homeverify.ng/privacy',
+                              'For data requests or deletion: support@hometrust.ng\n\n'
+                              'Full policy: https://hometrust.ng/privacy',
                               style: TextStyle(fontSize: 12, height: 1.6),
                             ),
                           ),
@@ -372,7 +373,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () => auth.logout(),
+                  onPressed: () {
+                    Provider.of<PurchaseProvider>(context, listen: false).clear();
+                    auth.logout();
+                  },
                   icon: const Icon(Icons.logout, color: AppColors.roseText, size: 18),
                   label: const Text('Log Out', style: TextStyle(color: AppColors.roseText, fontWeight: FontWeight.w700)),
                   style: OutlinedButton.styleFrom(

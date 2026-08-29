@@ -188,7 +188,7 @@ class ProjectDetailScreen extends StatelessWidget {
                         ),
                         SizedBox(height: 3),
                         Text(
-                          'Always make all milestone payments exclusively through HomeVerify escrow. NEVER pay directly to developers. Payments made outside HomeVerify cannot be tracked, protected, or recovered.',
+                          'Always make all milestone payments exclusively through Hometrust escrow. NEVER pay directly to developers. Payments made outside Hometrust cannot be tracked, protected, or recovered.',
                           style: TextStyle(fontSize: 11, color: Color(0xFFB91C1C), height: 1.35, fontWeight: FontWeight.w600),
                         ),
                       ],

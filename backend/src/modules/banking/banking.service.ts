@@ -84,6 +84,20 @@ export class BankingService {
       });
     }
 
+    await AuditService.log({
+      adminId: user.id,
+      adminEmail: user.email,
+      action: 'BUYER_KYC_VERIFIED_VBA_GENERATED',
+      entityType: 'VIRTUAL_ACCOUNT',
+      entityId: account.id,
+      details: {
+        accountNumber: account.accountNumber,
+        bankName: account.bankName,
+        accountName: account.accountName,
+        kycStatus: kyc.status,
+      },
+    });
+
     return {
       kycStatus: kyc.status,
       virtualAccount: account,
@@ -163,6 +177,19 @@ export class BankingService {
         },
       });
     }
+
+    await AuditService.log({
+      adminEmail: developer.email,
+      action: 'DEVELOPER_KYB_VERIFIED_VBA_GENERATED',
+      entityType: 'VIRTUAL_ACCOUNT',
+      entityId: account.id,
+      details: {
+        companyName: data.companyName,
+        cacNumber: data.cacNumber,
+        accountNumber: account.accountNumber,
+        bankName: account.bankName,
+      },
+    });
 
     return {
       kybStatus: kyb.status,

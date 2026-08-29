@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
 import '../providers/auth_provider.dart';
+import '../providers/purchase_provider.dart';
 import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -70,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _isRegistering ? 'Create your Account' : 'Welcome to HomeVerify',
+                  _isRegistering ? 'Create your Account' : 'Welcome to Hometrust',
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 6),
@@ -357,10 +358,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                 role: _selectedRole,
                                 developerInfo: devInfo,
                               );
-                              if (success && mounted) Navigator.pop(context);
+                              if (success && mounted) {
+                                Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
+                                Navigator.pop(context);
+                              }
                             } else {
                               final success = await auth.login(_emailCtrl.text.trim(), _passwordCtrl.text);
-                              if (success && mounted) Navigator.pop(context);
+                              if (success && mounted) {
+                                Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
+                                Navigator.pop(context);
+                              }
                             }
                           },
                     style: ElevatedButton.styleFrom(
