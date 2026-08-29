@@ -17,9 +17,11 @@ import {
 interface SidebarProps {
   currentTab: string;
   setCurrentTab: (tab: string) => void;
+  currentUser?: any;
+  onLogout?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, currentUser, onLogout }) => {
   const navItems = [
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
     { id: 'verifications', label: 'Verification Queue', icon: ShieldCheck, badge: 'Active' },
@@ -81,17 +83,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab }) =
       <div className="p-4 border-t border-slate-800 bg-slate-950/40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-200">
-              AD
+            <div className="w-8 h-8 rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-xs font-bold">
+              {currentUser?.firstName?.[0] || 'A'}
             </div>
-            <div>
-              <p className="text-xs font-semibold text-white">Admin Director</p>
-              <p className="text-[11px] text-slate-400">admin@estateverify.ng</p>
+            <div className="overflow-hidden">
+              <p className="text-xs font-semibold text-white truncate">
+                {currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName}` : 'Admin Director'}
+              </p>
+              <p className="text-[11px] text-slate-400 truncate">
+                {currentUser?.email || 'admin@estateverify.ng'}
+              </p>
             </div>
           </div>
-          <button className="text-slate-400 hover:text-rose-400 p-1.5 transition-colors" title="Logout">
-            <LogOut className="w-4 h-4" />
-          </button>
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="text-slate-400 hover:text-rose-400 p-1.5 transition-colors"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </aside>

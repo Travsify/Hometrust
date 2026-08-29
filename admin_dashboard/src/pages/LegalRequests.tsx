@@ -29,7 +29,7 @@ export const LegalRequestsPage: React.FC = () => {
     try {
       await updateLegalRequest(selectedReq.id, {
         status,
-        finalDocumentUrl: draftUrl || selectedReq.finalDocumentUrl || 'http://localhost:5000/api/v1/storage/files/sample_deed_final.docx',
+        finalDocumentUrl: draftUrl || selectedReq.finalDocumentUrl || '/api/v1/storage/files/sample_deed_final.docx',
       });
       await fetchRequests();
       setSelectedReq(null);

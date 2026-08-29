@@ -103,7 +103,12 @@ export const App: React.FC = () => {
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-['Plus_Jakarta_Sans',sans-serif]">
       {showLoginModal && <LoginModal onSuccess={handleLoginSuccess} />}
 
-      <Sidebar currentTab={currentTab} setCurrentTab={setCurrentTab} />
+      <Sidebar
+        currentTab={currentTab}
+        setCurrentTab={setCurrentTab}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+      />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header
