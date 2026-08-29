@@ -175,6 +175,40 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     ),
                   ),
 
+                  // CRITICAL ESCROW SECURITY NOTICE
+                  Container(
+                    margin: const EdgeInsets.only(top: 14),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFCA5A5)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'CRITICAL ESCROW SECURITY NOTICE',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF991B1B)),
+                              ),
+                              SizedBox(height: 3),
+                              Text(
+                                'Always make all payments exclusively through HomeVerify in-app escrow. NEVER pay directly to developers or agents. Payments made outside HomeVerify cannot be tracked, protected, or refunded.',
+                                style: TextStyle(fontSize: 11, color: Color(0xFFB91C1C), height: 1.35, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   // Payment Plans Section (Pay-Small-Small)
                   if (prop.paymentPlans.isNotEmpty) ...[
                     const SizedBox(height: 24),
@@ -382,6 +416,45 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   }
 
   void _showInspectionDialog(BuildContext context) async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: const [
+              Icon(Icons.lock_outline_rounded, color: AppColors.primary),
+              SizedBox(width: 8),
+              Text('Sign In Required', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          content: const Text(
+            'Please sign in or create an account to book an on-site property inspection so we can verify your identity and generate your official inspection pass.',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Sign In / Register', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     DateTime selectedDate = DateTime.now().add(const Duration(days: 2));
 
     final picked = await showDatePicker(

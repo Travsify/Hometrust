@@ -64,20 +64,24 @@ class AuthProvider with ChangeNotifier {
     required String lastName,
     String? phone,
     String role = 'BUYER',
+    Map<String, dynamic>? developerInfo,
   }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final res = await ApiClient.post('/auth/register', {
+      final payload = {
         'email': email.trim(),
         'password': password,
         'firstName': firstName.trim(),
         'lastName': lastName.trim(),
         'phone': phone?.trim(),
         'role': role,
-      });
+        if (developerInfo != null) 'developerInfo': developerInfo,
+      };
+
+      final res = await ApiClient.post('/auth/register', payload);
 
       _token = res['token'];
       _user = UserModel.fromJson(res['user']);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
+import '../core/network/api_client.dart';
 
 class FloatingAiAssistant extends StatefulWidget {
   const FloatingAiAssistant({super.key});
@@ -9,6 +10,7 @@ class FloatingAiAssistant extends StatefulWidget {
 }
 
 class _FloatingAiAssistantState extends State<FloatingAiAssistant> with SingleTickerProviderStateMixin {
+  Offset? _position;
   late AnimationController _animCtrl;
   late Animation<double> _scaleAnim;
 
@@ -42,63 +44,82 @@ class _FloatingAiAssistantState extends State<FloatingAiAssistant> with SingleTi
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final screenWidth = mediaQuery.size.width;
+    final screenHeight = mediaQuery.size.height;
+
+    // Default position: bottom-right above navbar
+    _position ??= Offset(screenWidth - 70, screenHeight - 160);
+
     return Positioned(
-      bottom: 74,
-      right: 16,
-      child: AnimatedBuilder(
-        animation: _scaleAnim,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnim.value,
-            child: child,
-          );
+      left: _position!.dx,
+      top: _position!.dy,
+      child: GestureDetector(
+        onPanUpdate: (details) {
+          setState(() {
+            final newX = (_position!.dx + details.delta.dx).clamp(10.0, screenWidth - 62.0);
+            final newY = (_position!.dy + details.delta.dy).clamp(60.0, screenHeight - 130.0);
+            _position = Offset(newX, newY);
+          });
         },
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _openAiChat(context),
-            borderRadius: BorderRadius.circular(30),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0D5C3A), Color(0xFF0F172A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+        child: AnimatedBuilder(
+          animation: _scaleAnim,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _scaleAnim.value,
+              child: child,
+            );
+          },
+          child: Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            elevation: 8,
+            shadowColor: AppColors.primary.withValues(alpha: 0.5),
+            child: InkWell(
+              onTap: () => _openAiChat(context),
+              customBorder: const CircleBorder(),
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0D5C3A), Color(0xFF0F172A)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(color: AppColors.accentGoldLight, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.35),
+                      blurRadius: 12,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: AppColors.accentGoldLight, width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: AppColors.accentGold,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.auto_awesome, color: Colors.white, size: 14),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'AI Legal Assist',
-                    style: TextStyle(
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.auto_awesome,
                       color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                      letterSpacing: 0.3,
+                      size: 24,
                     ),
-                  ),
-                ],
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.accentGold,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -123,8 +144,7 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
   final List<Map<String, String>> _messages = [
     {
       'role': 'assistant',
-      'text':
-          'Hello! I am your HomeVerify AI Legal & Property Advisor. Ask me anything about Nigerian land titles (C-of-O, Gazette, Governor Consent), milestone escrow, or payment plans.',
+      'text': 'Hello! I am your HomeVerify AI Legal & Property Advisor powered by OpenRouter. Ask me anything about Nigerian land titles (C-of-O, Gazette, Governor Consent), beacon coordinates, milestone escrow, or live building costs.',
     },
   ];
 
@@ -132,7 +152,7 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
     'What documents are needed to verify land in Lagos?',
     'How does Milestone Escrow protect my money?',
     'What is the difference between C-of-O & Gazette?',
-    'How do I pay instalments via Fincra virtual account?',
+    'What are the current cement & rebar prices?',
   ];
 
   void _sendMessage(String text) async {
@@ -147,21 +167,31 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
 
     _scrollToBottom();
 
-    await Future.delayed(const Duration(milliseconds: 1000));
-
     String reply = '';
-    final lower = userMsg.toLowerCase();
 
-    if (lower.contains('lagos') || lower.contains('document') || lower.contains('verify') || lower.contains('c of o') || lower.contains('c-of-o')) {
-      reply = 'Essential Documents for Land in Lagos:\n\n1. Certificate of Occupancy (C of O) or Governor Consent - Confirms state-recognized title.\n2. Registered Survey Plan - Coordinates must be checked at Surveyor General Office (Alausa) to confirm NOT under government acquisition.\n3. Deed of Assignment - Traces legal ownership history.\n\nTip: You can submit your document on the Verify tab for our legal team and surveyor AI to run cadastral searches.';
-    } else if (lower.contains('escrow') || lower.contains('milestone') || lower.contains('protect')) {
-      reply = 'How Milestondscrow Works:\n\n- When you pay an instalment, funds are held in a secure escrow vault.\n- The developer does NOT receive funds upfront.\n- Certified structural engineers perform on-site audits (Foundation, DOC, Roofing, Finishing).\n- Developer payouts are unlocked only after milestone verification is approved.';
-    } else if (lower.contains('gazette') || lower.contains('difference')) {
-      reply = 'C-of-O vs. Government Gazette:\n\n- Excision/Gazette: Official publication confirming Lagos State Government has released excised land to a community.\n- C-of-O: Individual 99-year state title granted to a specific holder.\n\nWarning: Land with only Gazette requires processing a Governor Consent or C-of-O for absolute title perfection.';
-    } else if (lower.contains('fincra') || lower.contains('virtual account') || lower.contains('pay') || lower.contains('instalment') || lower.contains('bank')) {
-      reply = 'Dedicated Virtual Bank Accounts:\n\n- Complete KYC (NIN/BVN) to receive a dedicated Nigerian NUBAN bank account.\n- Transfer directly via your bank app (GTB, Access, Zenith, etc.).\n- Zero debit card spending limits, instant receipt generation, and automatic milestone ledger reconciliation!';
-    } else {
-      reply = 'HomeVerify AI Advisory:\n\nRegarding: \"' + userMsg + '\"\n\nNigerian property transactions require strict due diligence before parting with funds. Ensure title perfection at the Lands Bureau, confirm beacon coordinates, and only pay through milestone-locked escrow.\n\nould you like our legal team to verify a specific property document for you?';
+    try {
+      final res = await ApiClient.post('/ai/chat', {
+        'message': userMsg,
+        'history': _messages.map((m) => {'role': m['role'], 'content': m['text']}).toList(),
+      });
+
+      if (res['success'] == true && res['reply'] != null) {
+        reply = res['reply'] as String;
+      }
+    } catch (_) {
+      // Offline / immediate heuristic fallback
+      final lower = userMsg.toLowerCase();
+      if (lower.contains('lagos') || lower.contains('document') || lower.contains('verify') || lower.contains('c of o') || lower.contains('c-of-o')) {
+        reply = 'Key Title Documents Required for Lagos Land:\n\n1. Certificate of Occupancy (C-of-O) or Governor\'s Consent: Confirms state-recognized ownership title.\n2. Registered Survey Plan: Coordinates must be checked at the Surveyor General\'s Office (Alausa) to confirm land is NOT under government acquisition.\n3. Deed of Assignment: Establishes complete legal history.\n\nTip: You can submit your survey plan or C-of-O on the Verify tab for our legal team and surveyor AI to verify.';
+      } else if (lower.contains('escrow') || lower.contains('milestone') || lower.contains('protect')) {
+        reply = 'How HomeVerify Milestone Escrow Works:\n\n- Your funds are held securely in an escrow trust vault.\n- The developer does NOT receive money upfront.\n- Independent certified structural engineers audit each stage on-site.\n- Developer payouts are released only after milestone approval.';
+      } else if (lower.contains('gazette') || lower.contains('difference') || lower.contains('excision')) {
+        reply = 'C-of-O vs. Government Gazette:\n\n- Gazette / Excision: Official government publication confirming ancestral land has been released to the community.\n- C-of-O: Individual 99-year state grant.\n\nNotice: Land with only Gazette requires processing a Governor\'s Consent or C-of-O for absolute title perfection.';
+      } else if (lower.contains('cost') || lower.contains('cement') || lower.contains('price') || lower.contains('rebar') || lower.contains('build')) {
+        reply = 'Current Construction Benchmark:\n\n- 50kg Cement (Dangote/BUA): ₦8,400 - ₦8,700\n- 12mm TMT High-Yield Rebar: ~₦1,180,000 / ton\n- 30-Ton Clean Black Granite: ~₦285,000\n- 9-inch Solid Sandcrete Blocks: ₦780 - ₦850/unit\n\nCheck the Material Index feature on the home screen for live depot rates.';
+      } else {
+        reply = 'HomeVerify AI Advisory:\n\nRegarding: "$userMsg"\n\nIn Nigerian real estate transactions, strict title perfection and milestone controls are essential before committing funds. Always verify beacon coordinates at the state land bureau, confirm approved layout plans, and ensure all payments are locked in milestone escrow.\n\nWould you like our legal team to draft or review your contract of sale or survey plan?';
+      }
     }
 
     if (mounted) {
@@ -223,11 +253,11 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
                       Text(
-                        'HomeVerify AI Legal Assistant',
+                        'HomeVerify AI Legal Advisor',
                         style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.textPrimary),
                       ),
                       Text(
-                        'Real-time Nigerian property & due diligence guidance',
+                        'Powered by OpenRouter • Nigerian Land Law & Escrow Expert',
                         style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                       ),
                     ],

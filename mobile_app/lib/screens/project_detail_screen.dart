@@ -1,12 +1,97 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
 import '../core/utils/currency_formatter.dart';
+import '../core/network/api_client.dart';
 import '../models/project_model.dart';
+import '../providers/auth_provider.dart';
+import 'login_screen.dart';
 
 class ProjectDetailScreen extends StatelessWidget {
   final ProjectModel project;
 
   const ProjectDetailScreen({super.key, required this.project});
+
+  void _bookProjectInspection(BuildContext context) async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: const [
+              Icon(Icons.lock_outline_rounded, color: AppColors.primary),
+              SizedBox(width: 8),
+              Text('Sign In Required', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          content: const Text(
+            'Please sign in or create an account to book an on-site project inspection so our engineering team can issue your verified entry badge.',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Sign In / Register', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 2)),
+      firstDate: DateTime.now().add(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 60)),
+      helpText: 'Select Project Site Visit Date',
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (selectedDate == null || !context.mounted) return;
+
+    try {
+      await ApiClient.post('/inspections', {
+        'projectId': project.id,
+        'scheduledDate': selectedDate.toIso8601String(),
+      });
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Site inspection requested! Our engineering rep will contact you to confirm.'),
+            backgroundColor: AppColors.emeraldText,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not submit inspection: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: AppColors.roseText,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +104,26 @@ class ProjectDetailScreen extends StatelessWidget {
         title: Text(
           project.name,
           style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 16),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: AppColors.cardBorder)),
+          ),
+          child: ElevatedButton.icon(
+            onPressed: () => _bookProjectInspection(context),
+            icon: const Icon(Icons.calendar_month_rounded, size: 18),
+            label: const Text('Book On-Site Construction Visit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -39,30 +144,72 @@ class ProjectDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+
+            // Title & Location
             Text(
               project.name,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 4),
-            Text(
-              '${project.address}, ${project.area}, ${project.city}',
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            Row(
+              children: [
+                const Icon(Icons.location_on_outlined, size: 16, color: AppColors.primary),
+                const SizedBox(width: 4),
+                Text(
+                  '${project.area}, ${project.city}, ${project.state}',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
 
-            // Milestone Timeline Section
+            // CRITICAL ESCROW SECURITY NOTICE
+            Container(
+              margin: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFCA5A5)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'CRITICAL ESCROW SECURITY NOTICE',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF991B1B)),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'Always make all milestone payments exclusively through HomeVerify escrow. NEVER pay directly to developers. Payments made outside HomeVerify cannot be tracked, protected, or recovered.',
+                          style: TextStyle(fontSize: 11, color: Color(0xFFB91C1C), height: 1.35, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Escrow Milestone Progress
             const Text(
-              'Construction Milestone Progress',
+              'Escrow Construction Milestones',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 12),
             ...project.milestones.map((m) {
               return Container(
-                margin: const EdgeInsets.only(bottom: 10),
+                margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.cardBorder),
                 ),
                 child: Column(
@@ -72,10 +219,24 @@ class ProjectDetailScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(m.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                        Text('${m.percentage}%', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.emeraldText, fontSize: 12)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: m.status == 'COMPLETED' ? AppColors.emeraldBg : AppColors.background,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            m.status,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: m.status == 'COMPLETED' ? AppColors.emeraldText : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     LinearProgressIndicator(
                       value: m.percentage / 100,
                       backgroundColor: AppColors.background,
@@ -89,7 +250,7 @@ class ProjectDetailScreen extends StatelessWidget {
                   ],
                 ),
               );
-            }).toList(),
+            }),
 
             const SizedBox(height: 20),
             // Units Section
@@ -125,7 +286,7 @@ class ProjectDetailScreen extends StatelessWidget {
                   ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),

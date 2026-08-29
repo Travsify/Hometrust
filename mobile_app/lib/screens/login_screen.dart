@@ -19,8 +19,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _lastNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
 
+  // Developer specific controllers
+  final _companyNameCtrl = TextEditingController();
+  final _cacCtrl = TextEditingController();
+  final _officeAddressCtrl = TextEditingController();
+
   bool _isRegistering = false;
   bool _obscurePassword = true;
+  String _selectedRole = 'BUYER'; // 'BUYER' or 'DEVELOPER'
 
   @override
   void dispose() {
@@ -29,6 +35,9 @@ class _LoginScreenState extends State<LoginScreen> {
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
     _phoneCtrl.dispose();
+    _companyNameCtrl.dispose();
+    _cacCtrl.dispose();
+    _officeAddressCtrl.dispose();
     super.dispose();
   }
 
@@ -54,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.shield_rounded, color: AppColors.primary, size: 32),
@@ -65,11 +74,106 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Verify documents, track off-plan milestones & pay in instalments.',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                Text(
+                  _isRegistering
+                      ? 'Select whether you are buying/verifying properties or a corporate developer.'
+                      : 'Verify documents, track off-plan milestones & pay in instalments.',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
+
+                // ROLE SELECTOR (ONLY WHEN REGISTERING)
+                if (_isRegistering) ...[
+                  const Text(
+                    'I am registering as:',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedRole = 'BUYER'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: _selectedRole == 'BUYER' ? AppColors.primary.withValues(alpha: 0.08) : AppColors.background,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _selectedRole == 'BUYER' ? AppColors.primary : AppColors.cardBorder,
+                                width: _selectedRole == 'BUYER' ? 2 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.person_rounded,
+                                  color: _selectedRole == 'BUYER' ? AppColors.primary : AppColors.textSecondary,
+                                  size: 22,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Buyer / Investor',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12,
+                                    color: _selectedRole == 'BUYER' ? AppColors.primary : AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'Buy & verify land',
+                                  style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedRole = 'DEVELOPER'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: _selectedRole == 'DEVELOPER' ? const Color(0xFFD97706).withValues(alpha: 0.08) : AppColors.background,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _selectedRole == 'DEVELOPER' ? const Color(0xFFD97706) : AppColors.cardBorder,
+                                width: _selectedRole == 'DEVELOPER' ? 2 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.business_rounded,
+                                  color: _selectedRole == 'DEVELOPER' ? const Color(0xFFD97706) : AppColors.textSecondary,
+                                  size: 22,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Developer / Co.',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12,
+                                    color: _selectedRole == 'DEVELOPER' ? const Color(0xFFD97706) : AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'List off-plan builds',
+                                  style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                ],
 
                 if (auth.errorMessage != null)
                   Container(
@@ -78,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.roseBg,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.roseText.withOpacity(0.3)),
+                      border: Border.all(color: AppColors.roseText.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -92,6 +196,45 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
 
                 if (_isRegistering) ...[
+                  // CORPORATE DEVELOPER FIELDS
+                  if (_selectedRole == 'DEVELOPER') ...[
+                    TextFormField(
+                      controller: _companyNameCtrl,
+                      textCapitalization: TextCapitalization.words,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Company Name is required' : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Company / Business Name',
+                        hintText: 'e.g. Haven Homes Nigeria Ltd',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.apartment_rounded),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _cacCtrl,
+                      textCapitalization: TextCapitalization.characters,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'CAC RC Number is required' : null,
+                      decoration: const InputDecoration(
+                        labelText: 'CAC Registration / RC Number',
+                        hintText: 'e.g. RC-1849204',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.verified_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _officeAddressCtrl,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Office Address (Optional)',
+                        hintText: 'e.g. 14 Admiralty Way, Lekki Phase 1',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.location_city_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
                   Row(
                     children: [
                       Expanded(
@@ -99,10 +242,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: _firstNameCtrl,
                           textCapitalization: TextCapitalization.words,
                           validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-                          decoration: const InputDecoration(
-                            labelText: 'First Name',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.person_outline),
+                          decoration: InputDecoration(
+                            labelText: _selectedRole == 'DEVELOPER' ? 'Rep. First Name' : 'First Name',
+                            border: const OutlineInputBorder(),
+                            prefixIcon: const Icon(Icons.person_outline),
                           ),
                         ),
                       ),
@@ -112,9 +255,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: _lastNameCtrl,
                           textCapitalization: TextCapitalization.words,
                           validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-                          decoration: const InputDecoration(
-                            labelText: 'Last Name',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: _selectedRole == 'DEVELOPER' ? 'Rep. Last Name' : 'Last Name',
+                            border: const OutlineInputBorder(),
                           ),
                         ),
                       ),
@@ -148,10 +291,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (!emailRegex.hasMatch(v.trim())) return 'Enter a valid email address';
                     return null;
                   },
-                  decoration: const InputDecoration(
-                    labelText: 'Email Address',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.mail_outline),
+                  decoration: InputDecoration(
+                    labelText: _selectedRole == 'DEVELOPER' ? 'Official Business Email' : 'Email Address',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.mail_outline),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -197,12 +340,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         : () async {
                             if (!_formKey.currentState!.validate()) return;
                             if (_isRegistering) {
+                              final devInfo = _selectedRole == 'DEVELOPER'
+                                  ? {
+                                      'companyName': _companyNameCtrl.text.trim(),
+                                      'cacNumber': _cacCtrl.text.trim(),
+                                      'officeAddress': _officeAddressCtrl.text.trim(),
+                                    }
+                                  : null;
+
                               final success = await auth.register(
                                 email: _emailCtrl.text.trim(),
                                 password: _passwordCtrl.text,
                                 firstName: _firstNameCtrl.text.trim(),
                                 lastName: _lastNameCtrl.text.trim(),
                                 phone: _phoneCtrl.text.trim(),
+                                role: _selectedRole,
+                                developerInfo: devInfo,
                               );
                               if (success && mounted) Navigator.pop(context);
                             } else {
@@ -251,4 +404,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

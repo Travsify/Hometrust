@@ -8,6 +8,9 @@ import '../providers/purchase_provider.dart';
 import 'property_detail_screen.dart';
 import 'project_detail_screen.dart';
 import 'verify_screen.dart';
+import 'legal_request_screen.dart';
+import 'land_radar_screen.dart';
+import 'material_index_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -169,7 +172,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // MODERN 2x2 QUICK ACTION GRID
+                    // MODERN 2x3 QUICK ACTION SERVICE & VALUE GRID
                     GridView.count(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -209,7 +212,24 @@ class HomeScreen extends StatelessWidget {
                           },
                         ),
 
-                        // Grid Item 3: Off-Plan Projects
+                        // Grid Item 3: Document Preparation Service (MIDDLE)
+                        _buildActionGridCard(
+                          context: context,
+                          title: 'Document Prep',
+                          subtitle: 'Deed & Contract Drafting',
+                          badge: 'LEGAL DRAFT',
+                          icon: Icons.history_edu_rounded,
+                          accentColor: const Color(0xFF34D399),
+                          badgeBg: const Color(0xFF059669).withValues(alpha: 0.25),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const LegalRequestScreen()),
+                            );
+                          },
+                        ),
+
+                        // Grid Item 4: Off-Plan Projects
                         _buildActionGridCard(
                           context: context,
                           title: 'Off-Plan Projects',
@@ -223,17 +243,37 @@ class HomeScreen extends StatelessWidget {
                           },
                         ),
 
-                        // Grid Item 4: Pay Small-Small
+                        // Grid Item 5: Free Land Risk Radar (FREE VALUE 1)
                         _buildActionGridCard(
                           context: context,
-                          title: 'Pay Small-Small',
-                          subtitle: 'Dedicated NUBAN bank',
-                          badge: 'DVA BANKING',
-                          icon: Icons.account_balance_wallet_rounded,
-                          accentColor: const Color(0xFF34D399),
-                          badgeBg: const Color(0xFF059669).withValues(alpha: 0.25),
+                          title: 'Free Land Radar',
+                          subtitle: 'Scan GPS & Beacon coords',
+                          badge: 'FREE RADAR',
+                          icon: Icons.radar_rounded,
+                          accentColor: const Color(0xFFA78BFA),
+                          badgeBg: const Color(0xFF7C3AED).withValues(alpha: 0.25),
                           onTap: () {
-                            propProvider.setFilters(listingType: 'PAY_SMALL_SMALL');
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const LandRadarScreen()),
+                            );
+                          },
+                        ),
+
+                        // Grid Item 6: Material Price Index (FREE VALUE 2)
+                        _buildActionGridCard(
+                          context: context,
+                          title: 'Material Index',
+                          subtitle: 'Cement & Rebar Rates',
+                          badge: 'LIVE PRICES',
+                          icon: Icons.trending_up_rounded,
+                          accentColor: const Color(0xFFFB923C),
+                          badgeBg: const Color(0xFFEA580C).withValues(alpha: 0.25),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const MaterialIndexScreen()),
+                            );
                           },
                         ),
                       ],
@@ -340,55 +380,95 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(
-                height: 105,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: propProvider.developers.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        scrollDirection: Axis.horizontal,
-                        itemCount: propProvider.developers.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 12),
-                        itemBuilder: (context, index) {
-                          final dev = propProvider.developers[index];
-                          return Container(
-                            width: 180,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.cardBorder),
+                    ? Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.business_outlined, color: AppColors.primary, size: 20),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.verified, color: AppColors.emeraldText, size: 14),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        dev.companyName,
-                                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: AppColors.textPrimary),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: const [
+                                  Text(
+                                    'No Developers Listed At This Time',
+                                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textPrimary),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'CAC & EFCC vetted developers will automatically appear here once onboarded.',
+                                    style: TextStyle(fontSize: 10, color: AppColors.textSecondary, height: 1.3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : SizedBox(
+                        height: 105,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          scrollDirection: Axis.horizontal,
+                          itemCount: propProvider.developers.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          itemBuilder: (context, index) {
+                            final dev = propProvider.developers[index];
+                            return Container(
+                              width: 180,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.cardBorder),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.verified, color: AppColors.emeraldText, size: 14),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          dev.companyName,
+                                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: AppColors.textPrimary),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                Text(
-                                  'RC: ${dev.cacNumber}',
-                                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontFamily: 'monospace'),
-                                ),
-                                Text(
-                                  '${dev.completedProjectsCount} Delivered Projects',
-                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                                    ],
+                                  ),
+                                  Text(
+                                    'RC: ${dev.cacNumber}',
+                                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontFamily: 'monospace'),
+                                  ),
+                                  Text(
+                                    '${dev.completedProjectsCount} Delivered Projects',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
               ),
 
@@ -411,92 +491,126 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(
-                height: 230,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: propProvider.projects.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        scrollDirection: Axis.horizontal,
-                        itemCount: propProvider.projects.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 14),
-                        itemBuilder: (context, index) {
-                          final proj = propProvider.projects[index];
-                          return InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ProjectDetailScreen(project: proj),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              width: 250,
+                    ? Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: AppColors.cardBorder),
+                                color: const Color(0xFFFBBF24).withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
                               ),
-                              clipBehavior: Clip.antiAlias,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Stack(
-                                    children: [
-                                      Image.network(
-                                        proj.firstImage,
-                                        height: 120,
-                                        width: 250,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(height: 120, color: Colors.grey.shade300),
-                                      ),
-                                      Positioned(
-                                        top: 8,
-                                        left: 8,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(0.7),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            'Completion: ${proj.expectedCompletion}',
-                                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                              child: const Icon(Icons.apartment_rounded, color: Color(0xFFD97706), size: 28),
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'No Off-Plan Developments Available Yet',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.textPrimary),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Milestone escrow-locked development projects will be visible here once published.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3),
+                            ),
+                          ],
+                        ),
+                      )
+                    : SizedBox(
+                        height: 230,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: propProvider.projects.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 14),
+                          itemBuilder: (context, index) {
+                            final proj = propProvider.projects[index];
+                            return InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ProjectDetailScreen(project: proj),
                                   ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(12),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                );
+                              },
+                              child: Container(
+                                width: 250,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppColors.cardBorder),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Stack(
                                       children: [
-                                        Text(
-                                          proj.name,
-                                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.textPrimary),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                        Image.network(
+                                          proj.firstImage,
+                                          height: 120,
+                                          width: 250,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(height: 120, color: Colors.grey.shade300),
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${proj.area}, ${proj.city}',
-                                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          '${proj.units.length} Unit Types Available',
-                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
+                                        Positioned(
+                                          top: 8,
+                                          left: 8,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withValues(alpha: 0.7),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              'Completion: ${proj.expectedCompletion}',
+                                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                                            ),
+                                          ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                ],
+                                    Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            proj.name,
+                                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.textPrimary),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '${proj.area}, ${proj.city}',
+                                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            '${proj.units.length} Unit Types Available',
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
               ),
 
@@ -519,136 +633,162 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: propProvider.paySmallSmallProperties.take(4).length,
-                separatorBuilder: (_, __) => const SizedBox(height: 14),
-                itemBuilder: (context, index) {
-                  final prop = propProvider.paySmallSmallProperties[index];
-                  final plan = prop.paymentPlans.isNotEmpty ? prop.paymentPlans[0] : null;
-
-                  return InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PropertyDetailScreen(property: prop),
+              if (propProvider.paySmallSmallProperties.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF34D399).withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF059669), size: 28),
                         ),
-                      );
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.cardBorder),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Stack(
-                            children: [
-                              Image.network(
-                                prop.firstImage,
-                                height: 160,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(height: 160, color: Colors.grey.shade300),
-                              ),
-                              Positioned(
-                                top: 10,
-                                left: 10,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    prop.landTitle.replaceAll('_', ' '),
-                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
-                                  ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'No Pay Small-Small Properties Available Yet',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Properties with flexible monthly instalment schedules will appear here once listed.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: propProvider.paySmallSmallProperties.take(4).length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 14),
+                  itemBuilder: (context, index) {
+                    final prop = propProvider.paySmallSmallProperties[index];
+                    final plan = prop.paymentPlans.isNotEmpty ? prop.paymentPlans[0] : null;
+
+                    return InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PropertyDetailScreen(property: prop),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Stack(
+                              children: [
+                                Image.network(
+                                  prop.firstImage,
+                                  height: 160,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(height: 160, color: Colors.grey.shade300),
                                 ),
-                              ),
-                              if (prop.developer?.isVerified == true)
                                 Positioned(
                                   top: 10,
-                                  right: 10,
+                                  left: 10,
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
                                       color: AppColors.emeraldBg,
                                       borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: AppColors.emeraldText.withOpacity(0.4)),
+                                      border: Border.all(color: AppColors.emeraldBorder),
                                     ),
-                                    child: const Row(
+                                    child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.verified, size: 12, color: AppColors.emeraldText),
-                                        SizedBox(width: 4),
+                                        const Icon(Icons.verified, size: 12, color: AppColors.emeraldText),
+                                        const SizedBox(width: 4),
                                         Text(
-                                          'Verified Developer',
-                                          style: TextStyle(color: AppColors.emeraldText, fontSize: 10, fontWeight: FontWeight.w800),
+                                          prop.verificationStatus == 'VERIFIED' ? 'C-of-O Verified' : prop.landTitle.replaceAll('_', ' '),
+                                          style: const TextStyle(
+                                            color: AppColors.emeraldText,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 10,
+                                          ),
                                         ),
                                       ],
                                     ),
                                   ),
                                 ),
-                            ],
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  prop.title,
-                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textPrimary),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${prop.area}, ${prop.city}, ${prop.state}',
-                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                ),
-                                const SizedBox(height: 12),
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.background,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text('TOTAL PRICE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
-                                          Text(CurrencyFormatter.format(prop.price), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                                        ],
-                                      ),
-                                      if (plan != null)
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
-                                          children: [
-                                            const Text('PAY MONTHLY FROM', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.emeraldText)),
-                                            Text('${CurrencyFormatter.format(plan.monthlyPayment)}/mo', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.emeraldText)),
-                                          ],
-                                        ),
-                                    ],
-                                  ),
-                                ),
                               ],
                             ),
-                          ),
-                        ],
+                            Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    prop.title,
+                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textPrimary),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${prop.area}, ${prop.city}, ${prop.state}',
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.background,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text('TOTAL PRICE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                                            Text(CurrencyFormatter.format(prop.price), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                                          ],
+                                        ),
+                                        if (plan != null)
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            children: [
+                                              const Text('PAY MONTHLY FROM', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.emeraldText)),
+                                              Text('${CurrencyFormatter.format(plan.monthlyPayment)}/mo', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.emeraldText)),
+                                            ],
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
             ],
           ),
         ),
@@ -670,15 +810,25 @@ class HomeScreen extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(16),
       elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.15),
+      shadowColor: accentColor.withValues(alpha: 0.18),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
+        splashColor: accentColor.withValues(alpha: 0.12),
+        highlightColor: accentColor.withValues(alpha: 0.06),
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.cardBorder),
+            border: Border.all(color: accentColor.withValues(alpha: 0.22), width: 1.2),
+            gradient: LinearGradient(
+              colors: [
+                accentColor.withValues(alpha: 0.06),
+                Colors.white,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -690,16 +840,18 @@ class HomeScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: accentColor.withValues(alpha: 0.15),
+                      color: accentColor.withValues(alpha: 0.14),
                       shape: BoxShape.circle,
+                      border: Border.all(color: accentColor.withValues(alpha: 0.25), width: 1),
                     ),
                     child: Icon(icon, size: 20, color: accentColor),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                     decoration: BoxDecoration(
                       color: badgeBg,
                       borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: accentColor.withValues(alpha: 0.2), width: 0.8),
                     ),
                     child: Text(
                       badge,
