@@ -86,7 +86,7 @@ export const App: React.FC = () => {
       case 'materials':
         return { title: 'National Building Material Price Index', subtitle: 'Live audited construction market prices across 36 Nigerian States + FCT' };
       case 'legal':
-        return { title: 'Legal Drafting Console', subtitle: 'EstateVerify internal legal team drafting & document delivery' };
+        return { title: 'Legal Drafting Console', subtitle: 'Hometrust internal legal team drafting & document delivery' };
       case 'inspections':
         return { title: 'Physical Site Inspections', subtitle: 'Buyer & developer viewing schedule management' };
       case 'users':
@@ -96,7 +96,7 @@ export const App: React.FC = () => {
       case 'settings':
         return { title: 'Platform Fee & System Settings', subtitle: 'Configurable transaction service charges' };
       default:
-        return { title: 'HomeVerify Admin Console', subtitle: 'Management Dashboard' };
+        return { title: 'Hometrust Admin Console', subtitle: 'Management Dashboard' };
     }
   };
 

@@ -102,12 +102,21 @@ async function run() {
         isActive: true,
       },
       {
-        name: 'Prembly / IdentityPass CAC Registry Key',
+        name: 'Prembly / IdentityPass Live Verification Key',
         service: 'PREMBLY',
         keyType: 'SECRET',
         keyValue: 'live_sk_2a238fff60994964b3f8d9a5a6178d23',
         environment: 'LIVE',
         description: 'Automated CAC RC corporate registry and Director NIN verification',
+        isActive: true,
+      },
+      {
+        name: 'Fincra Dedicated Virtual Banking Key',
+        service: 'FINCRA',
+        keyType: 'SECRET',
+        keyValue: 'gel847St1V9DvVk40Ec6Vfm869Yw63Ue',
+        environment: 'LIVE',
+        description: 'Instant NUBAN virtual accounts and developer commercial payouts (Business ID: 693c5533957c9000120117a6)',
         isActive: true,
       },
     ],
@@ -123,7 +132,7 @@ async function run() {
       update: {},
       create: {
         developerId: dev.id,
-        accountName: `EstateVerify / ${dev.companyName}`,
+        accountName: `Hometrust / ${dev.companyName}`,
         accountNumber: `08${dev.cacNumber.replace(/[^0-9]/g, '').slice(0, 8)}`,
         bankName: 'Providus Bank',
         accountType: 'CORPORATE',
@@ -139,9 +148,9 @@ async function run() {
     await prisma.virtualAccount.create({
       data: {
         userId: buyer.id,
-        accountName: `EstateVerify / ${buyer.firstName} ${buyer.lastName}`,
+        accountName: `Hometrust / ${buyer.firstName} ${buyer.lastName}`,
         accountNumber: num,
-        bankName: 'Wema Bank',
+        bankName: 'Providus Bank',
         accountType: 'INDIVIDUAL',
         currency: 'NGN',
         status: 'ACTIVE',

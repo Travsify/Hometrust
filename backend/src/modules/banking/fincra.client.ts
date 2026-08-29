@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { config } from '../../config';
+import { ApiKeysService } from '../admin/api_keys.service';
 
 export interface FincraVirtualAccountResponse {
   status: boolean;
@@ -38,9 +38,17 @@ export interface FincraPayoutResponse {
 }
 
 export class FincraClient {
-  private static baseUrl = 'https://api.fincra.com';
-  private static secretKey = process.env.FINCRA_SECRET_KEY || 'gel847St1V9DvVk40Ec6Vfm869Yw63Ue';
-  private static businessId = process.env.FINCRA_BUSINESS_ID || '693c5533957c9000120117a6';
+  private static defaultBaseUrl = 'https://api.fincra.com';
+  private static defaultSecretKey = 'gel847St1V9DvVk40Ec6Vfm869Yw63Ue';
+  private static defaultBusinessId = '693c5533957c9000120117a6';
+
+  private static async getCredentials() {
+    const dbKey = await ApiKeysService.getActiveKey('FINCRA').catch(() => null);
+    const secretKey = dbKey || process.env.FINCRA_SECRET_KEY || this.defaultSecretKey;
+    const businessId = process.env.FINCRA_BUSINESS_ID || this.defaultBusinessId;
+    const baseUrl = this.defaultBaseUrl;
+    return { secretKey, businessId, baseUrl };
+  }
 
   /**
    * Generates an individual dedicated virtual account for a verified buyer
@@ -54,11 +62,12 @@ export class FincraClient {
     nin?: string;
     reference: string;
   }): Promise<FincraVirtualAccountResponse> {
+    const { secretKey, businessId, baseUrl } = await this.getCredentials();
     try {
-      const response = await fetch(`${this.baseUrl}/profile/virtual-accounts/requests`, {
+      const response = await fetch(`${baseUrl}/profile/virtual-accounts/requests`, {
         method: 'POST',
         headers: {
-          'api-key': this.secretKey,
+          'api-key': secretKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -72,7 +81,7 @@ export class FincraClient {
             bvn: params.bvn || '22145678901',
           },
           channel: 'vba',
-          businessId: this.businessId,
+          businessId: businessId,
         }),
       });
 
@@ -111,11 +120,12 @@ export class FincraClient {
     phone: string;
     reference: string;
   }): Promise<FincraVirtualAccountResponse> {
+    const { secretKey, businessId, baseUrl } = await this.getCredentials();
     try {
-      const response = await fetch(`${this.baseUrl}/profile/virtual-accounts/requests`, {
+      const response = await fetch(`${baseUrl}/profile/virtual-accounts/requests`, {
         method: 'POST',
         headers: {
-          'api-key': this.secretKey,
+          'api-key': secretKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -128,7 +138,7 @@ export class FincraClient {
             mobileNumber: params.phone,
           },
           channel: 'vba',
-          businessId: this.businessId,
+          businessId: businessId,
         }),
       });
 
@@ -160,11 +170,12 @@ export class FincraClient {
    * Name Enquiry (Verifies destination bank account details before initiating withdrawal)
    */
   static async resolveAccount(bankCode: string, accountNumber: string): Promise<FincraNameEnquiryResponse> {
+    const { secretKey, baseUrl } = await this.getCredentials();
     try {
-      const response = await fetch(`${this.baseUrl}/core/accounts/resolve`, {
+      const response = await fetch(`${baseUrl}/core/accounts/resolve`, {
         method: 'POST',
         headers: {
-          'api-key': this.secretKey,
+          'api-key': secretKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -207,19 +218,20 @@ export class FincraClient {
     reference: string;
     narration?: string;
   }): Promise<FincraPayoutResponse> {
+    const { secretKey, businessId, baseUrl } = await this.getCredentials();
     try {
-      const response = await fetch(`${this.baseUrl}/disbursements/payouts`, {
+      const response = await fetch(`${baseUrl}/disbursements/payouts`, {
         method: 'POST',
         headers: {
-          'api-key': this.secretKey,
+          'api-key': secretKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          business: this.businessId,
+          business: businessId,
           sourceCurrency: 'NGN',
           destinationCurrency: 'NGN',
           amount: params.amount,
-          description: params.narration || 'EstateVerify Developer Withdrawal',
+          description: params.narration || 'Hometrust Developer Withdrawal',
           customerReference: params.reference,
           beneficiary: {
             firstName: params.accountName,
@@ -256,9 +268,10 @@ export class FincraClient {
   /**
    * Validates incoming Fincra webhook signature
    */
-  static verifyWebhookSignature(signature: string, payload: string): boolean {
+  static verifyWebhookSignature(signature: string, payload: string, secretKey?: string): boolean {
     if (!signature) return false;
-    const hash = crypto.createHmac('sha512', this.secretKey).update(payload).digest('hex');
+    const key = secretKey || process.env.FINCRA_SECRET_KEY || this.defaultSecretKey;
+    const hash = crypto.createHmac('sha512', key).update(payload).digest('hex');
     return hash === signature;
   }
 }

@@ -8,6 +8,7 @@ const router = Router();
 router.use(requireAuth, requireRoles('SUPER_ADMIN', 'ADMIN', 'FINANCE_MANAGER', 'LEGAL_MANAGER', 'VERIFICATION_MANAGER'));
 
 router.get('/metrics', AdminController.getMetrics);
+router.get('/payments', AdminController.getPayments);
 router.get('/users', AdminController.getUsers);
 router.patch('/users/:id/status', requireRoles('SUPER_ADMIN', 'ADMIN'), AdminController.updateUserStatus);
 router.patch('/users/:id/role', requireRoles('SUPER_ADMIN'), AdminController.updateUserRole);

@@ -42,7 +42,7 @@ export const LegalRequestsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
         <div>
-          <h3 className="font-bold text-white text-base">EstateVerify Legal & Verification Team Queue</h3>
+          <h3 className="font-bold text-white text-base">Hometrust Legal & Verification Team Queue</h3>
           <p className="text-xs text-slate-400 mt-0.5">Professional document preparation: Deeds of Assignment, Contracts of Sale, Tenancy & Leases</p>
         </div>
       </div>

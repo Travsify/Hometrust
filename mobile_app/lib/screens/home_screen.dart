@@ -77,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(width: 10),
             const Text(
-              'HomeVerify',
+              'Hometrust',
               style: TextStyle(
                 color: Color(0xFF0F172A),
                 fontWeight: FontWeight.w900,

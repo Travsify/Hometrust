@@ -67,7 +67,7 @@ export const BankingPage: React.FC = () => {
       Email: a.accountType === 'CORPORATE' ? a.developer?.email : a.user?.email,
       CreatedAt: new Date(a.createdAt).toLocaleDateString(),
     }));
-    exportToCsv('EstateVerify_Dedicated_Virtual_Accounts', formatted);
+    exportToCsv('Hometrust_Dedicated_Virtual_Accounts', formatted);
   };
 
   const handleExportWithdrawals = () => {
@@ -83,7 +83,7 @@ export const BankingPage: React.FC = () => {
       DeveloperCompany: w.developer?.companyName || 'N/A',
       Date: new Date(w.createdAt).toLocaleDateString(),
     }));
-    exportToCsv('EstateVerify_Developer_Withdrawals', formatted);
+    exportToCsv('Hometrust_Developer_Withdrawals', formatted);
   };
 
   const handleExportKyc = () => {
@@ -98,7 +98,7 @@ export const BankingPage: React.FC = () => {
       VerifiedAt: k.verifiedAt ? new Date(k.verifiedAt).toLocaleString() : 'N/A',
       Provider: 'Prembly / Identitypass',
     }));
-    exportToCsv('EstateVerify_Prembly_KYC_Verifications', formatted);
+    exportToCsv('Hometrust_Prembly_KYC_Verifications', formatted);
   };
 
   return (

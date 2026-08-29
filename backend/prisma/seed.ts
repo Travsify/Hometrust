@@ -96,12 +96,21 @@ async function main() {
         isActive: true,
       },
       {
-        name: 'Prembly / IdentityPass CAC Registry Key',
+        name: 'Prembly / IdentityPass Live Verification Key',
         service: 'PREMBLY',
         keyType: 'SECRET',
-        keyValue: 'sec_live_prembly_identitypass_cac_registry',
+        keyValue: process.env.PREMBLY_API_KEY || 'live_sk_2a238fff60994964b3f8d9a5a6178d23',
         environment: 'LIVE',
-        description: 'Automated CAC RC corporate registry and Director NIN verification',
+        description: 'Automated CAC RC corporate registry, Director NIN, and BVN identity verification',
+        isActive: true,
+      },
+      {
+        name: 'Fincra Dedicated Virtual Banking Key',
+        service: 'FINCRA',
+        keyType: 'SECRET',
+        keyValue: process.env.FINCRA_SECRET_KEY || 'gel847St1V9DvVk40Ec6Vfm869Yw63Ue',
+        environment: 'LIVE',
+        description: 'Instant NUBAN virtual accounts and developer commercial payouts (Business ID: 693c5533957c9000120117a6)',
         isActive: true,
       },
     ],
@@ -114,7 +123,7 @@ async function main() {
   // Super Admin
   const admin = await prisma.user.create({
     data: {
-      email: 'admin@estateverify.ng',
+      email: 'admin@hometrust.ng',
       passwordHash,
       firstName: 'Admin',
       lastName: 'Director',
@@ -128,7 +137,7 @@ async function main() {
   // Legal Manager
   const legalMgr = await prisma.user.create({
     data: {
-      email: 'legal@estateverify.ng',
+      email: 'legal@hometrust.ng',
       passwordHash,
       firstName: 'Barrister Folake',
       lastName: 'Adeleke',
@@ -142,7 +151,7 @@ async function main() {
   // Verification Manager
   const verifMgr = await prisma.user.create({
     data: {
-      email: 'verification@estateverify.ng',
+      email: 'verification@hometrust.ng',
       passwordHash,
       firstName: 'Emeka',
       lastName: 'Okonkwo',

@@ -1,4 +1,4 @@
-import { config } from '../../config';
+import { ApiKeysService } from '../admin/api_keys.service';
 
 export interface PremblyVerificationResponse {
   status: boolean;
@@ -24,21 +24,30 @@ export interface PremblyVerificationResponse {
 }
 
 export class PremblyClient {
-  private static baseUrl = process.env.PREMBLY_BASE_URL || 'https://api.prembly.com/identitypass/verification';
-  private static apiKey = process.env.PREMBLY_API_KEY || 'sec_live_prembly_hometrust_key_99482';
-  private static appId = process.env.PREMBLY_APP_ID || 'app_hometrust_identity_2026';
+  private static defaultBaseUrl = 'https://api.prembly.com/identitypass/verification';
+  private static defaultApiKey = 'live_sk_2a238fff60994964b3f8d9a5a6178d23';
+  private static defaultAppId = 'app_hometrust_identity_2026';
+
+  private static async getCredentials() {
+    const dbKey = await ApiKeysService.getActiveKey('PREMBLY').catch(() => null);
+    const apiKey = dbKey || process.env.PREMBLY_API_KEY || this.defaultApiKey;
+    const appId = process.env.PREMBLY_APP_ID || this.defaultAppId;
+    const baseUrl = process.env.PREMBLY_BASE_URL || this.defaultBaseUrl;
+    return { apiKey, appId, baseUrl };
+  }
 
   /**
    * Verify National Identity Number (NIN) against NIMC via Prembly IdentityPass
    */
   static async verifyNIN(nin: string, firstName?: string, lastName?: string): Promise<PremblyVerificationResponse> {
+    const { apiKey, appId, baseUrl } = await this.getCredentials();
     try {
-      const response = await fetch(`${this.baseUrl}/nin`, {
+      const response = await fetch(`${baseUrl}/nin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': this.apiKey,
-          'app-id': this.appId,
+          'x-api-key': apiKey,
+          'app-id': appId,
         },
         body: JSON.stringify({
           number_nin: nin,
@@ -87,13 +96,14 @@ export class PremblyClient {
    * Verify Bank Verification Number (BVN) against NIBSS via Prembly IdentityPass
    */
   static async verifyBVN(bvn: string): Promise<PremblyVerificationResponse> {
+    const { apiKey, appId, baseUrl } = await this.getCredentials();
     try {
-      const response = await fetch(`${this.baseUrl}/bvn`, {
+      const response = await fetch(`${baseUrl}/bvn`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': this.apiKey,
-          'app-id': this.appId,
+          'x-api-key': apiKey,
+          'app-id': appId,
         },
         body: JSON.stringify({ number: bvn }),
       });
@@ -127,13 +137,14 @@ export class PremblyClient {
    * Verify Corporate CAC Registration against CAC Registry via Prembly IdentityPass
    */
   static async verifyCAC(cacNumber: string, companyName: string): Promise<PremblyVerificationResponse> {
+    const { apiKey, appId, baseUrl } = await this.getCredentials();
     try {
-      const response = await fetch(`${this.baseUrl}/cac`, {
+      const response = await fetch(`${baseUrl}/cac`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': this.apiKey,
-          'app-id': this.appId,
+          'x-api-key': apiKey,
+          'app-id': appId,
         },
         body: JSON.stringify({
           rc_number: cacNumber,

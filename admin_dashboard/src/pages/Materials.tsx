@@ -75,7 +75,7 @@ export const MaterialsPage: React.FC = () => {
       WeeklyChange: m.weeklyChange,
       Region: selectedState,
     }));
-    exportToCsv(`EstateVerify_Material_Index_${selectedState}`, formatted);
+    exportToCsv(`Hometrust_Material_Index_${selectedState}`, formatted);
   };
 
   return (

@@ -30,7 +30,7 @@ export const ProjectsPage: React.FC = () => {
       await updateMilestone(milestoneId, {
         percentage,
         status,
-        verifiedBy: 'EstateVerify Technical Inspection Team',
+        verifiedBy: 'Hometrust Technical Inspection Team',
       });
       await fetchProjects();
       if (selectedProject) {

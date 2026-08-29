@@ -220,4 +220,51 @@ export class AdminService {
 
     return fee;
   }
+
+  static async getPaymentsLedger(filters?: { search?: string; purpose?: string; status?: string }) {
+    const where: any = {};
+    if (filters?.purpose) where.purpose = filters.purpose;
+    if (filters?.status) where.status = filters.status;
+    if (filters?.search) {
+      where.OR = [
+        { paymentReference: { contains: filters.search } },
+        { paystackReference: { contains: filters.search } },
+        { receiptNumber: { contains: filters.search } },
+        { user: { firstName: { contains: filters.search } } },
+        { user: { lastName: { contains: filters.search } } },
+        { user: { email: { contains: filters.search } } },
+      ];
+    }
+
+    const payments = await prisma.payment.findMany({
+      where,
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+        developer: { select: { id: true, companyName: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    return payments.map((p) => ({
+      id: p.id,
+      paymentReference: p.paymentReference,
+      customerName: `${p.user?.firstName || 'Buyer'} ${p.user?.lastName || ''}`.trim(),
+      customerEmail: p.user?.email || 'N/A',
+      developerName: p.developer?.companyName || null,
+      purpose: p.purpose,
+      amount: p.amount,
+      platformFee: p.platformFee,
+      processingFee: p.processingFee,
+      totalAmount: p.totalAmount,
+      status: p.status,
+      currency: p.currency,
+      paystackReference: p.paystackReference || 'N/A',
+      paystackChannel: p.paystackChannel || 'bank_transfer',
+      paidAt: p.paidAt ? p.paidAt.toISOString() : p.createdAt.toISOString(),
+      receiptNumber: p.receiptNumber || `RCP-${p.id.slice(0, 8).toUpperCase()}`,
+      receiptUrl: p.receiptUrl,
+      createdAt: p.createdAt,
+    }));
+  }
 }

@@ -170,4 +170,18 @@ export class AdminController {
       sendError(res, error.message, 400);
     }
   }
+
+  static async getPayments(req: Request, res: Response): Promise<void> {
+    try {
+      const filters = {
+        search: req.query.search as string,
+        purpose: req.query.purpose as string,
+        status: req.query.status as string,
+      };
+      const payments = await AdminService.getPaymentsLedger(filters);
+      sendSuccess(res, payments, 'Payment transactions retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }

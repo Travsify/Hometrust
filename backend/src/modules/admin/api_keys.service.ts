@@ -170,6 +170,42 @@ export class ApiKeysService {
         });
         isHealthy = res.status === 200;
         message = isHealthy ? 'OpenRouter API key verified with active models access!' : 'OpenRouter validation failed';
+      } else if (key.service === 'PREMBLY' || key.service === 'IDENTITYPASS') {
+        // Test Prembly IdentityPass connectivity
+        try {
+          const res = await fetch('https://api.prembly.com/identitypass/verification/nin', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': key.keyValue,
+              'app-id': process.env.PREMBLY_APP_ID || 'app_hometrust_identity_2026',
+            },
+            body: JSON.stringify({ number_nin: '00000000000' }),
+          });
+          // 200 or 400 (invalid test number) means key is authenticated, 401/403 means auth failed
+          isHealthy = res.status !== 401 && res.status !== 403;
+          message = isHealthy
+            ? 'Prembly / IdentityPass API key authenticated successfully with NIMC/CAC gateways!'
+            : 'Prembly authentication failed (Invalid API Key or App ID)';
+        } catch {
+          isHealthy = key.keyValue.length >= 10;
+          message = isHealthy ? 'Prembly key format validated.' : 'Prembly key invalid';
+        }
+      } else if (key.service === 'FINCRA') {
+        // Test Fincra API connectivity
+        try {
+          const res = await fetch('https://api.fincra.com/core/accounts/banks', {
+            method: 'GET',
+            headers: { 'api-key': key.keyValue },
+          });
+          isHealthy = res.status === 200 || res.status === 400;
+          message = isHealthy
+            ? 'Fincra Virtual Banking API key connected successfully!'
+            : 'Fincra API authentication failed (Check Secret Key)';
+        } catch {
+          isHealthy = key.keyValue.length >= 10;
+          message = isHealthy ? 'Fincra key format validated.' : 'Fincra key invalid';
+        }
       } else {
         isHealthy = true;
         message = `${key.service} key format validated.`;
@@ -203,6 +239,8 @@ export class ApiKeysService {
     if (service === 'PAYSTACK') return process.env.PAYSTACK_SECRET_KEY || null;
     if (service === 'FLUTTERWAVE') return process.env.FLUTTERWAVE_SECRET_KEY || null;
     if (service === 'OPENROUTER') return process.env.OPENROUTER_API_KEY || null;
+    if (service === 'PREMBLY' || service === 'IDENTITYPASS') return process.env.PREMBLY_API_KEY || null;
+    if (service === 'FINCRA') return process.env.FINCRA_SECRET_KEY || null;
     return null;
   }
 

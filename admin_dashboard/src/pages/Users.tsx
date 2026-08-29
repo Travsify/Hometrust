@@ -62,7 +62,7 @@ export const UsersPage: React.FC = () => {
       DeveloperCompany: u.developer?.companyName || 'N/A',
       CreatedAt: new Date(u.createdAt).toLocaleDateString(),
     }));
-    exportToCsv('EstateVerify_Users_Registry', formatted);
+    exportToCsv('Hometrust_Users_Registry', formatted);
   };
 
   const roles = [

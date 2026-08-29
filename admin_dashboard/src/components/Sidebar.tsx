@@ -43,10 +43,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, cur
       {/* Brand Header */}
       <div className="p-6 border-b border-slate-800 flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-emerald-900/30">
-          HV
+          HT
         </div>
         <div>
-          <h1 className="font-bold text-white tracking-tight text-lg">HomeVerify</h1>
+          <h1 className="font-bold text-white tracking-tight text-lg">Hometrust</h1>
           <p className="text-xs text-emerald-400 font-medium tracking-wide">ADMIN CONSOLE</p>
         </div>
       </div>
@@ -92,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, cur
                 {currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName}` : 'Admin Director'}
               </p>
               <p className="text-[11px] text-slate-400 truncate">
-                {currentUser?.email || 'admin@estateverify.ng'}
+                {currentUser?.email || 'admin@hometrust.ng'}
               </p>
             </div>
           </div>

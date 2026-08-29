@@ -12,58 +12,11 @@ export const PaymentsPage: React.FC = () => {
     const fetchPayments = async () => {
       setLoading(true);
       try {
-        const response = await api.get('/admin/metrics');
-        // If specific payments endpoint exists or mock recent payments
-        const samplePayments = [
-          {
-            id: '1',
-            paymentReference: 'EV-PAY-INIT-001',
-            customerName: 'John Doe',
-            customerEmail: 'john.doe@example.com',
-            purpose: 'INITIAL_DEPOSIT',
-            amount: 4000000,
-            platformFee: 5000,
-            totalAmount: 4007000,
-            status: 'SUCCESS',
-            paystackReference: 'pstk_ref_init_001',
-            paystackChannel: 'card',
-            paidAt: '2026-08-28T14:20:00Z',
-            receiptNumber: 'RCP-2026-00192',
-          },
-          {
-            id: '2',
-            paymentReference: 'EV-PAY-INST-002',
-            customerName: 'John Doe',
-            customerEmail: 'john.doe@example.com',
-            purpose: 'INSTALMENT',
-            amount: 1200000,
-            platformFee: 5000,
-            totalAmount: 1207000,
-            status: 'SUCCESS',
-            paystackReference: 'pstk_ref_inst_002',
-            paystackChannel: 'bank_transfer',
-            paidAt: '2026-08-25T11:15:00Z',
-            receiptNumber: 'RCP-2026-00381',
-          },
-          {
-            id: '3',
-            paymentReference: 'EV-PAY-VERIF-003',
-            customerName: 'Chioma Nwosu',
-            customerEmail: 'chioma.nwosu@example.com',
-            purpose: 'VERIFICATION_FEE',
-            amount: 25000,
-            platformFee: 0,
-            totalAmount: 25475,
-            status: 'SUCCESS',
-            paystackReference: 'pstk_ref_ver_003',
-            paystackChannel: 'card',
-            paidAt: '2026-08-29T09:00:00Z',
-            receiptNumber: 'RCP-2026-00499',
-          },
-        ];
-        setPayments(samplePayments);
+        const response = await api.get('/admin/payments');
+        setPayments(response.data.data || []);
       } catch (err) {
-        console.error(err);
+        console.error('Failed to load payments ledger:', err);
+        setPayments([]);
       } finally {
         setLoading(false);
       }
@@ -74,9 +27,9 @@ export const PaymentsPage: React.FC = () => {
   const filtered = payments.filter(
     (p) =>
       !searchTerm ||
-      p.paymentReference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.paystackReference.toLowerCase().includes(searchTerm.toLowerCase())
+      p.paymentReference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.paystackReference?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -131,7 +84,7 @@ export const PaymentsPage: React.FC = () => {
                 PaidAt: p.paidAt,
                 ReceiptNumber: p.receiptNumber,
               }));
-              exportToCsv('EstateVerify_Payment_Reconciliation_Ledger', formatted);
+              exportToCsv('Hometrust_Payment_Reconciliation_Ledger', formatted);
             }}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-semibold transition-colors shrink-0"
           >
