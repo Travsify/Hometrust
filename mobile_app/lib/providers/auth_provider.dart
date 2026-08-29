@@ -8,12 +8,19 @@ class AuthProvider with ChangeNotifier {
   String? _token;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isDeveloperMode = true;
 
   UserModel? get user => _user;
   String? get token => _token;
   bool get isAuthenticated => _token != null;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get isDeveloperMode => _isDeveloperMode && _user?.role == 'DEVELOPER';
+
+  void toggleDeveloperMode() {
+    _isDeveloperMode = !_isDeveloperMode;
+    notifyListeners();
+  }
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();

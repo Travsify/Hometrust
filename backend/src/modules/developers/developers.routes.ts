@@ -4,7 +4,19 @@ import { authenticate, requireRoles } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
+// Public / Directory endpoints
 router.get('/', DevelopersController.getAll);
+
+// Authenticated Developer Portal Endpoints
+router.get('/my-stats', authenticate as any, DevelopersController.getMyStats as any);
+router.get('/my-projects', authenticate as any, DevelopersController.getMyProjects as any);
+router.post('/my-projects', authenticate as any, DevelopersController.createProject as any);
+router.post('/my-projects/:projectId/units', authenticate as any, DevelopersController.addUnit as any);
+router.get('/my-subscribers', authenticate as any, DevelopersController.getMySubscribers as any);
+router.post('/request-milestone-inspection', authenticate as any, DevelopersController.requestMilestoneInspection as any);
+router.post('/request-payout', authenticate as any, DevelopersController.requestPayout as any);
+
+// Specific developer detail & Admin verification
 router.get('/:id', DevelopersController.getById);
 router.patch('/:id/verify', authenticate as any, requireRoles('ADMIN', 'SUPER_ADMIN', 'VERIFICATION_MANAGER') as any, DevelopersController.verify as any);
 

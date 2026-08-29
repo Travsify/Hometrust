@@ -47,4 +47,95 @@ export class DevelopersController {
       sendError(res, error.message, 400);
     }
   }
+
+  static async getMyStats(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const stats = await DevelopersService.getMyStats(req.user.id);
+      sendSuccess(res, stats, 'Developer cockpit statistics retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async getMyProjects(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const projects = await DevelopersService.getMyProjects(req.user.id);
+      sendSuccess(res, projects, 'Developer projects retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async createProject(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const project = await DevelopersService.createProject(req.user.id, req.body);
+      sendSuccess(res, project, 'Project created successfully', 201);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async addUnit(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const unit = await DevelopersService.addUnitToProject(req.user.id, req.params.projectId as string, req.body);
+      sendSuccess(res, unit, 'Project unit added successfully', 201);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async getMySubscribers(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const subscribers = await DevelopersService.getMySubscribers(req.user.id);
+      sendSuccess(res, subscribers, 'Developer subscribers retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async requestMilestoneInspection(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const inspection = await DevelopersService.requestMilestoneInspection(req.user.id, req.body);
+      sendSuccess(res, inspection, 'Milestone inspection requested successfully', 201);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async requestPayout(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const payout = await DevelopersService.requestPayout(req.user.id, req.body);
+      sendSuccess(res, payout, 'Bank payout initiated successfully', 201);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }
