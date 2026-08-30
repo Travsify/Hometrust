@@ -21,11 +21,11 @@ router.get('/platform-fees', AdminController.getPlatformFees);
 router.post('/platform-fees', requireRoles('SUPER_ADMIN', 'FINANCE_MANAGER'), AdminController.createPlatformFee);
 router.patch('/platform-fees/:id', requireRoles('SUPER_ADMIN', 'FINANCE_MANAGER'), AdminController.updatePlatformFee);
 
-// API Keys Management
+// API Keys Management (Full CRUD for Admin & Super Admin)
 router.get('/api-keys', requireRoles('SUPER_ADMIN', 'ADMIN'), AdminController.getApiKeys);
-router.post('/api-keys', requireRoles('SUPER_ADMIN'), AdminController.addApiKey);
-router.patch('/api-keys/:id', requireRoles('SUPER_ADMIN'), AdminController.updateApiKey);
-router.delete('/api-keys/:id', requireRoles('SUPER_ADMIN'), AdminController.deleteApiKey);
+router.post('/api-keys', requireRoles('SUPER_ADMIN', 'ADMIN'), AdminController.addApiKey);
+router.patch('/api-keys/:id', requireRoles('SUPER_ADMIN', 'ADMIN'), AdminController.updateApiKey);
+router.delete('/api-keys/:id', requireRoles('SUPER_ADMIN', 'ADMIN'), AdminController.deleteApiKey);
 router.post('/api-keys/:id/test', requireRoles('SUPER_ADMIN', 'ADMIN'), AdminController.testApiKey);
 
 // Construction Milestones & Escrow Governance
