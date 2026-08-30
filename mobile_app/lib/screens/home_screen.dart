@@ -572,9 +572,31 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFC9A227).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFC9A227).withValues(alpha: 0.4), width: 0.8),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.shield_outlined, size: 14, color: Color(0xFFFDE047)),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Anti-Fraud Rule: Only transfers originating from an account in your registered name will be captured. 3rd-party transfers are automatically reversed.',
+                      style: TextStyle(fontSize: 9.5, color: Color(0xFFFEF08A), fontWeight: FontWeight.w600, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 12),
 
-            // 3. Quick Action Buttons: Copy All Details & Fund Wallet
+            // Action Buttons
             Row(
               children: [
                 Expanded(
@@ -584,15 +606,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       Clipboard.setData(ClipboardData(text: fullDetails));
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Full bank account details copied to clipboard!'),
-                          duration: Duration(seconds: 2),
+                          content: Text('Account details copied to clipboard! Remember: Transfer must originate from your own bank account.'),
+                          backgroundColor: AppColors.primary,
                         ),
                       );
                     },
-                    icon: const Icon(Icons.copy_all_rounded, size: 14, color: Color(0xFF38BDF8)),
-                    label: const Text('Copy All Details', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF38BDF8))),
+                    icon: const Icon(Icons.copy_all_rounded, size: 14, color: Color(0xFFC9A227)),
+                    label: const Text('Copy Details', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFFC9A227))),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF38BDF8), width: 1),
+                      side: const BorderSide(color: Color(0xFFC9A227), width: 1),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
@@ -604,10 +626,66 @@ class _HomeScreenState extends State<HomeScreen> {
                     onPressed: () {
                       final fullDetails = 'Bank: $bankName\nAccount Number: $virtualAccountNumber\nAccount Name: $effectiveAccName';
                       Clipboard.setData(ClipboardData(text: fullDetails));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Details copied! Open your bank app and transfer funds directly to this NUBAN.'),
-                          duration: Duration(seconds: 3),
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Row(
+                            children: [
+                              Icon(Icons.shield_rounded, color: AppColors.primary, size: 20),
+                              SizedBox(width: 8),
+                              Text('Fund Escrow Account', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                            ],
+                          ),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF3C7),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFFF59E0B), width: 0.8),
+                                ),
+                                child: const Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFB45309)),
+                                    SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'Important: Transfer ONLY from your personal bank account. Payments from third parties will be reversed automatically for anti-fraud compliance.',
+                                        style: TextStyle(fontSize: 11, color: Color(0xFF92400E), fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text('Bank: $bankName', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                              const SizedBox(height: 4),
+                              Text('Account Number: $virtualAccountNumber', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.primary)),
+                              const SizedBox(height: 4),
+                              Text('Account Name: $effectiveAccName', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Close', style: TextStyle(color: AppColors.textSecondary)),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: virtualAccountNumber));
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Account number copied!'), backgroundColor: AppColors.primary),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                              child: const Text('Copy NUBAN', style: TextStyle(color: Colors.white)),
+                            ),
+                          ],
                         ),
                       );
                     },

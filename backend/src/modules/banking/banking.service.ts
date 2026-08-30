@@ -578,20 +578,73 @@ export class BankingService {
       },
     });
 
-    // Dispatch via Flutterwave Transfer
-    const payoutRes = await FlutterwaveClient.transfer({
-      accountNumber: params.accountNumber,
-      bankCode: params.bankCode,
-      amount: netAmount,
-      reference: ref,
-      narration: `Hometrust Escrow Settlement ${ref}`,
-    });
+    // Determine origin provider: Check bankName / fincraAccountId
+    const isPaystackAccount =
+      account.bankName?.toLowerCase().includes('wema') ||
+      account.bankName?.toLowerCase().includes('titan') ||
+      (account.fincraAccountId && /^\d+$/.test(account.fincraAccountId));
+
+    let payoutRes: { status: boolean; message: string; data?: any };
+    let usedProvider = 'FLUTTERWAVE';
+
+    if (isPaystackAccount) {
+      console.log(`[WITHDRAWAL] Routing payout via Paystack for user ${account.accountName} (Origin Bank: ${account.bankName})...`);
+      usedProvider = 'PAYSTACK';
+      payoutRes = await PaystackClient.transfer({
+        accountName: params.accountName,
+        accountNumber: params.accountNumber,
+        bankCode: params.bankCode,
+        amount: netAmount,
+        reference: ref,
+        narration: `Hometrust Escrow Settlement ${ref}`,
+      });
+
+      // If Paystack transfer failed, fallback to Flutterwave
+      if (!payoutRes.status) {
+        console.warn(`[WITHDRAWAL] Paystack transfer notice (${payoutRes.message}). Falling back to Flutterwave payout...`);
+        payoutRes = await FlutterwaveClient.transfer({
+          accountNumber: params.accountNumber,
+          bankCode: params.bankCode,
+          amount: netAmount,
+          reference: ref,
+          narration: `Hometrust Escrow Settlement ${ref}`,
+        });
+        if (payoutRes.status) usedProvider = 'FLUTTERWAVE';
+      }
+    } else {
+      console.log(`[WITHDRAWAL] Routing payout via Flutterwave for user ${account.accountName} (Origin Bank: ${account.bankName})...`);
+      usedProvider = 'FLUTTERWAVE';
+      payoutRes = await FlutterwaveClient.transfer({
+        accountNumber: params.accountNumber,
+        bankCode: params.bankCode,
+        amount: netAmount,
+        reference: ref,
+        narration: `Hometrust Escrow Settlement ${ref}`,
+      });
+
+      // If Flutterwave transfer failed, fallback to Paystack
+      if (!payoutRes.status) {
+        console.warn(`[WITHDRAWAL] Flutterwave transfer notice (${payoutRes.message}). Falling back to Paystack payout...`);
+        payoutRes = await PaystackClient.transfer({
+          accountName: params.accountName,
+          accountNumber: params.accountNumber,
+          bankCode: params.bankCode,
+          amount: netAmount,
+          reference: ref,
+          narration: `Hometrust Escrow Settlement ${ref}`,
+        });
+        if (payoutRes.status) usedProvider = 'PAYSTACK';
+      }
+    }
+
+    const withdrawalStatus = payoutRes.status ? 'SUCCESS' : 'PROCESSING';
+    const externalRef = String(payoutRes.data?.reference || payoutRes.data?.id || payoutRes.data?.transfer_code || ref);
 
     await prisma.withdrawal.update({
       where: { id: withdrawal.id },
       data: {
-        status: payoutRes.status ? 'SUCCESS' : 'FAILED',
-        fincraPayoutId: String(payoutRes.data?.reference || payoutRes.data?.id),
+        status: withdrawalStatus,
+        fincraPayoutId: `${usedProvider}:${externalRef}`,
       },
     });
 

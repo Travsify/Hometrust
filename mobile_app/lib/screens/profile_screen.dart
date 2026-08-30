@@ -124,10 +124,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
             const Text(
-              'Transfer directly from any Nigerian banking app or USSD to your dedicated Providus Bank account number. Funds are automatically captured and credited within seconds.',
+              'Transfer directly from any Nigerian banking app or USSD to your dedicated account number. Funds are automatically captured and credited within seconds.',
               style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.5),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFF59E0B), width: 0.8),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFB45309)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Anti-Fraud Compliance: Only transfers originating from your own personal bank account (matching your name) are accepted. 3rd-party transfers are reversed automatically.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF92400E), fontWeight: FontWeight.w600, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
 
             // Bank Details Card
             Container(

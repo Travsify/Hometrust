@@ -295,4 +295,110 @@ export class PaystackClient {
 
     throw new Error(lastError || 'Failed to generate a dedicated virtual bank account via Paystack DVA.');
   }
+
+  /**
+   * Create a Transfer Recipient on Paystack
+   */
+  static async createTransferRecipient(params: {
+    name: string;
+    accountNumber: string;
+    bankCode: string;
+  }): Promise<{ status: boolean; message: string; recipientCode?: string }> {
+    const secretKey = await this.getSecretKey();
+
+    const response = await fetch(`${config.paystack.baseUrl}/transferrecipient`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'nuban',
+        name: params.name,
+        account_number: params.accountNumber,
+        bank_code: params.bankCode,
+        currency: 'NGN',
+      }),
+    });
+
+    const data: any = await response.json();
+    console.log(`[PAYSTACK TRANSFER RECIPIENT] Status: ${data?.status}, Code: ${data?.data?.recipient_code}`);
+    return {
+      status: data?.status || false,
+      message: data?.message || 'Transfer recipient call completed',
+      recipientCode: data?.data?.recipient_code,
+    };
+  }
+
+  /**
+   * Initiate a Transfer/Payout via Paystack
+   */
+  static async initiateTransfer(params: {
+    recipientCode: string;
+    amountInKobo: number;
+    reference: string;
+    reason?: string;
+  }): Promise<{ status: boolean; message: string; data?: any }> {
+    const secretKey = await this.getSecretKey();
+
+    const response = await fetch(`${config.paystack.baseUrl}/transfer`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        source: 'balance',
+        amount: params.amountInKobo,
+        recipient: params.recipientCode,
+        reference: params.reference,
+        reason: params.reason || `Hometrust Escrow Payout ${params.reference}`,
+      }),
+    });
+
+    const data: any = await response.json();
+    console.log(`[PAYSTACK TRANSFER INITIATED] Reference: ${params.reference}, Status: ${data?.status}`);
+    return {
+      status: data?.status || false,
+      message: data?.message || 'Transfer initiated',
+      data: data?.data,
+    };
+  }
+
+  /**
+   * High-level transfer method for Paystack payouts
+   */
+  static async transfer(params: {
+    accountName: string;
+    accountNumber: string;
+    bankCode: string;
+    amount: number; // in Naira
+    reference: string;
+    narration?: string;
+  }): Promise<{ status: boolean; message: string; data?: any }> {
+    try {
+      // 1. Create recipient
+      const recip = await this.createTransferRecipient({
+        name: params.accountName,
+        accountNumber: params.accountNumber,
+        bankCode: params.bankCode,
+      });
+
+      if (!recip.status || !recip.recipientCode) {
+        return { status: false, message: recip.message || 'Failed to create transfer recipient on Paystack' };
+      }
+
+      // 2. Initiate transfer
+      const amountInKobo = Math.round(params.amount * 100);
+      return await this.initiateTransfer({
+        recipientCode: recip.recipientCode,
+        amountInKobo,
+        reference: params.reference,
+        reason: params.narration,
+      });
+    } catch (e: any) {
+      console.error('[PAYSTACK TRANSFER ERROR]', e.message);
+      return { status: false, message: e.message };
+    }
+  }
 }
