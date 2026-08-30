@@ -101,7 +101,7 @@ export class ReelsController {
         return;
       }
 
-      const { id } = req.params;
+      const id = req.params.id as string;
       const result = await ReelsService.toggleLike(id, req.user.id);
       sendSuccess(res, result, result.isLiked ? 'Liked post' : 'Unliked post');
     } catch (error: any) {
@@ -119,7 +119,7 @@ export class ReelsController {
         return;
       }
 
-      const { id } = req.params;
+      const id = req.params.id as string;
       const result = await ReelsService.toggleFollow(id, req.user.id);
       sendSuccess(res, result, result.isFollowing ? 'Followed developer' : 'Unfollowed developer');
     } catch (error: any) {
@@ -132,7 +132,7 @@ export class ReelsController {
    */
   static async getDeveloperPortfolio(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const posts = await ReelsService.getDeveloperPortfolio(id, req.user?.id);
       sendSuccess(res, posts, 'Developer portfolio retrieved successfully');
     } catch (error: any) {
@@ -145,7 +145,7 @@ export class ReelsController {
    */
   static async recordView(req: Request, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       await ReelsService.incrementViews(id);
       sendSuccess(res, { viewed: true }, 'View recorded');
     } catch (error: any) {
@@ -172,7 +172,7 @@ export class ReelsController {
         return;
       }
 
-      const { id } = req.params;
+      const id = req.params.id as string;
       await ReelsService.deletePost(id, developer.id);
       sendSuccess(res, { deleted: true }, 'Reel deleted successfully');
     } catch (error: any) {
