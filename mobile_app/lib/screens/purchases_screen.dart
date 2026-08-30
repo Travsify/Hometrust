@@ -60,8 +60,8 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
         return;
       }
 
-      final bankName = res['bankName'] ?? res['bank']?['name'] ?? 'Providus Bank';
-      final accountNumber = res['accountNumber'] ?? res['account_number'] ?? '';
+      final bankName = res['bankName'] ?? res['bank']?['name'] ?? user?.virtualBankName ?? 'Dedicated Escrow Bank';
+      final accountNumber = res['accountNumber'] ?? res['account_number'] ?? user?.virtualAccountNumber ?? '';
       final accountName = res['accountName'] ?? res['account_name'] ?? user?.fullName ?? 'Hometrust Customer';
 
       if (!mounted) return;

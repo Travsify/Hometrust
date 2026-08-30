@@ -524,6 +524,65 @@ export class BankingService {
   }
 
   /**
+   * Retrieve combined transaction history (Credits/Deposits + Debits/Withdrawals)
+   */
+  static async getMyTransactions(userId: string, developerId?: string) {
+    const [payments, withdrawals] = await Promise.all([
+      prisma.payment.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          purchase: {
+            include: {
+              property: true,
+              projectUnit: true,
+            },
+          },
+        },
+      }),
+      prisma.withdrawal.findMany({
+        where: developerId ? { developerId } : { userId },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const txs: any[] = [];
+
+    for (const p of payments) {
+      txs.push({
+        id: p.id,
+        type: 'CREDIT',
+        amount: p.totalAmount,
+        currency: 'NGN',
+        status: p.status === 'SUCCESS' || p.status === 'CONFIRMED' || p.status === 'COMPLETED' ? 'SUCCESS' : p.status,
+        purpose: p.purpose || 'ESCROW_FUNDING',
+        description: p.purchase?.property?.title ? `Property Payment: ${p.purchase.property.title}` : (p.purpose || 'Escrow Deposit'),
+        reference: p.paymentReference,
+        channel: p.paystackChannel || 'DIRECT_BANK_TRANSFER',
+        createdAt: p.createdAt,
+      });
+    }
+
+    for (const w of withdrawals) {
+      txs.push({
+        id: w.id,
+        type: 'DEBIT',
+        amount: w.amount,
+        currency: 'NGN',
+        status: w.status === 'SUCCESS' ? 'SUCCESS' : w.status === 'PENDING' ? 'PENDING' : 'PROCESSING',
+        purpose: 'WITHDRAWAL',
+        description: `Payout to ${w.accountName} (${w.bankName})`,
+        reference: w.reference,
+        channel: w.bankName || 'BANK_TRANSFER',
+        createdAt: w.createdAt,
+      });
+    }
+
+    txs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return txs;
+  }
+
+  /**
    * Name Enquiry for destination bank account via Flutterwave
    */
   static async resolveBankAccount(bankCode: string, accountNumber: string) {

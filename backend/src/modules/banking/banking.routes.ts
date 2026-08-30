@@ -13,6 +13,7 @@ router.post('/kyb/submit', requireAuth, BankingController.submitDeveloperKyb);
 
 // Account Lookup & Details
 router.get('/my-account', requireAuth, BankingController.getMyVirtualAccount);
+router.get('/my-transactions', requireAuth, BankingController.getMyTransactions);
 
 // Name Enquiry
 router.post('/resolve-account', requireAuth, BankingController.resolveBankAccount);

@@ -10,6 +10,7 @@ import 'become_developer_screen.dart';
 import 'login_screen.dart';
 import 'legal_request_screen.dart';
 import 'kyc_screen.dart';
+import 'wallet_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -33,10 +34,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) return;
 
-    setState(() => _loadingAccount = true);
+    // Instant local hydration from UserModel so balance and NUBAN appear without delay
+    if (_virtualAccount == null && auth.user?.virtualAccountNumber != null) {
+      _virtualAccount = {
+        'accountNumber': auth.user!.virtualAccountNumber,
+        'bankName': auth.user!.virtualBankName ?? 'Dedicated Escrow Bank',
+        'accountName': auth.user!.virtualAccountName ?? 'Hometrust / ${auth.user!.fullName}',
+        'balance': auth.user!.virtualAccountBalance,
+      };
+    }
+
     try {
       final res = await ApiClient.get('/banking/my-account');
-      if (mounted) {
+      if (mounted && res != null) {
         setState(() {
           _virtualAccount = res;
           _loadingAccount = false;
@@ -97,10 +107,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showReceiveModal() {
-    if (_virtualAccount == null) return;
-    final accNum = _virtualAccount!['accountNumber'] ?? '';
-    final bankName = _virtualAccount!['bankName'] ?? 'Providus Bank';
-    final accName = _virtualAccount!['accountName'] ?? 'Hometrust Customer';
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final accNum = _virtualAccount?['accountNumber'] ?? auth.user?.virtualAccountNumber ?? '';
+    final bankName = _virtualAccount?['bankName'] ?? auth.user?.virtualBankName ?? 'Dedicated Escrow Bank';
+    final accName = _virtualAccount?['accountName'] ?? auth.user?.virtualAccountName ?? 'Hometrust / ${auth.user?.fullName ?? 'Customer'}';
 
     showModalBottomSheet(
       context: context,
@@ -123,9 +133,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
               ],
             ),
-            const Text(
-              'Transfer directly from any Nigerian banking app or USSD to your dedicated account number. Funds are automatically captured and credited within seconds.',
-              style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.5),
+            Text(
+              'Transfer directly from any Nigerian banking app or USSD to your dedicated $bankName account number. Funds are automatically captured and credited within seconds.',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.5),
             ),
             const SizedBox(height: 12),
             Container(
@@ -595,36 +605,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Dedicated Virtual Account & Escrow Wallet Card
             if (auth.isAuthenticated) ...[
               const SizedBox(height: 20),
-              if (_loadingAccount)
-                const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(strokeWidth: 2)))
-              else if (_virtualAccount != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0D5C3A), Color(0xFF083C25)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFC9A227).withValues(alpha: 0.3)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF0D5C3A).withValues(alpha: 0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
+              if (_virtualAccount != null || (user != null && user.virtualAccountNumber != null))
+                Builder(
+                  builder: (context) {
+                    final effectiveAcc = _virtualAccount ?? {
+                      'accountNumber': user?.virtualAccountNumber ?? '',
+                      'bankName': user?.virtualBankName ?? 'Dedicated Escrow Bank',
+                      'accountName': user?.virtualAccountName ?? 'Hometrust / ${user?.fullName ?? 'Customer'}',
+                      'balance': user?.virtualAccountBalance ?? 0.0,
+                    };
+                    final double balance = (effectiveAcc['balance'] as num?)?.toDouble() ?? 0.0;
+                    final String accNum = effectiveAcc['accountNumber']?.toString() ?? '';
+                    final String bankName = effectiveAcc['bankName']?.toString() ?? 'Dedicated Escrow Bank';
+                    final String accName = effectiveAcc['accountName']?.toString() ?? 'Hometrust Customer';
+
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0D5C3A), Color(0xFF083C25)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFC9A227).withValues(alpha: 0.3)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF0D5C3A).withValues(alpha: 0.35),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header Row: Badge + Sync Button
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Header Row: Badge + Sync Button
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -641,161 +660,190 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ],
                                 ),
                               ),
+                              IconButton(
+                                icon: const Icon(Icons.refresh_rounded, color: Color(0xFF94A3B8), size: 18),
+                                tooltip: 'Sync Live Account',
+                                onPressed: _syncLiveAccount,
+                              ),
                             ],
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF94A3B8), size: 18),
-                            tooltip: 'Sync Live Account',
-                            onPressed: _syncLiveAccount,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                      // Escrow Wallet Balance with Privacy Eye Toggle
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          // Escrow Wallet Balance with Privacy Eye Toggle
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              const Text('ESCROW WALLET BALANCE', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
-                              const SizedBox(height: 4),
-                              Text(
-                                _hideBalance ? '₦ ••••••••' : CurrencyFormatter.format(_virtualAccount!['balance'] ?? 0),
-                                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 0.5),
-                              ),
-                            ],
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              _hideBalance ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                              color: const Color(0xFF34D399),
-                              size: 22,
-                            ),
-                            onPressed: () => setState(() => _hideBalance = !_hideBalance),
-                          ),
-                        ],
-                      ),
-
-                      const Divider(height: 24, color: Color(0xFF334155)),
-
-                      // Account Number with One-Tap Copy
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('NUBAN ACCOUNT NUMBER', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 2),
-                              Text(
-                                _virtualAccount!['accountNumber'] ?? '0281928391',
-                                style: const TextStyle(color: Color(0xFF34D399), fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.5),
-                              ),
-                            ],
-                          ),
-                          InkWell(
-                            onTap: () => _copyToClipboard(_virtualAccount!['accountNumber'] ?? '', 'Account Number'),
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF059669).withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
-                              ),
-                              child: const Row(
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.copy_rounded, color: Color(0xFF34D399), size: 14),
-                                  SizedBox(width: 4),
-                                  Text('Copy', style: TextStyle(color: Color(0xFF34D399), fontSize: 11, fontWeight: FontWeight.w800)),
+                                  const Text('ESCROW WALLET BALANCE', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _hideBalance ? '₦ ••••••••' : CurrencyFormatter.format(balance),
+                                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                                  ),
                                 ],
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Bank Name & Account Name with One-Tap Copy
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          InkWell(
-                            onTap: () => _copyToClipboard(_virtualAccount!['bankName'] ?? 'Providus Bank', 'Bank Name'),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.account_balance_rounded, color: Color(0xFF94A3B8), size: 13),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _virtualAccount!['bankName'] ?? 'Providus Bank',
-                                  style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.w700),
+                              IconButton(
+                                icon: Icon(
+                                  _hideBalance ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                  color: const Color(0xFF34D399),
+                                  size: 22,
                                 ),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.copy_rounded, color: Color(0xFF64748B), size: 12),
-                              ],
-                            ),
+                                onPressed: () => setState(() => _hideBalance = !_hideBalance),
+                              ),
+                            ],
                           ),
-                          InkWell(
-                            onTap: () => _copyToClipboard(_virtualAccount!['accountName'] ?? 'Hometrust Customer', 'Account Name'),
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 150),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      _virtualAccount!['accountName'] ?? 'Hometrust Customer',
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w600),
+
+                          const Divider(height: 24, color: Color(0xFF334155)),
+
+                          if (accNum.isNotEmpty) ...[
+                            // Account Number with One-Tap Copy
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('NUBAN ACCOUNT NUMBER', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontWeight: FontWeight.w700)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      accNum,
+                                      style: const TextStyle(color: Color(0xFF34D399), fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                                    ),
+                                  ],
+                                ),
+                                InkWell(
+                                  onTap: () => _copyToClipboard(accNum, 'Account Number'),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF059669).withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                                    ),
+                                    child: const Row(
+                                      children: [
+                                        Icon(Icons.copy_rounded, color: Color(0xFF34D399), size: 14),
+                                        SizedBox(width: 4),
+                                        Text('Copy', style: TextStyle(color: Color(0xFF34D399), fontSize: 11, fontWeight: FontWeight.w800)),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.copy_rounded, color: Color(0xFF64748B), size: 12),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Bank Name & Account Name with One-Tap Copy
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                InkWell(
+                                  onTap: () => _copyToClipboard(bankName, 'Bank Name'),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.account_balance_rounded, color: Color(0xFF94A3B8), size: 13),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        bankName,
+                                        style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.w700),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.copy_rounded, color: Color(0xFF64748B), size: 12),
+                                    ],
+                                  ),
+                                ),
+                                InkWell(
+                                  onTap: () => _copyToClipboard(accName, 'Account Name'),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 150),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            accName,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w600),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(Icons.copy_rounded, color: Color(0xFF64748B), size: 12),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+
+                          const SizedBox(height: 20),
+
+                          // Action Buttons: Send/Receive/Withdraw
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(Icons.arrow_downward_rounded, size: 16),
+                                  label: const Text('Fund Wallet', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                                  onPressed: _showReceiveModal,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF059669),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.arrow_upward_rounded, size: 16, color: Colors.white),
+                                  label: const Text('Withdraw', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                                  onPressed: _showWithdrawModal,
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Color(0xFF475569)),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Full Wallet & Transactions Ledger Link
+                          InkWell(
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.receipt_long_rounded, size: 14, color: Color(0xFFFDE047)),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'View Full Wallet & Transactions Ledger →',
+                                    style: TextStyle(color: Color(0xFFFDE047), fontSize: 11, fontWeight: FontWeight.w800),
+                                  ),
                                 ],
                               ),
                             ),
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 20),
-
-                      // Action Buttons: Send/Receive/Withdraw
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.arrow_downward_rounded, size: 16),
-                              label: const Text('Receive / Fund', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-                              onPressed: _showReceiveModal,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF059669),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              icon: const Icon(Icons.arrow_upward_rounded, size: 16, color: Colors.white),
-                              label: const Text('Withdraw', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
-                              onPressed: _showWithdrawModal,
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFF475569)),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 )
               else
                 Container(

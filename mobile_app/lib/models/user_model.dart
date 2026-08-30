@@ -67,7 +67,7 @@ class UserModel {
       isVerified: verified,
       nin: profile?['nin'],
       virtualAccountNumber: firstAccount?['accountNumber'] ?? json['virtualAccountNumber'],
-      virtualBankName: firstAccount?['bankName'] ?? json['virtualBankName'] ?? 'Providus Bank',
+      virtualBankName: firstAccount?['bankName'] ?? json['virtualBankName'] ?? 'Dedicated Escrow Bank',
       virtualAccountName: accName,
       virtualAccountBalance: balance,
       developerCompanyName: developer?['companyName'],

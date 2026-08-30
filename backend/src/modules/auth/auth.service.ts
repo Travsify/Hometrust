@@ -246,7 +246,15 @@ export class AuthService {
       const cleanEmail = rawIdentifier.toLowerCase();
       user = await prisma.user.findUnique({
         where: { email: cleanEmail },
-        include: { profile: true, developer: true },
+        include: {
+          profile: true,
+          virtualAccounts: true,
+          developer: {
+            include: {
+              virtualAccounts: true,
+            },
+          },
+        },
       });
       loginChannel = 'EMAIL';
       otpIdentifier = cleanEmail;
@@ -273,7 +281,15 @@ export class AuthService {
             { phone: { endsWith: cleanPhone.slice(-10) } },
           ],
         },
-        include: { profile: true, developer: true },
+        include: {
+          profile: true,
+          virtualAccounts: true,
+          developer: {
+            include: {
+              virtualAccounts: true,
+            },
+          },
+        },
       });
 
       loginChannel = 'SMS';
@@ -385,7 +401,12 @@ export class AuthService {
       where: { id: decoded.userId },
       include: {
         profile: true,
-        developer: true,
+        virtualAccounts: true,
+        developer: {
+          include: {
+            virtualAccounts: true,
+          },
+        },
       },
     });
 
@@ -422,6 +443,7 @@ export class AuthService {
         isVerified,
         developer: user.developer,
         profile: user.profile,
+        virtualAccounts: user.virtualAccounts || (user.developer?.virtualAccounts ?? []),
       },
       token,
     };

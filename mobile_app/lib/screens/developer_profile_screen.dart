@@ -87,10 +87,10 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
   }
 
   void _showReceiveModal() {
-    if (_virtualAccount == null) return;
-    final accNum = _virtualAccount!['accountNumber'] ?? '';
-    final bankName = _virtualAccount!['bankName'] ?? 'Providus Bank';
-    final accName = _virtualAccount!['accountName'] ?? 'Hometrust Corporate';
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final accNum = _virtualAccount?['accountNumber'] ?? auth.user?.virtualAccountNumber ?? '';
+    final bankName = _virtualAccount?['bankName'] ?? auth.user?.virtualBankName ?? 'Dedicated Escrow Bank';
+    final accName = _virtualAccount?['accountName'] ?? auth.user?.virtualAccountName ?? 'Hometrust Corporate';
 
     showModalBottomSheet(
       context: context,
@@ -113,9 +113,9 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                 IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
               ],
             ),
-            const Text(
-              'Transfer directly from your corporate banking app or commercial bank to your dedicated Providus Bank escrow account. Funds are auto-captured immediately.',
-              style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.5),
+            Text(
+              'Transfer directly from your corporate banking app or commercial bank to your dedicated $bankName escrow account. Funds are auto-captured immediately.',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.5),
             ),
             const SizedBox(height: 20),
 

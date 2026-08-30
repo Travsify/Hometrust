@@ -59,6 +59,19 @@ export class BankingController {
     }
   }
 
+  static async getMyTransactions(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const txs = await BankingService.getMyTransactions(req.user.id, req.query.developerId as string);
+      sendSuccess(res, txs, 'Transactions retrieved successfully');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
   static async resolveBankAccount(req: Request, res: Response): Promise<void> {
     try {
       const { bankCode, accountNumber } = req.body;

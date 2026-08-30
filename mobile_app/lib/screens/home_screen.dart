@@ -16,6 +16,7 @@ import 'login_screen.dart';
 import 'developers_screen.dart';
 import 'real_estate_dictionary_screen.dart';
 import 'purchases_screen.dart';
+import 'wallet_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -228,8 +229,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // 2. ESCROW WALLET & DEDICATED BANK ACCOUNT CARD
-              _buildWalletAccountCard(context, isVerified, virtualAccountNumber, virtualAccountName, bankName, virtualAccountBalance),
+              // 2. MY ESCROW WALLET QUICK ACCESS CARD
+              _buildMyWalletQuickCard(context, isVerified, virtualAccountBalance),
               const SizedBox(height: 16),
 
               // 3. SLIDEABLE SPOTLIGHT FEATURED HERO BANNER CAROUSEL
@@ -384,364 +385,111 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ESCROW WALLET & DEDICATED BANK ACCOUNT CARD
-  Widget _buildWalletAccountCard(
+  // MY ESCROW WALLET QUICK ACCESS CARD
+  Widget _buildMyWalletQuickCard(
     BuildContext context,
     bool isVerified,
-    String? virtualAccountNumber,
-    String? virtualAccountName,
-    String bankName,
     double virtualAccountBalance,
   ) {
-    final effectiveAccName = virtualAccountName != null && virtualAccountName.isNotEmpty
-        ? virtualAccountName
-        : 'Hometrust Dedicated Account';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0D5C3A), Color(0xFF083C25)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0D5C3A).withValues(alpha: 0.35),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
+    return InkWell(
+      onTap: () {
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+        if (!auth.isAuthenticated) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+        } else {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+        }
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0D5C3A), Color(0xFF083C25)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: const [
-                  Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFC9A227), size: 16),
-                  SizedBox(width: 6),
-                  Text(
-                    'HOMETRUST DEDICATED NUBAN',
-                    style: TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                decoration: BoxDecoration(
-                  color: isVerified
-                      ? const Color(0xFF10B981).withValues(alpha: 0.2)
-                      : const Color(0xFFEF4444).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  isVerified ? 'HOMETRUST ESCROW PROTECTED' : 'KYC REQUIRED',
-                  style: TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w900,
-                    color: isVerified ? const Color(0xFF34D399) : const Color(0xFFF87171),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          if (isVerified && virtualAccountNumber != null) ...[
-            // 1. Account Number Row with 1-Tap Copy
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Dedicated Account Number', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text(
-                      virtualAccountNumber,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.copy_rounded, color: Color(0xFF34D399), size: 20),
-                  tooltip: 'Copy Account Number',
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: virtualAccountNumber));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Account Number copied to clipboard!'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            // 2. Bank Name & Account Name with Individual Copy Buttons
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              child: Column(
-                children: [
-                  // Bank Name
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.account_balance_rounded, color: Color(0xFF94A3B8), size: 13),
-                          const SizedBox(width: 6),
-                          Text('Bank: ', style: TextStyle(color: const Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.w600)),
-                          Text(bankName, style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: bankName));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Bank Name copied!'), duration: Duration(seconds: 1)),
-                          );
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          child: Icon(Icons.copy_rounded, color: Color(0xFF38BDF8), size: 14),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  // Account / Business Name
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            const Icon(Icons.badge_rounded, color: Color(0xFF94A3B8), size: 13),
-                            const SizedBox(width: 6),
-                            Text('Name: ', style: TextStyle(color: const Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.w600)),
-                            Expanded(
-                              child: Text(
-                                effectiveAccName,
-                                style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: effectiveAccName));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Account Name copied!'), duration: Duration(seconds: 1)),
-                          );
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          child: Icon(Icons.copy_rounded, color: Color(0xFF38BDF8), size: 14),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFC9A227).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFC9A227).withValues(alpha: 0.4), width: 0.8),
-              ),
-              child: const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.shield_outlined, size: 14, color: Color(0xFFFDE047)),
-                  SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Anti-Fraud Rule: Only transfers originating from an account in your registered name will be captured. 3rd-party transfers are automatically reversed.',
-                      style: TextStyle(fontSize: 9.5, color: Color(0xFFFEF08A), fontWeight: FontWeight.w600, height: 1.3),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      final fullDetails = 'Bank: $bankName\nAccount Number: $virtualAccountNumber\nAccount Name: $effectiveAccName';
-                      Clipboard.setData(ClipboardData(text: fullDetails));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Account details copied to clipboard! Remember: Transfer must originate from your own bank account.'),
-                          backgroundColor: AppColors.primary,
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.copy_all_rounded, size: 14, color: Color(0xFFC9A227)),
-                    label: const Text('Copy Details', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFFC9A227))),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFC9A227), width: 1),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      final fullDetails = 'Bank: $bankName\nAccount Number: $virtualAccountNumber\nAccount Name: $effectiveAccName';
-                      Clipboard.setData(ClipboardData(text: fullDetails));
-                      showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Row(
-                            children: [
-                              Icon(Icons.shield_rounded, color: AppColors.primary, size: 20),
-                              SizedBox(width: 8),
-                              Text('Fund Escrow Account', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                            ],
-                          ),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFEF3C7),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: const Color(0xFFF59E0B), width: 0.8),
-                                ),
-                                child: const Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFB45309)),
-                                    SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        'Important: Transfer ONLY from your personal bank account. Payments from third parties will be reversed automatically for anti-fraud compliance.',
-                                        style: TextStyle(fontSize: 11, color: Color(0xFF92400E), fontWeight: FontWeight.w600),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text('Bank: $bankName', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                              const SizedBox(height: 4),
-                              Text('Account Number: $virtualAccountNumber', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.primary)),
-                              const SizedBox(height: 4),
-                              Text('Account Name: $effectiveAccName', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                            ],
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Close', style: TextStyle(color: AppColors.textSecondary)),
-                            ),
-                            ElevatedButton(
-                              onPressed: () {
-                                Clipboard.setData(ClipboardData(text: virtualAccountNumber));
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Account number copied!'), backgroundColor: AppColors.primary),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                              child: const Text('Copy NUBAN', style: TextStyle(color: Colors.white)),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add_card_rounded, size: 14, color: Colors.white),
-                    label: const Text('Fund Wallet', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900, color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ] else ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'Virtual NUBAN Inactive',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Complete quick identity verification to activate your dedicated escrow account.',
-                        style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    final auth = Provider.of<AuthProvider>(context, listen: false);
-                    if (!auth.isAuthenticated) {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-                    } else {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF059669),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text('Verify KYC', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
-                ),
-              ],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFC9A227).withValues(alpha: 0.35)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0D5C3A).withValues(alpha: 0.3),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
             ),
           ],
-        ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFC9A227).withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFC9A227).withValues(alpha: 0.4), width: 1),
+              ),
+              child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFFDE047), size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'My Escrow Wallet',
+                        style: TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: isVerified ? const Color(0xFF10B981).withValues(alpha: 0.2) : const Color(0xFFEF4444).withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          isVerified ? 'VERIFIED' : 'KYC',
+                          style: TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w900,
+                            color: isVerified ? const Color(0xFF34D399) : const Color(0xFFF87171),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    CurrencyFormatter.format(virtualAccountBalance),
+                    style: const TextStyle(
+                      color: Color(0xFF34D399),
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Tap to view NUBAN, deposit, withdraw & ledger',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFFDE047), size: 14),
+            ),
+          ],
+        ),
       ),
     );
   }
