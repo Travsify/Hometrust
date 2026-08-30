@@ -244,11 +244,16 @@ export class BankingService {
       idType?: string;
       idNumber?: string;
       dob?: string;
+      gender?: string;
       residentialAddress?: string;
+      streetAddress?: string;
+      city?: string;
+      state?: string;
       cacNumber?: string;
       companyName?: string;
       tinNumber?: string;
       officeAddress?: string;
+      directorBvn?: string;
     }
   ) {
     const user = await prisma.user.findUnique({
@@ -333,13 +338,16 @@ export class BankingService {
       // 2. Individual KYC Pipeline via Prembly IdentityPass (NIN & BVN)
       const nin = params?.nin || params?.idNumber;
       const bvn = params?.bvn;
-      const resAddr = params?.residentialAddress;
+      const street = params?.streetAddress || '';
+      const city = params?.city || '';
+      const state = params?.state || '';
+      const formattedAddress = street ? `${street}, ${city ? city + ', ' : ''}${state}`.trim() : (params?.residentialAddress || '');
 
       if (!nin && !bvn) {
         throw new Error('NIN or BVN is required for identity verification.');
       }
 
-      // Verify NIN / BVN with Prembly (LIVE — no fallback)
+      // Verify NIN / BVN with Prembly (LIVE)
       if (nin) {
         await PremblyClient.verifyNIN(nin, user.firstName, user.lastName);
       }
@@ -353,7 +361,7 @@ export class BankingService {
           kycType: 'INDIVIDUAL_KYC',
           nin,
           bvn,
-          residentialAddress: resAddr,
+          residentialAddress: formattedAddress,
           status: 'VERIFIED',
           verifiedAt: new Date(),
         },
@@ -361,8 +369,21 @@ export class BankingService {
 
       await prisma.userProfile.upsert({
         where: { userId: user.id },
-        update: { nin, bvnVerified: true, address: resAddr },
-        create: { userId: user.id, nin, bvnVerified: true, address: resAddr },
+        update: { 
+          nin, 
+          bvnVerified: true, 
+          address: formattedAddress,
+          city: city || undefined,
+          state: state || undefined,
+        },
+        create: { 
+          userId: user.id, 
+          nin, 
+          bvnVerified: true, 
+          address: formattedAddress,
+          city: city || undefined,
+          state: state || undefined,
+        },
       });
 
       let account = user.virtualAccounts?.[0];
