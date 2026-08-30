@@ -54,9 +54,15 @@ export interface PaystackDedicatedAccountResponse {
 export class PaystackClient {
   private static async getSecretKey(): Promise<string> {
     const dbKey = await ApiKeysService.getActiveKey('PAYSTACK').catch(() => null);
-    const key = (dbKey || config.paystack.secretKey || process.env.PAYSTACK_SECRET_KEY || '')
+    let key = (dbKey || config.paystack.secretKey || process.env.PAYSTACK_SECRET_KEY || '')
       .trim()
       .replace(/^["']|["']$/g, '');
+
+    const masked = key.length > 8
+      ? `${key.substring(0, 10)}...${key.substring(key.length - 4)} (Length: ${key.length})`
+      : (key ? 'Short/Invalid key' : 'NOT SET');
+
+    console.log(`[PAYSTACK CONFIG] Using Secret Key: ${masked}`);
     return key;
   }
 
