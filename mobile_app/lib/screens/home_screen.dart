@@ -18,6 +18,7 @@ import 'real_estate_dictionary_screen.dart';
 import 'purchases_screen.dart';
 import 'wallet_screen.dart';
 import 'inbox_screen.dart';
+import 'build_for_me_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -293,8 +294,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // 7. PURCHASES & INSTALMENTS PORTAL
               _buildPurchasesBanner(context, purchaseProvider),
+              const SizedBox(height: 14),
 
-              // 8. ACTIVE PURCHASES SNAPSHOT (If user has ongoing purchases)
+              // 8. CHARTER A BUILDER (BUILD FOR ME)
+              _buildCharterBuilderBanner(context),
+
+              // 9. ACTIVE PURCHASES SNAPSHOT (If user has ongoing purchases)
               if (purchaseProvider.userPurchases.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 Row(
@@ -543,7 +548,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       },
       {
-        'tag': 'CORPORATE VETTING 3/3',
+        'tag': 'CORPORATE VETTING 3/4',
         'tagColor': const Color(0xFFD97706),
         'title': 'Verified Developers',
         'subtitle': 'CAC-Audited Developers with Milestone Escrow Payouts',
@@ -555,6 +560,22 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const DevelopersScreen()),
+          );
+        },
+      },
+      {
+        'tag': 'MANAGED BUILD 4/4',
+        'tagColor': const Color(0xFF059669),
+        'title': 'Charter A Builder',
+        'subtitle': 'Vetted COREN Engineers & Zero-Fraud Milestone Escrow',
+        'icon': Icons.apartment_rounded,
+        'iconBg': const [Color(0xFF10B981), Color(0xFF047857)],
+        'cardBg': const [Color(0xFFF0FDF4), Color(0xFFECFDF5), Colors.white],
+        'borderColor': const Color(0xFFA7F3D0),
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BuildForMeScreen()),
           );
         },
       },
@@ -1049,6 +1070,127 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       'View',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
+                    ),
+                    SizedBox(width: 2),
+                    Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 8. CHARTER A BUILDER (BUILD FOR ME) BANNER
+  Widget _buildCharterBuilderBanner(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          final auth = Provider.of<AuthProvider>(context, listen: false);
+          if (!auth.isAuthenticated) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BuildForMeScreen()),
+          );
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFECFDF5), Color(0xFFF0FDF4), Colors.white],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(color: const Color(0xFF6EE7B7), width: 1.3),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF059669), Color(0xFF047857)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF059669).withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(Icons.architecture_rounded, color: Colors.white, size: 26),
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'MANAGED CONSTRUCTION ESCROW',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                            color: Color(0xFF059669),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Charter A Builder 🏗️',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Build custom properties with vetted COREN engineers, locked milestone escrow, and live surveyor audits.',
+                      style: TextStyle(fontSize: 10, color: Color(0xFF64748B), height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF059669),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Build',
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
                     ),
                     SizedBox(width: 2),

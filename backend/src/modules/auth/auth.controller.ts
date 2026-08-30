@@ -104,17 +104,17 @@ export class AuthController {
       const result = await AuthService.login(req.body);
 
       const client = extractClientContext(req);
-      if (result.user?.email && !result.requireTwoFactor) {
+      if (result.email) {
         NotificationsService.dispatchActivityEmail({
-          email: result.user.email,
-          userName: `${result.user.firstName || ''} ${result.user.lastName || ''}`.trim() || 'User',
-          activityTitle: 'Successful Sign-In Detected',
-          activitySummary: 'A new sign-in to your Hometrust account was recorded.',
+          email: result.email,
+          userName: 'Hometrust User',
+          activityTitle: 'Sign-In Attempt & 2FA Security Challenge',
+          activitySummary: `A sign-in attempt was initiated for your account. A 2FA security OTP was dispatched to your ${result.channel || 'EMAIL'}.`,
           deviceName: client.deviceName,
           ipAddress: client.ipAddress,
           actionDetails: [
-            { label: 'Session Type', value: 'Standard Authentication' },
-            { label: 'Role', value: result.user.role || 'BUYER' },
+            { label: 'Security Channel', value: result.channel || 'EMAIL' },
+            { label: 'Destination', value: result.maskedDestination || result.email },
           ],
         }).catch(() => {});
       }
@@ -141,7 +141,7 @@ export class AuthController {
 
   static async resetPassword(req: Request, res: Response): Promise<void> {
     try {
-      const { token, newPassword } = req.body;
+      const { token, newPassword, email } = req.body;
       if (!token || !newPassword) {
         sendError(res, 'Token and new password are required', 400);
         return;
@@ -149,15 +149,15 @@ export class AuthController {
       const result = await AuthService.resetPassword(token, newPassword);
 
       const client = extractClientContext(req);
-      if (result.email) {
+      if (email) {
         NotificationsService.dispatchActivityEmail({
-          email: result.email,
+          email,
           userName: 'Hometrust User',
           activityTitle: 'Password Reset Successful',
           activitySummary: 'Your Hometrust account password was updated successfully.',
           deviceName: client.deviceName,
           ipAddress: client.ipAddress,
-          actionDetails: [{ label: 'Action', value: 'Password Reset via Reset Link' }],
+          actionDetails: [{ label: 'Action', value: 'Password Reset via Security Token' }],
         }).catch(() => {});
       }
 

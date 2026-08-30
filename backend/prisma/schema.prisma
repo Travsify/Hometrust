@@ -37,6 +37,8 @@ model User {
   withdrawals       Withdrawal[]
   milestoneReviews  MilestoneReview[]
   supportTickets    SupportTicket[]
+  buildRequests     BuildRequest[]
+  assignedBuilds    BuildRequest[]      @relation("AssignedEngineerBuilds")
 
   @@map("users")
 }
@@ -702,3 +704,69 @@ model SupportTicket {
 
   @@map("support_tickets")
 }
+
+model BuildRequest {
+  id                        String            @id @default(uuid())
+  requestCode               String            @unique // e.g. "HT-BLD-89421"
+  userId                    String
+  user                      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedEngineerId        String?
+  assignedEngineer          User?             @relation("AssignedEngineerBuilds", fields: [assignedEngineerId], references: [id], onDelete: SetNull)
+  
+  // Property & Construction Scope
+  projectTitle              String
+  buildingType              String            // 4_BEDROOM_DUPLEX, 5_BEDROOM_DETACHED, BLOCK_OF_FLATS, TERRACE_UNITS, BUNGALOW, COMMERCIAL, WAREHOUSE, CUSTOM
+  state                     String
+  city                      String
+  lga                       String?
+  siteAddress               String
+  landOwnershipStatus       String            @default("OWNED_WITH_TITLE") // OWNED_WITH_TITLE, OWNED_NO_TITLE, SEARCHING_FOR_LAND
+  landTitleType             String?           // C_OF_O, GOVERNORS_CONSENT, GAZETTE, DEED_OF_ASSIGNMENT, REGISTERED_SURVEY
+  estimatedBudget           Float
+  targetStartDate           String
+  architecturalStatus       String            @default("NEED_ARCHITECT") // HAVE_DRAWINGS, NEED_ARCHITECT, HAVE_ROUGH_CONCEPT
+  architecturalDrawingsUrl  String?
+  specialRequirements       String?
+  
+  // Fees & Escrow
+  consultationFee           Float             @default(50000)
+  isConsultationPaid        Boolean           @default(false)
+  totalContractValue        Float?
+  managementFeePercentage   Float             @default(6.0) // 6.0% Hometrust management commission
+  managementFeeAmount       Float             @default(0)
+  defectRetentionPercentage Float             @default(5.0) // 5.0% held for 90 days post-handover
+  legalContractUrl          String?
+  
+  status                    String            @default("REQUESTED") // REQUESTED, CONSULTATION_PAID, ENGINEER_ASSIGNED, BOQ_REVIEW, LEGAL_CONTRACT_PENDING, CONTRACT_SIGNED, ACTIVE_CONSTRUCTION, COMPLETED, CANCELLED
+  adminNotes                String?
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+
+  milestones                BuildMilestone[]
+
+  @@map("build_requests")
+}
+
+model BuildMilestone {
+  id                        String            @id @default(uuid())
+  buildRequestId            String
+  buildRequest              BuildRequest      @relation(fields: [buildRequestId], references: [id], onDelete: Cascade)
+  stageNumber               Int               // 1 to 6
+  stageName                 String            // STAGE_1_SUBSTRUCTURE_FOUNDATION, STAGE_2_SUPERSTRUCTURE, STAGE_3_ROOFING, STAGE_4_PLASTERING_MEP, STAGE_5_FINISHES, STAGE_6_HANDOVER_RETENTION
+  title                     String
+  description               String
+  targetDurationWeeks       Int               @default(4)
+  amount                    Float
+  status                    String            @default("PENDING_DEPOSIT") // PENDING_DEPOSIT, FUNDED_IN_ESCROW, IN_PROGRESS, AUDIT_SUBMITTED, INSPECTED_APPROVED, DISBURSED
+  engineerNotes             String?
+  completionPhotos          String?           // JSON array string of photo URLs
+  geofencedVideoUrl         String?
+  surveyorReportUrl         String?
+  buyerAuthorizedAt         DateTime?
+  disbursedAt               DateTime?
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+
+  @@map("build_milestones")
+}
+

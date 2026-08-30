@@ -22,6 +22,7 @@ import { bankingRoutes } from './modules/banking/banking.routes';
 import { aiRoutes } from './modules/ai/ai.routes';
 import { materialsRoutes } from './modules/materials/materials.routes';
 import supportRoutes from './modules/support/support.routes';
+import { buildRoutes } from './modules/build/build.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -88,6 +89,7 @@ app.use(`${apiPrefix}/banking`, bankingRoutes);
 app.use(`${apiPrefix}/ai`, aiRoutes);
 app.use(`${apiPrefix}/materials`, materialsRoutes);
 app.use(`${apiPrefix}/support`, supportRoutes);
+app.use(`${apiPrefix}/build`, buildRoutes);
 
 // Fallback to Admin Dashboard SPA if public/index.html exists
 app.get('*', (req: Request, res: Response, next) => {

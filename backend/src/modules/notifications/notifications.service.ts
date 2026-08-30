@@ -92,7 +92,15 @@ export class NotificationsService {
     ipAddress?: string;
     actionDetails?: Array<{ label: string; value: string }>;
   }) {
-    return ResendService.sendActivityAuditEmail(params);
+    return ResendService.sendActivityAuditEmail({
+      to: params.email,
+      userName: params.userName,
+      activityTitle: params.activityTitle,
+      activitySummary: params.activitySummary,
+      deviceName: params.deviceName,
+      ipAddress: params.ipAddress,
+      actionDetails: params.actionDetails,
+    });
   }
 
   static async getUserNotifications(userId: string) {

@@ -13,6 +13,7 @@ import 'kyc_screen.dart';
 import 'wallet_screen.dart';
 import 'chat_screen.dart';
 import 'inbox_screen.dart';
+import 'build_for_me_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -1078,6 +1079,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         context,
                         MaterialPageRoute(builder: (_) => const KycScreen()),
                       ).then((_) => _fetchAccount());
+                    },
+                  ),
+                  const Divider(height: 1, color: AppColors.cardBorder),
+                  _buildMenuItem(
+                    icon: Icons.architecture_rounded,
+                    title: 'Charter A Builder 🏗️',
+                    subtitle: 'Managed construction with vetted COREN engineers & escrow',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const BuildForMeScreen()),
+                      );
                     },
                   ),
                   const Divider(height: 1, color: AppColors.cardBorder),
