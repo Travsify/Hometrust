@@ -42,9 +42,25 @@ export interface MapleradTransferResponse {
 export class MapleradClient {
   private static async getCredentials() {
     const dbKey = await ApiKeysService.getActiveKey('MAPLERAD').catch(() => null);
-    const secretKey = dbKey || config.maplerad.secretKey;
-    const publicKey = config.maplerad.publicKey;
-    const baseUrl = (config.maplerad.baseUrl || 'https://api.maplerad.com/v1').replace(/\/$/, '');
+    let secretKey = (dbKey || config.maplerad.secretKey || process.env.MAPLERAD_SECRET_KEY || '').trim().replace(/^["']|["']$/g, '');
+    let publicKey = (config.maplerad.publicKey || process.env.MAPLERAD_PUBLIC_KEY || '').trim().replace(/^["']|["']$/g, '');
+    
+    // Auto-detect sandbox vs live from key prefix if not explicitly overridden by env
+    let baseUrl = process.env.MAPLERAD_BASE_URL?.trim().replace(/\/$/, '') || '';
+    if (!baseUrl) {
+      if (secretKey.toLowerCase().includes('sandbox') || secretKey.startsWith('mpr_sandbox_')) {
+        baseUrl = 'https://sandbox.api.maplerad.com/v1';
+      } else {
+        baseUrl = 'https://api.maplerad.com/v1';
+      }
+    }
+
+    const maskedKey = secretKey.length > 8 
+      ? `${secretKey.substring(0, 10)}...${secretKey.substring(secretKey.length - 4)} (Length: ${secretKey.length})` 
+      : (secretKey ? 'Short/Invalid key' : 'NOT SET');
+
+    console.log(`[MAPLERAD CONFIG] Target Base URL: ${baseUrl} | Secret Key: ${maskedKey}`);
+
     return { secretKey, publicKey, baseUrl };
   }
 
@@ -270,7 +286,6 @@ export class MapleradClient {
     }
 
     // 3. Request a new Dedicated Virtual Account
-    // Try standard endpoint without preferred_bank first (lets Maplerad pick optimal active bank provider), then with candidate banks
     const attempts = [
       { url: `${baseUrl}/collections/virtual-account`, body: { customer_id: customerId, currency: 'NGN' } },
       { url: `${baseUrl}/collections/virtual-account`, body: { customer_id: customerId, currency: 'NGN', preferred_bank: 'providus' } },
