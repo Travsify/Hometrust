@@ -29,9 +29,11 @@ export class ResendService {
           .security-box { background: rgba(245, 158, 11, 0.08); border-left: 4px solid #f59e0b; border-radius: 6px; padding: 12px 16px; margin-bottom: 24px; }
           .security-text { font-size: 12px; color: #cbd5e1; line-height: 1.5; margin: 0; }
           .divider { border-top: 1px solid rgba(148, 163, 184, 0.15); margin: 24px 0; }
-          .footer-section { text-align: center; }
-          .footer-company { font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; }
-          .footer-sub { font-size: 11px; color: #64748b; line-height: 1.6; margin-bottom: 16px; }
+          .footer-section { text-align: center; padding-top: 8px; }
+          .footer-company { font-size: 13px; font-weight: 800; color: #f1f5f9; margin-bottom: 8px; letter-spacing: 0.2px; }
+          .footer-services { font-size: 11px; font-weight: 600; color: #38bdf8; line-height: 1.6; margin-bottom: 10px; }
+          .footer-disclaimer { font-size: 10px; color: #94a3b8; line-height: 1.5; margin-bottom: 12px; }
+          .footer-sub { font-size: 11px; color: #64748b; line-height: 1.6; margin-bottom: 12px; }
           .footer-copy { font-size: 10px; color: #475569; }
         </style>
       </head>
@@ -46,13 +48,18 @@ export class ResendService {
             ${bodyContent}
             <div class="divider"></div>
             <div class="footer-section">
-              <div class="footer-company">Hometrust is a product of Ehomes Global Inclusive Ltd</div>
+              <div class="footer-company">Hometrust is a product of Ehommes Global Inclusive Limited</div>
+              <div class="footer-services">
+                Verified Land Titles &amp; Legal Audits • Milestone-Protected Escrow Settlements • Build-for-Me Construction Management • Off-Plan Project Tracking &amp; Site Stories • Real-Time Building Material Index • Land Radar &amp; Geospatial Intelligence • Verified Developer Directory &amp; In-App Voice/Chat
+              </div>
+              <div class="footer-disclaimer">
+                Hometrust is a real estate trust, property verification, and financial technology platform — not a bank. Escrow custodial and payment settlement services are provided in partnership with licensed CBN-regulated financial institutions.
+              </div>
               <div class="footer-sub">
-                Official Escrow Banking • Construction Milestone Audits • Verified Land Titles<br>
-                No 4, Ehomes close, Zartech Area, Oluyole, Ibadan, Oyo state • info@hometrustng.com
+                No 4, Ehomes Close, Zartech Area, Oluyole, Ibadan, Oyo State • info@hometrustng.com • support@hometrust.ng
               </div>
               <div class="footer-copy">
-                &copy; ${new Date().getFullYear()} Ehomes Global Inclusive Ltd. All rights reserved.
+                &copy; ${new Date().getFullYear()} Ehommes Global Inclusive Limited. All rights reserved.
               </div>
             </div>
           </div>
