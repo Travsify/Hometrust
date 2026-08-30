@@ -66,4 +66,9 @@ export const config = {
     baseUrl: process.env.FLUTTERWAVE_BASE_URL || 'https://api.flutterwave.com/v3',
     secretHash: process.env.FLUTTERWAVE_SECRET_HASH || 'hometrust_flw_webhook_secret_2026',
   },
+
+  onesignal: {
+    appId: process.env.ONESIGNAL_APP_ID || '41b932e7-a242-4e35-89c4-f743b0ff005a',
+    restApiKey: process.env.ONESIGNAL_REST_API_KEY || '',
+  },
 };

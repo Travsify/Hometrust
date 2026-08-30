@@ -1,6 +1,7 @@
 import { prisma } from '../../utils/prisma';
 import { SocketService } from '../chat/socket.service';
 import { ResendService } from './resend.service';
+import { OneSignalService } from './onesignal.service';
 
 export interface DispatchNotificationParams {
   userId: string;
@@ -54,7 +55,20 @@ export class NotificationsService {
       isRead: false,
     });
 
-    // 3. Automated Activity Email with Device Name & IP Address
+    // 3. Cross-Platform Remote Push Notification via OneSignal (Android & iOS Status Bar & Lock Screen)
+    OneSignalService.sendPushToUser({
+      userId,
+      title,
+      message,
+      data: {
+        id: notification.id,
+        type,
+        linkUrl,
+      },
+      url: linkUrl,
+    }).catch((err) => console.warn('[ONESIGNAL DISPATCH ERR]', err.message));
+
+    // 4. Automated Activity Email with Device Name & IP Address
     if (sendEmail) {
       const user = await prisma.user.findUnique({
         where: { id: userId },

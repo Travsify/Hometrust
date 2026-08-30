@@ -9,7 +9,9 @@ import 'providers/verification_provider.dart';
 import 'providers/purchase_provider.dart';
 import 'providers/notification_provider.dart';
 import 'core/network/socket_service.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'screens/incoming_call_screen.dart';
+import 'screens/notifications_screen.dart';
 import 'screens/splash_screen.dart';
 
 // Global navigator key so ApiClient can navigate on 401 and Socket can push incoming calls
@@ -17,6 +19,25 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ── OneSignal Cross-Platform Push Notifications (Android + iOS) ──
+  try {
+    OneSignal.Debug.setLogLevel(OSLogLevel.none);
+    OneSignal.initialize('41b932e7-a242-4e35-89c4-f743b0ff005a');
+    OneSignal.Notifications.requestPermission(true);
+
+    // Push notification click listener: opens notification center
+    OneSignal.Notifications.addClickListener((event) {
+      debugPrint('[ONESIGNAL] Notification tapped: ${event.notification.title}');
+      if (navigatorKey.currentState != null) {
+        navigatorKey.currentState!.push(
+          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+        );
+      }
+    });
+  } catch (e) {
+    debugPrint('[ONESIGNAL INIT ERR] $e');
+  }
 
   // Wire 401 handler: clears token and pops back to root
   ApiClient.onUnauthorized = () async {

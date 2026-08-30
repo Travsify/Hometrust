@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import '../core/network/api_client.dart';
 import '../core/network/socket_service.dart';
 import '../models/user_model.dart';
@@ -36,6 +37,7 @@ class AuthProvider with ChangeNotifier {
             userId: _user!.id,
             userName: '${_user!.firstName} ${_user!.lastName}'.trim(),
           );
+          _syncOneSignalUser();
         }
       } catch (e) {
         await logout();
@@ -44,10 +46,26 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void _syncOneSignalUser() {
+    if (_user != null && _user!.id.isNotEmpty) {
+      try {
+        OneSignal.login(_user!.id);
+        if (_user!.email.isNotEmpty) {
+          OneSignal.User.addEmail(_user!.email);
+        }
+      } catch (e) {
+        debugPrint('[ONESIGNAL LOGIN ERR] $e');
+      }
+    }
+  }
+
   Future<void> logout() async {
     _user = null;
     _token = null;
     SocketService.instance.disconnect();
+    try {
+      OneSignal.logout();
+    } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     notifyListeners();
@@ -187,6 +205,7 @@ class AuthProvider with ChangeNotifier {
             userId: _user!.id,
             userName: '${_user!.firstName} ${_user!.lastName}'.trim(),
           );
+          _syncOneSignalUser();
         }
         notifyListeners();
         return {'success': true, 'requires2FA': false};
@@ -231,6 +250,7 @@ class AuthProvider with ChangeNotifier {
           userId: _user!.id,
           userName: '${_user!.firstName} ${_user!.lastName}'.trim(),
         );
+        _syncOneSignalUser();
       }
 
       _isLoading = false;
@@ -293,6 +313,7 @@ class AuthProvider with ChangeNotifier {
             userId: _user!.id,
             userName: '${_user!.firstName} ${_user!.lastName}'.trim(),
           );
+          _syncOneSignalUser();
         }
         notifyListeners();
         return true;
@@ -338,6 +359,9 @@ class AuthProvider with ChangeNotifier {
       await prefs.setString('auth_token', _token!);
       await prefs.setString('biometric_auth_token', _token!);
       await prefs.setString('saved_email', email.trim());
+      if (_user != null) {
+        _syncOneSignalUser();
+      }
 
       _isLoading = false;
       notifyListeners();
@@ -355,6 +379,7 @@ class AuthProvider with ChangeNotifier {
       try {
         final userData = await ApiClient.get('/auth/me');
         _user = UserModel.fromJson(userData);
+        _syncOneSignalUser();
         notifyListeners();
       } catch (_) {}
     }
