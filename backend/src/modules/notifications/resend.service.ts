@@ -10,43 +10,74 @@ export class ResendService {
       return true;
     }
 
-    const title = purpose === 'LOGIN_2FA' ? 'Your Login Security Code' : 'Verify Your Email Address';
+    const title = purpose === 'LOGIN_2FA' ? 'Two-Factor Authentication Code' : 'Verify Your Email Address';
     const subText = purpose === 'LOGIN_2FA' 
-      ? 'Use the code below to complete your two-factor authentication login to Hometrust.'
-      : 'Welcome to Hometrust. Use the verification code below to verify your email address and activate your account.';
+      ? 'A sign-in attempt was initiated for your Hometrust account. Use the one-time security code below to complete your authentication.'
+      : 'Welcome to Hometrust. Please enter the security verification code below to verify your email address and activate your account.';
 
     const htmlContent = `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
       <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Hometrust Security Code</title>
         <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #ffffff; margin: 0; padding: 20px; }
-          .container { max-width: 520px; margin: 0 auto; background: #1e293b; border-radius: 16px; border: 1px solid #334155; padding: 32px; }
-          .header { text-align: center; margin-bottom: 24px; }
-          .shield-icon { display: inline-block; background: #059669; width: 48px; height: 48px; line-height: 48px; border-radius: 12px; font-size: 24px; }
-          .title { font-size: 20px; font-weight: 800; color: #ffffff; margin-top: 16px; margin-bottom: 8px; }
-          .text { font-size: 14px; color: #94a3b8; line-height: 1.5; margin-bottom: 24px; text-align: center; }
-          .otp-box { background: #0f172a; border: 2px dashed #059669; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px; }
-          .otp-code { font-family: 'Courier New', Courier, monospace; font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #10b981; }
-          .expiry { font-size: 12px; color: #64748b; margin-top: 8px; }
-          .footer { font-size: 12px; color: #64748b; text-align: center; border-top: 1px solid #334155; padding-top: 20px; margin-top: 24px; }
+          body { margin: 0; padding: 0; background-color: #0b132b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+          .wrapper { width: 100%; table-layout: fixed; background-color: #0b132b; padding: 40px 0; }
+          .main-card { max-width: 540px; margin: 0 auto; background: linear-gradient(180deg, #1c2541 0%, #111a33 100%); border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.25); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); overflow: hidden; padding: 40px 32px; }
+          .logo-header { text-align: center; margin-bottom: 28px; }
+          .brand-badge { display: inline-flex; align-items: center; justify-content: center; background: rgba(5, 150, 105, 0.15); border: 1px solid #10b981; border-radius: 12px; padding: 8px 18px; }
+          .brand-name { font-size: 20px; font-weight: 900; letter-spacing: 2px; color: #10b981; text-transform: uppercase; }
+          .title { font-size: 22px; font-weight: 800; color: #ffffff; text-align: center; margin: 20px 0 10px; }
+          .subtitle { font-size: 14px; line-height: 1.6; color: #94a3b8; text-align: center; margin: 0 0 28px; }
+          .otp-container { background: #0b132b; border: 2px dashed #10b981; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 28px; }
+          .otp-code { font-family: 'Courier New', Courier, monospace; font-size: 38px; font-weight: 900; letter-spacing: 10px; color: #34d399; margin: 0; }
+          .otp-timer { font-size: 12px; font-weight: 600; color: #64748b; margin-top: 10px; }
+          .security-box { background: rgba(245, 158, 11, 0.08); border-left: 4px solid #f59e0b; border-radius: 6px; padding: 12px 16px; margin-bottom: 28px; }
+          .security-text { font-size: 12px; color: #cbd5e1; line-height: 1.5; margin: 0; }
+          .divider { border-top: 1px solid rgba(148, 163, 184, 0.15); margin: 28px 0; }
+          .footer-section { text-align: center; }
+          .footer-company { font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; }
+          .footer-sub { font-size: 11px; color: #64748b; line-height: 1.6; margin-bottom: 16px; }
+          .footer-copy { font-size: 10px; color: #475569; }
         </style>
       </head>
       <body>
-        <div class="container">
-          <div class="header">
-            <div class="shield-icon">🛡️</div>
+        <div class="wrapper">
+          <div class="main-card">
+            <div class="logo-header">
+              <div class="brand-badge">
+                <span class="brand-name">🛡️ HOMETRUST</span>
+              </div>
+            </div>
+
             <div class="title">${title}</div>
-          </div>
-          <div class="text">${subText}</div>
-          <div class="otp-box">
-            <div class="otp-code">${otpCode}</div>
-            <div class="expiry">Expires in 10 minutes • Do not share this code</div>
-          </div>
-          <div class="footer">
-            If you did not request this verification code, please ignore this email or contact support@hometrust.ng.<br><br>
-            &copy; 2026 Hometrust Technologies Ltd. CBN Real Estate Escrow & Title Verification.
+            <div class="subtitle">${subText}</div>
+
+            <div class="otp-container">
+              <div class="otp-code">${otpCode}</div>
+              <div class="otp-timer">⏱️ Expires in 10 minutes • Single-use code</div>
+            </div>
+
+            <div class="security-box">
+              <p class="security-text">
+                🔒 <strong>Security Warning:</strong> Hometrust staff will never ask for your OTP code or login credentials. If you did not initiate this request, please change your password immediately.
+              </p>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="footer-section">
+              <div class="footer-company">Hometrust is a product of Ehomms Global Inclusive Limited (The Ehomms Group)</div>
+              <div class="footer-sub">
+                Official Escrow Banking • Construction Milestone Audits • Verified Land Titles<br>
+                14 Admiralty Way, Lekki Phase 1, Lagos, Nigeria • support@hometrustng.com
+              </div>
+              <div class="footer-copy">
+                &copy; ${new Date().getFullYear()} Ehomms Global Inclusive Limited. All rights reserved.
+              </div>
+            </div>
           </div>
         </div>
       </body>

@@ -580,15 +580,22 @@ class _LoginScreenState extends State<LoginScreen> {
                       keyboardType: TextInputType.emailAddress,
                       autocorrect: false,
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Email is required';
-                        final emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+\.\w{2,}$');
-                        if (!emailRegex.hasMatch(v.trim())) return 'Enter a valid email address';
+                        if (v == null || v.trim().isEmpty) return 'Email address or phone number is required';
+                        final clean = v.trim();
+                        if (clean.contains('@')) {
+                          final emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+\.\w{2,}$');
+                          if (!emailRegex.hasMatch(clean)) return 'Enter a valid email address';
+                        } else {
+                          final phoneClean = clean.replaceAll(RegExp(r'[\s\-\+]'), '');
+                          if (phoneClean.length < 10) return 'Enter a valid 11-digit phone number';
+                        }
                         return null;
                       },
                       decoration: const InputDecoration(
-                        labelText: 'Email Address',
+                        labelText: 'Email Address or Phone Number',
+                        hintText: 'e.g. name@domain.com or 08026990956',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.mail_outline),
+                        prefixIcon: Icon(Icons.person_outline),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -636,9 +643,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => LoginOtpScreen(
-                                        twoFactorToken: loginRes['twoFactorToken'],
-                                        email: loginRes['email'],
-                                        maskedDestination: loginRes['maskedDestination'],
+                                        twoFactorToken: loginRes['twoFactorToken'] ?? '',
+                                        email: loginRes['email'] ?? '',
+                                        phone: loginRes['phone'],
+                                        identifier: _emailCtrl.text.trim(),
+                                        channel: loginRes['channel'] ?? (_emailCtrl.text.contains('@') ? 'EMAIL' : 'SMS'),
+                                        maskedDestination: loginRes['maskedDestination'] ?? '',
                                       ),
                                     ),
                                   );

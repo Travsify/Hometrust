@@ -225,23 +225,68 @@ export class AuthService {
     };
   }
 
-  static async login(data: { email: string; password: string }) {
-    const cleanEmail = data.email.toLowerCase().trim();
-    const user = await prisma.user.findUnique({
-      where: { email: cleanEmail },
-      include: {
-        profile: true,
-        developer: true,
-      },
-    });
+  static async login(data: { email?: string; phone?: string; identifier?: string; password: string }) {
+    const rawIdentifier = (data.identifier || data.email || data.phone || '').trim();
+    if (!rawIdentifier) {
+      throw new Error('Please provide your email address or phone number');
+    }
+
+    const isEmail = rawIdentifier.includes('@');
+    let user: any = null;
+    let loginChannel: 'EMAIL' | 'SMS' = 'EMAIL';
+    let otpIdentifier = '';
+    let maskedDestination = '';
+
+    if (isEmail) {
+      const cleanEmail = rawIdentifier.toLowerCase();
+      user = await prisma.user.findUnique({
+        where: { email: cleanEmail },
+        include: { profile: true, developer: true },
+      });
+      loginChannel = 'EMAIL';
+      otpIdentifier = cleanEmail;
+
+      const parts = cleanEmail.split('@');
+      const prefix = parts[0].length > 2 ? parts[0].substring(0, 2) + '***' : parts[0] + '***';
+      maskedDestination = `${prefix}@${parts[1]}`;
+    } else {
+      // Phone login
+      let cleanPhone = rawIdentifier.replace(/\s+/g, '');
+      let normalizedPhone = cleanPhone;
+      if (cleanPhone.startsWith('0') && cleanPhone.length === 11) {
+        normalizedPhone = '+234' + cleanPhone.substring(1);
+      } else if (!cleanPhone.startsWith('+')) {
+        normalizedPhone = '+234' + cleanPhone;
+      }
+
+      // Try finding by phone formats
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { phone: cleanPhone },
+            { phone: normalizedPhone },
+            { phone: { endsWith: cleanPhone.slice(-10) } },
+          ],
+        },
+        include: { profile: true, developer: true },
+      });
+
+      loginChannel = 'SMS';
+      otpIdentifier = user?.phone || normalizedPhone;
+
+      const p = otpIdentifier;
+      maskedDestination = p.length > 7
+        ? `${p.substring(0, 4)} *** ${p.substring(p.length - 4)}`
+        : `${p.substring(0, 2)}***`;
+    }
 
     if (!user) {
-      throw new Error('Invalid email or password');
+      throw new Error('Invalid login credentials. Please check your email/phone and password.');
     }
 
     const isMatch = await bcrypt.compare(data.password, user.passwordHash);
     if (!isMatch) {
-      throw new Error('Invalid email or password');
+      throw new Error('Invalid login credentials. Please check your email/phone and password.');
     }
 
     if (!user.isActive) {
@@ -253,46 +298,48 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
     await prisma.otpVerification.deleteMany({
-      where: { identifier: cleanEmail, purpose: 'LOGIN_2FA' },
+      where: { identifier: otpIdentifier, purpose: 'LOGIN_2FA' },
     });
 
     await prisma.otpVerification.create({
       data: {
-        identifier: cleanEmail,
+        identifier: otpIdentifier,
         code,
-        channel: 'EMAIL_RESEND',
+        channel: loginChannel === 'EMAIL' ? 'EMAIL_RESEND' : 'SMS_TWILIO',
         purpose: 'LOGIN_2FA',
         expiresAt,
       },
     });
 
-    // Dispatch via Resend Email
-    await ResendService.sendOtpEmail(cleanEmail, code, 'LOGIN_2FA');
-
-    // Also dispatch via Twilio SMS if phone is present
-    if (user.phone) {
-      await TwilioService.sendOtpSms(user.phone, code, 'LOGIN_2FA');
+    // Dispatch ONLY to the chosen channel
+    if (loginChannel === 'EMAIL') {
+      await ResendService.sendOtpEmail(user.email, code, 'LOGIN_2FA');
+    } else {
+      await TwilioService.sendOtpSms(otpIdentifier, code, 'LOGIN_2FA');
     }
 
     const twoFactorToken = jwt.sign(
-      { userId: user.id, email: user.email, type: '2FA_CHALLENGE' },
+      {
+        userId: user.id,
+        email: user.email,
+        identifier: otpIdentifier,
+        channel: loginChannel,
+        type: '2FA_CHALLENGE',
+      },
       config.jwtSecret,
       { expiresIn: '10m' }
     );
 
-    // Mask destination email (e.g. in***@travsify.com)
-    const emailParts = user.email.split('@');
-    const maskedName = emailParts[0].length > 2 
-      ? emailParts[0].substring(0, 2) + '***' 
-      : emailParts[0] + '***';
-    const maskedDestination = `${maskedName}@${emailParts[1]}`;
-
     return {
       requires2FA: true,
       twoFactorToken,
+      channel: loginChannel,
       email: user.email,
+      phone: user.phone,
       maskedDestination,
-      message: `Security code dispatched to ${maskedDestination}`,
+      message: loginChannel === 'EMAIL'
+        ? `Security OTP sent to your email (${maskedDestination})`
+        : `Security OTP sent via SMS to your phone (${maskedDestination})`,
     };
   }
 
@@ -307,9 +354,11 @@ export class AuthService {
       throw new Error('Invalid or expired 2FA session. Please log in again.');
     }
 
+    const identifier = decoded.identifier || decoded.email.toLowerCase();
+
     const otpRecord = await prisma.otpVerification.findFirst({
       where: {
-        identifier: decoded.email.toLowerCase(),
+        identifier: identifier,
         purpose: 'LOGIN_2FA',
         isVerified: false,
         expiresAt: { gt: new Date() },

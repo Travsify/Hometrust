@@ -7,12 +7,18 @@ import '../providers/auth_provider.dart';
 class LoginOtpScreen extends StatefulWidget {
   final String twoFactorToken;
   final String email;
+  final String? phone;
+  final String identifier;
+  final String channel; // 'EMAIL' or 'SMS'
   final String maskedDestination;
 
   const LoginOtpScreen({
     super.key,
     required this.twoFactorToken,
     required this.email,
+    this.phone,
+    required this.identifier,
+    this.channel = 'EMAIL',
     required this.maskedDestination,
   });
 
@@ -78,7 +84,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
     final success = await auth.verifyLogin2FA(
       twoFactorToken: widget.twoFactorToken,
       code: code,
-      emailForBiometrics: widget.email,
+      emailForBiometrics: widget.email.isNotEmpty ? widget.email : widget.identifier,
     );
 
     if (!mounted) return;
@@ -101,13 +107,22 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
   Future<void> _resendOtp() async {
     if (_resendCountdown > 0) return;
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final sent = await auth.sendEmailOtp(widget.email, purpose: 'LOGIN_2FA');
+    
+    bool sent = false;
+    if (widget.channel == 'SMS') {
+      sent = await auth.sendPhoneOtp(widget.identifier, purpose: 'LOGIN_2FA');
+    } else {
+      sent = await auth.sendEmailOtp(widget.identifier.isNotEmpty ? widget.identifier : widget.email, purpose: 'LOGIN_2FA');
+    }
+
     if (!mounted) return;
     if (sent) {
       _startCountdown();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('A new security code has been sent.'),
+        SnackBar(
+          content: Text(widget.channel == 'SMS' 
+            ? 'A new security code has been sent via SMS.' 
+            : 'A new security code has been sent to your email.'),
           backgroundColor: AppColors.primary,
         ),
       );
@@ -116,6 +131,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isSms = widget.channel == 'SMS';
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -138,16 +154,22 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.security_rounded, color: AppColors.primary, size: 32),
+                child: Icon(
+                  isSms ? Icons.sms_rounded : Icons.mark_email_read_rounded,
+                  color: AppColors.primary,
+                  size: 32,
+                ),
               ),
               const SizedBox(height: 18),
-              const Text(
-                'Two-Factor Authentication',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              Text(
+                isSms ? 'SMS Authentication' : 'Email Authentication',
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 8),
               Text(
-                'Enter the 6-digit security code sent to your verified email (${widget.maskedDestination}).',
+                isSms
+                    ? 'Enter the 6-digit security code sent via SMS to your phone (${widget.maskedDestination}).'
+                    : 'Enter the 6-digit security code sent to your email (${widget.maskedDestination}).',
                 style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
               ),
               const SizedBox(height: 28),

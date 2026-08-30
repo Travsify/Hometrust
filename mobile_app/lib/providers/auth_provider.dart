@@ -142,15 +142,17 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// 5. Initial Login Request (Dispatches 2FA OTP)
-  Future<Map<String, dynamic>> login(String email, String password) async {
+  /// 5. Initial Login Request (Dispatches 2FA OTP to Email or SMS depending on input)
+  Future<Map<String, dynamic>> login(String identifier, String password) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      final cleanIdentifier = identifier.trim();
       final res = await ApiClient.post('/auth/login', {
-        'email': email.trim(),
+        'identifier': cleanIdentifier,
+        'email': cleanIdentifier,
         'password': password,
       });
 
@@ -163,7 +165,10 @@ class AuthProvider with ChangeNotifier {
           'success': true,
           'requires2FA': true,
           'twoFactorToken': res['twoFactorToken'],
+          'channel': res['channel'] ?? (cleanIdentifier.contains('@') ? 'EMAIL' : 'SMS'),
           'email': res['email'],
+          'phone': res['phone'],
+          'identifier': cleanIdentifier,
           'maskedDestination': res['maskedDestination'],
           'message': res['message'],
         };
@@ -175,7 +180,7 @@ class AuthProvider with ChangeNotifier {
         _user = UserModel.fromJson(res['user']);
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', _token!);
-        await prefs.setString('saved_email', email.trim());
+        await prefs.setString('saved_email', cleanIdentifier);
         notifyListeners();
         return {'success': true, 'requires2FA': false};
       }

@@ -12,7 +12,7 @@ export class TwilioService {
       formattedPhone = '+234' + formattedPhone;
     }
 
-    const messageBody = `Your Hometrust verification code is: ${otpCode}. Valid for 10 minutes. Do not share this code with anyone.`;
+    const messageBody = `Your Hometrust security OTP code is: ${otpCode}. Valid for 10 minutes. Please do not share this code with anyone. This verification is from Hometrust (The Ehomms Group).`;
 
     if (!accountSid || !authToken) {
       console.log(`[TWILIO SMS SIMULATOR] To: ${formattedPhone} | Code: ${otpCode} | Message: "${messageBody}"`);
