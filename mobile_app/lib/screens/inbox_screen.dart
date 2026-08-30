@@ -116,6 +116,30 @@ class _InboxScreenState extends State<InboxScreen> {
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.4),
                           ),
+                          const SizedBox(height: 18),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ChatScreen(
+                                    isSupport: true,
+                                    recipientName: 'Hometrust Support & Developer Desk',
+                                    recipientRole: 'Concierge Support',
+                                  ),
+                                ),
+                              );
+                              _fetchConversations();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F172A),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            icon: const Icon(Icons.add_comment_rounded, size: 16),
+                            label: const Text('Start New Chat', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                          ),
                         ],
                       ),
                     ),

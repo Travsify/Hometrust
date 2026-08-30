@@ -308,6 +308,8 @@ class _DevelopersScreenState extends State<DevelopersScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => ChatScreen(
+                            developerId: dev['id'],
+                            recipientId: dev['userId'],
                             recipientName: companyName,
                             recipientRole: 'Verified Developer Representative',
                           ),
@@ -340,6 +342,8 @@ class _DevelopersScreenState extends State<DevelopersScreen> {
                         context,
                         entityName: companyName,
                         entityRole: 'Verified Developer Representative',
+                        developerId: dev['id'],
+                        recipientId: dev['userId'],
                       );
                     },
                     icon: const Icon(Icons.phone_in_talk_rounded, size: 16, color: Colors.white),

@@ -1,22 +1,50 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../core/network/api_client.dart';
 
 class InAppCallModal extends StatefulWidget {
   final String entityName;
   final String entityRole;
+  final String? developerId;
+  final String? recipientId;
+  final String? propertyId;
+  final String? projectId;
+  final String? propertyTitle;
 
   const InAppCallModal({
     super.key,
     required this.entityName,
     this.entityRole = 'Verified Developer',
+    this.developerId,
+    this.recipientId,
+    this.propertyId,
+    this.projectId,
+    this.propertyTitle,
   });
 
-  static void show(BuildContext context, {required String entityName, String entityRole = 'Verified Developer'}) {
+  static void show(
+    BuildContext context, {
+    required String entityName,
+    String entityRole = 'Verified Developer',
+    String? developerId,
+    String? recipientId,
+    String? propertyId,
+    String? projectId,
+    String? propertyTitle,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => InAppCallModal(entityName: entityName, entityRole: entityRole),
+      builder: (_) => InAppCallModal(
+        entityName: entityName,
+        entityRole: entityRole,
+        developerId: developerId,
+        recipientId: recipientId,
+        propertyId: propertyId,
+        projectId: projectId,
+        propertyTitle: propertyTitle,
+      ),
     );
   }
 
@@ -34,6 +62,7 @@ class _InAppCallModalState extends State<InAppCallModal> {
   @override
   void initState() {
     super.initState();
+    _recordCallLog();
     // Simulate connection after 1.8 seconds
     Future.delayed(const Duration(milliseconds: 1800), () {
       if (mounted) {
@@ -41,6 +70,32 @@ class _InAppCallModalState extends State<InAppCallModal> {
         _startTimer();
       }
     });
+  }
+
+  Future<void> _recordCallLog() async {
+    try {
+      final title = widget.propertyTitle != null ? ' regarding "${widget.propertyTitle}"' : '';
+      final msg = '📞 In-App Voice Call initiated with ${widget.entityName}$title';
+      if (widget.developerId != null) {
+        await ApiClient.post('/chat/start/developer', {
+          'developerId': widget.developerId,
+          'propertyId': widget.propertyId,
+          'projectId': widget.projectId,
+          'message': msg,
+        });
+      } else if (widget.recipientId != null) {
+        final conv = await ApiClient.post('/chat/conversation', {
+          'recipientId': widget.recipientId,
+          'propertyId': widget.propertyId,
+          'projectId': widget.projectId,
+        });
+        if (conv != null && conv['id'] != null) {
+          await ApiClient.post('/chat/conversations/${conv['id']}/messages', {
+            'content': msg,
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   void _startTimer() {

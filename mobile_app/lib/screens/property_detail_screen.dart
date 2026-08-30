@@ -345,8 +345,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) => ChatScreen(
-                                          recipientName: prop.developer!.companyName,
+                                          developerId: prop.developer?.id,
+                                          recipientName: prop.developer?.companyName ?? 'Verified Developer',
                                           propertyTitle: prop.title,
+                                          propertyId: prop.id,
                                         ),
                                       ),
                                     );
@@ -371,7 +373,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                     }
                                     InAppCallModal.show(
                                       context,
-                                      entityName: prop.developer!.companyName,
+                                      entityName: prop.developer?.companyName ?? 'Verified Developer',
+                                      developerId: prop.developer?.id,
+                                      propertyId: prop.id,
+                                      propertyTitle: prop.title,
                                     );
                                   },
                                   icon: const Icon(Icons.phone_in_talk_rounded, size: 14, color: Colors.white),
@@ -500,8 +505,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => ChatScreen(
+                                    developerId: widget.property.developer?.id,
                                     recipientName: devName,
                                     propertyTitle: widget.property.title,
+                                    propertyId: widget.property.id,
                                   ),
                                 ),
                               );
@@ -526,7 +533,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                 Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
                                 return;
                               }
-                              InAppCallModal.show(context, entityName: devName);
+                              InAppCallModal.show(
+                                context,
+                                entityName: devName,
+                                developerId: widget.property.developer?.id,
+                                propertyId: widget.property.id,
+                                propertyTitle: widget.property.title,
+                              );
                             },
                           ),
                           const SizedBox(height: 10),

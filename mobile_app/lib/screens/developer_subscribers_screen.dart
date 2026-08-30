@@ -276,6 +276,7 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
                                         context,
                                         MaterialPageRoute(
                                           builder: (_) => ChatScreen(
+                                            recipientId: buyer['id'] ?? sub['userId'],
                                             recipientName: buyerName,
                                             recipientRole: 'Subscriber (${sub['purchaseCode'] ?? 'HT-PUR'})',
                                             propertyTitle: sub['propertyTitle'],

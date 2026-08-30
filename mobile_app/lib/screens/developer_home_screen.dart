@@ -1077,20 +1077,20 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
   // ── 1.5 DEVELOPER SITE STORIES & REELS PUBLISHING BANNER ──
   Widget _buildDeveloperStoriesActionBanner(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.35)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -1098,40 +1098,74 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF059669).withValues(alpha: 0.25),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
-                ),
-                child: const Icon(Icons.videocam_rounded, color: Color(0xFF34D399), size: 20),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF059669).withValues(alpha: 0.25),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
+                    ),
+                    child: const Icon(Icons.videocam_rounded, color: Color(0xFF34D399), size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Site Stories & Reels 🎥',
+                        style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Reach subscribed buyers with live progress',
+                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10.5),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Site Stories & Reels 🎥',
-                      style: TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w900),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Post live build progress & reach subscribed buyers.',
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                    ),
-                  ],
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SiteReelsScreen()),
+                  );
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.35)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Watch Reels',
+                        style: TextStyle(
+                          color: Color(0xFF34D399),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(width: 3),
+                      Icon(Icons.arrow_forward_ios_rounded, size: 9, color: Color(0xFF34D399)),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                flex: 3,
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.push(
@@ -1143,15 +1177,15 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                     backgroundColor: const Color(0xFF059669),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 10),
+                    elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   icon: const Icon(Icons.add_photo_alternate_rounded, size: 16),
-                  label: const Text('Post Site Story', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+                  label: const Text('Share Reels', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
-                flex: 2,
                 child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.push(
@@ -1166,7 +1200,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   icon: const Icon(Icons.play_circle_outline_rounded, size: 16, color: Color(0xFF34D399)),
-                  label: const Text('Watch Feed', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                  label: const Text('Watch Reels', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
                 ),
               ),
             ],

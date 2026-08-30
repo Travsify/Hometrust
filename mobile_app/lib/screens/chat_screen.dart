@@ -94,6 +94,11 @@ class _ChatScreenState extends State<ChatScreen> {
           if (res != null && res['id'] != null) {
             _activeConvId = res['id'];
           }
+        } else {
+          final res = await ApiClient.post('/chat/start/support', {});
+          if (res != null && res['id'] != null) {
+            _activeConvId = res['id'];
+          }
         }
       } catch (e) {
         debugPrint('Error starting conversation: $e');
@@ -172,7 +177,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _sendMessage(String text) {
+  Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
     final msg = text.trim();
     _msgCtrl.clear();
@@ -195,6 +200,54 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _scrollToBottom();
 
+    // Ensure conversation exists before sending
+    if (_activeConvId == null) {
+      try {
+        if (widget.isSupport) {
+          final res = await ApiClient.post('/chat/start/support', {'message': msg});
+          if (res != null && res['id'] != null) {
+            _activeConvId = res['id'];
+            SocketService.instance.joinConversation(_activeConvId!);
+            _fetchMessages();
+            return;
+          }
+        } else if (widget.developerId != null) {
+          final res = await ApiClient.post('/chat/start/developer', {
+            'developerId': widget.developerId,
+            'propertyId': widget.propertyId,
+            'projectId': widget.projectId,
+            'message': msg,
+          });
+          if (res != null && res['id'] != null) {
+            _activeConvId = res['id'];
+            SocketService.instance.joinConversation(_activeConvId!);
+            _fetchMessages();
+            return;
+          }
+        } else if (widget.recipientId != null) {
+          final res = await ApiClient.post('/chat/conversation', {
+            'recipientId': widget.recipientId,
+            'propertyId': widget.propertyId,
+            'projectId': widget.projectId,
+          });
+          if (res != null && res['id'] != null) {
+            _activeConvId = res['id'];
+            SocketService.instance.joinConversation(_activeConvId!);
+          }
+        } else {
+          final res = await ApiClient.post('/chat/start/support', {'message': msg});
+          if (res != null && res['id'] != null) {
+            _activeConvId = res['id'];
+            SocketService.instance.joinConversation(_activeConvId!);
+            _fetchMessages();
+            return;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error creating conversation on send: $e');
+      }
+    }
+
     // 1. Emit via Socket.io
     if (_activeConvId != null) {
       SocketService.instance.sendMessage(
@@ -204,11 +257,13 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
       // 2. Persist via REST API
-      ApiClient.post('/chat/conversations/$_activeConvId/messages', {
-        'content': msg,
-      }).catchError((err) {
+      try {
+        await ApiClient.post('/chat/conversations/$_activeConvId/messages', {
+          'content': msg,
+        });
+      } catch (err) {
         debugPrint('Failed to persist message via REST: $err');
-      });
+      }
     }
   }
 

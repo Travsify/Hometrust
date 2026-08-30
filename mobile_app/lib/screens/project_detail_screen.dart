@@ -610,8 +610,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => ChatScreen(
+                                    developerId: project.developer?.id,
                                     recipientName: devName,
                                     propertyTitle: project.name,
+                                    projectId: project.id,
                                   ),
                                 ),
                               );
@@ -636,7 +638,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                 Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
                                 return;
                               }
-                              InAppCallModal.show(context, entityName: devName);
+                              InAppCallModal.show(
+                                context,
+                                entityName: devName,
+                                developerId: project.developer?.id,
+                                projectId: project.id,
+                                propertyTitle: project.name,
+                              );
                             },
                           ),
                           const SizedBox(height: 10),
