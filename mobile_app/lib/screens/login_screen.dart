@@ -16,8 +16,11 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+  
+  // Controllers
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _confirmPasswordCtrl = TextEditingController();
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
@@ -28,7 +31,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _officeAddressCtrl = TextEditingController();
 
   bool _isRegistering = false;
+  int _currentStep = 1; // Step-wise registration (Buyer: 1-2, Developer: 1-3)
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   String _selectedRole = 'BUYER'; // 'BUYER' or 'DEVELOPER'
 
   // Verification states for Sign-Up
@@ -59,6 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _confirmPasswordCtrl.dispose();
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
     _phoneCtrl.dispose();
@@ -66,6 +72,21 @@ class _LoginScreenState extends State<LoginScreen> {
     _cacCtrl.dispose();
     _officeAddressCtrl.dispose();
     super.dispose();
+  }
+
+  int get _maxSteps => _selectedRole == 'DEVELOPER' ? 3 : 2;
+
+  void _handleBackStep() {
+    if (_currentStep > 1) {
+      setState(() {
+        _currentStep--;
+      });
+    } else {
+      setState(() {
+        _isRegistering = false;
+        _currentStep = 1;
+      });
+    }
   }
 
   // --- OTP Verification Dialog for Email or Phone ---
@@ -401,291 +422,594 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // --- Step 1 Validator & Advance ---
+  void _advanceFromStep1() {
+    if (_selectedRole == 'BUYER') {
+      // Validate First & Last Name
+      final fn = _firstNameCtrl.text.trim();
+      final ln = _lastNameCtrl.text.trim();
+      if (fn.isEmpty || ln.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter your First Name and Last Name to continue.')),
+        );
+        return;
+      }
+      setState(() => _currentStep = 2);
+    } else {
+      // Validate Developer Company details
+      final comp = _companyNameCtrl.text.trim();
+      final cac = _cacCtrl.text.trim();
+      if (comp.isEmpty || cac.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter your Company Name and CAC Number to continue.')),
+        );
+        return;
+      }
+      setState(() => _currentStep = 2);
+    }
+  }
+
+  // --- Step 2 Validator & Advance for Developer ---
+  void _advanceFromStep2Developer() {
+    final fn = _firstNameCtrl.text.trim();
+    final ln = _lastNameCtrl.text.trim();
+    if (fn.isEmpty || ln.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter the Representative / Director First and Last Name.')),
+      );
+      return;
+    }
+    setState(() => _currentStep = 3);
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return PopScope(
+      canPop: !_isRegistering || _currentStep == 1,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBackStep();
+      },
+      child: Scaffold(
         backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.shield_rounded, color: AppColors.primary, size: 32),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _isRegistering ? 'Create your Account' : 'Welcome to Hometrust',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _isRegistering
-                      ? 'Select your account type and verify both your email and phone number.'
-                      : 'Verify documents, track off-plan milestones & pay in instalments.',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 20),
-
-                // ROLE SELECTOR (ONLY WHEN REGISTERING)
-                if (_isRegistering) ...[
-                  const Text(
-                    'I am registering as:',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.textPrimary),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedRole = 'BUYER'),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                            decoration: BoxDecoration(
-                              color: _selectedRole == 'BUYER' ? AppColors.primary.withValues(alpha: 0.08) : AppColors.background,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _selectedRole == 'BUYER' ? AppColors.primary : AppColors.cardBorder,
-                                width: _selectedRole == 'BUYER' ? 2 : 1,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.person_rounded,
-                                  color: _selectedRole == 'BUYER' ? AppColors.primary : AppColors.textSecondary,
-                                  size: 22,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Buyer / Investor',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 12,
-                                    color: _selectedRole == 'BUYER' ? AppColors.primary : AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                const Text(
-                                  'Buy & verify land',
-                                  style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedRole = 'DEVELOPER'),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                            decoration: BoxDecoration(
-                              color: _selectedRole == 'DEVELOPER' ? const Color(0xFFD97706).withValues(alpha: 0.08) : AppColors.background,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _selectedRole == 'DEVELOPER' ? const Color(0xFFD97706) : AppColors.cardBorder,
-                                width: _selectedRole == 'DEVELOPER' ? 2 : 1,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.business_rounded,
-                                  color: _selectedRole == 'DEVELOPER' ? const Color(0xFFD97706) : AppColors.textSecondary,
-                                  size: 22,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Developer / Co.',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 12,
-                                    color: _selectedRole == 'DEVELOPER' ? const Color(0xFFD97706) : AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                const Text(
-                                  'List off-plan builds',
-                                  style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                ],
-
-                if (auth.errorMessage != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.roseBg,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.roseText.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error_outline, color: AppColors.roseText, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(auth.errorMessage!, style: const TextStyle(color: AppColors.roseText, fontSize: 12)),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                if (_isRegistering) ...[
-                  // CORPORATE DEVELOPER FIELDS
-                  if (_selectedRole == 'DEVELOPER') ...[
-                    TextFormField(
-                      controller: _companyNameCtrl,
-                      textCapitalization: TextCapitalization.words,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Company Name is required' : null,
-                      decoration: const InputDecoration(
-                        labelText: 'Company / Business Name',
-                        hintText: 'e.g. Haven Homes Nigeria Ltd',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.apartment_rounded),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+            onPressed: () {
+              if (_isRegistering && _currentStep > 1) {
+                _handleBackStep();
+              } else if (_isRegistering && _currentStep == 1) {
+                setState(() {
+                  _isRegistering = false;
+                  _formKey.currentState?.reset();
+                });
+              } else {
+                Navigator.pop(context);
+              }
+            },
+          ),
+          title: _isRegistering
+              ? Text(
+                  'Step $_currentStep of $_maxSteps',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                )
+              : null,
+          centerTitle: true,
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // STEP PROGRESS BAR (WHEN REGISTERING)
+                  if (_isRegistering) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: _currentStep / _maxSteps,
+                        backgroundColor: const Color(0xFFE2E8F0),
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                        minHeight: 6,
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _cacCtrl,
-                      textCapitalization: TextCapitalization.characters,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'CAC RC Number is required' : null,
-                      decoration: const InputDecoration(
-                        labelText: 'CAC Registration / RC Number',
-                        hintText: 'e.g. RC-1849204',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.verified_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _officeAddressCtrl,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        labelText: 'Office Address (Optional)',
-                        hintText: 'e.g. 14 Admiralty Way, Lekki Phase 1',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.location_city_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 20),
                   ],
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _firstNameCtrl,
-                          textCapitalization: TextCapitalization.words,
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-                          decoration: InputDecoration(
-                            labelText: _selectedRole == 'DEVELOPER' ? 'Rep. First Name' : 'First Name',
-                            border: const OutlineInputBorder(),
-                            prefixIcon: const Icon(Icons.person_outline),
+                  // HEADER BADGE & TITLES
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _isRegistering
+                          ? (_selectedRole == 'DEVELOPER' ? Icons.business_rounded : Icons.person_add_alt_1_rounded)
+                          : Icons.shield_rounded,
+                      color: AppColors.primary,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  Text(
+                    _getHeaderTitle(),
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _getHeaderSubtitle(),
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ERROR BANNER
+                  if (auth.errorMessage != null)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.roseBg,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.roseText.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: AppColors.roseText, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(auth.errorMessage!, style: const TextStyle(color: AppColors.roseText, fontSize: 12)),
                           ),
+                        ],
+                      ),
+                    ),
+
+                  // ==========================================
+                  // 1. SIGN IN VIEW (NOT REGISTERING)
+                  // ==========================================
+                  if (!_isRegistering) ...[
+                    TextFormField(
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      autocorrect: false,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Email is required';
+                        final emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+\.\w{2,}$');
+                        if (!emailRegex.hasMatch(v.trim())) return 'Enter a valid email address';
+                        return null;
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Email Address',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.mail_outline),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _passwordCtrl,
+                      obscureText: _obscurePassword,
+                      validator: (v) => (v == null || v.isEmpty) ? 'Password is required' : null,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _lastNameCtrl,
-                          textCapitalization: TextCapitalization.words,
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-                          decoration: InputDecoration(
-                            labelText: _selectedRole == 'DEVELOPER' ? 'Rep. Last Name' : 'Last Name',
-                            border: const OutlineInputBorder(),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                          );
+                        },
+                        child: const Text('Forgot Password?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: auth.isLoading
+                            ? null
+                            : () async {
+                                if (!_formKey.currentState!.validate()) return;
+                                final loginRes = await auth.login(_emailCtrl.text.trim(), _passwordCtrl.text);
+                                if (!mounted) return;
+
+                                if (loginRes['requires2FA'] == true) {
+                                  final verified = await Navigator.push<bool>(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => LoginOtpScreen(
+                                        twoFactorToken: loginRes['twoFactorToken'],
+                                        email: loginRes['email'],
+                                        maskedDestination: loginRes['maskedDestination'],
+                                      ),
+                                    ),
+                                  );
+                                  if (verified == true && mounted) {
+                                    Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
+                                    Navigator.pop(context);
+                                  }
+                                } else if (loginRes['success'] == true) {
+                                  Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
+                                  Navigator.pop(context);
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: auth.isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text(
+                                'Sign In',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+                              ),
+                      ),
+                    ),
+
+                    if (_canUseBiometrics) ...[
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton.icon(
+                          onPressed: _handleBiometricLogin,
+                          icon: const Icon(Icons.fingerprint_rounded, color: AppColors.primary, size: 24),
+                          label: const Text(
+                            'Unlock with Face ID / Fingerprint',
+                            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.primary),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 14),
 
-                  // PHONE NUMBER INPUT + VERIFY BUTTON
-                  TextFormField(
-                    controller: _phoneCtrl,
-                    keyboardType: TextInputType.phone,
-                    onChanged: (_) {
-                      if (_isPhoneVerified) setState(() => _isPhoneVerified = false);
-                    },
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Phone number is required';
-                      if (v.trim().length < 10) return 'Enter a valid phone number';
-                      if (!_isPhoneVerified) return 'Please tap Verify to confirm your phone';
-                      return null;
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Phone Number (+234...)',
-                      border: const OutlineInputBorder(),
-                      prefixIcon: const Icon(Icons.phone_outlined),
-                      suffixIcon: Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: _isPhoneVerified
-                            ? const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 18),
-                                  SizedBox(width: 4),
-                                  Text('Verified', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 11)),
-                                ],
-                              )
-                            : TextButton(
-                                onPressed: _isSendingPhoneOtp ? null : _handleVerifyPhone,
-                                child: _isSendingPhoneOtp
-                                    ? const SizedBox(height: 14, width: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                                    : const Text('Verify Phone', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.primary)),
-                              ),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _isRegistering = true;
+                            _currentStep = 1;
+                            _isEmailVerified = false;
+                            _isPhoneVerified = false;
+                            _formKey.currentState?.reset();
+                          });
+                        },
+                        child: const Text(
+                          "Don't have an account? Create Account",
+                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                ],
+                  ],
 
-                // EMAIL INPUT + VERIFY BUTTON (WHEN REGISTERING)
-                TextFormField(
-                  controller: _emailCtrl,
-                  keyboardType: TextInputType.emailAddress,
-                  autocorrect: false,
-                  onChanged: (_) {
-                    if (_isRegistering && _isEmailVerified) setState(() => _isEmailVerified = false);
-                  },
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Email is required';
-                    final emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+\.\w{2,}$');
-                    if (!emailRegex.hasMatch(v.trim())) return 'Enter a valid email address';
-                    if (_isRegistering && !_isEmailVerified) return 'Please tap Verify to confirm your email';
-                    return null;
-                  },
-                  decoration: InputDecoration(
-                    labelText: _selectedRole == 'DEVELOPER' ? 'Official Business Email' : 'Email Address',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.mail_outline),
-                    suffixIcon: _isRegistering
-                        ? Padding(
+                  // ==========================================
+                  // 2. STEP-WISE REGISTRATION VIEWS
+                  // ==========================================
+                  if (_isRegistering) ...[
+                    // ----------------------------------------------------
+                    // STEP 1: ROLE SELECTOR & INITIAL DETAILS
+                    // ----------------------------------------------------
+                    if (_currentStep == 1) ...[
+                      const Text(
+                        'Select Account Type:',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedRole = 'BUYER'),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: _selectedRole == 'BUYER' ? AppColors.primary.withValues(alpha: 0.08) : AppColors.background,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: _selectedRole == 'BUYER' ? AppColors.primary : AppColors.cardBorder,
+                                    width: _selectedRole == 'BUYER' ? 2 : 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.person_rounded,
+                                      color: _selectedRole == 'BUYER' ? AppColors.primary : AppColors.textSecondary,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Buyer / Investor',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 12,
+                                        color: _selectedRole == 'BUYER' ? AppColors.primary : AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    const Text('Buy & verify land', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedRole = 'DEVELOPER'),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: _selectedRole == 'DEVELOPER' ? const Color(0xFFD97706).withValues(alpha: 0.08) : AppColors.background,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: _selectedRole == 'DEVELOPER' ? const Color(0xFFD97706) : AppColors.cardBorder,
+                                    width: _selectedRole == 'DEVELOPER' ? 2 : 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.business_rounded,
+                                      color: _selectedRole == 'DEVELOPER' ? const Color(0xFFD97706) : AppColors.textSecondary,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Developer / Co.',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 12,
+                                        color: _selectedRole == 'DEVELOPER' ? const Color(0xFFD97706) : AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    const Text('List off-plan builds', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // BUYER STEP 1 FIELDS: First Name & Last Name
+                      if (_selectedRole == 'BUYER') ...[
+                        TextFormField(
+                          controller: _firstNameCtrl,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'First Name',
+                            hintText: 'e.g. Chukwudi',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.person_outline),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _lastNameCtrl,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Last Name',
+                            hintText: 'e.g. Adeleke',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.badge_outlined),
+                          ),
+                        ),
+                      ] else ...[
+                        // DEVELOPER STEP 1 FIELDS: Company Name, CAC, Office Address
+                        TextFormField(
+                          controller: _companyNameCtrl,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Company / Business Name',
+                            hintText: 'e.g. Haven Homes Nigeria Ltd',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.apartment_rounded),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _cacCtrl,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: const InputDecoration(
+                            labelText: 'CAC Registration / RC Number',
+                            hintText: 'e.g. RC-1849204',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.verified_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _officeAddressCtrl,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Office Address (Optional)',
+                            hintText: 'e.g. 14 Admiralty Way, Lekki Phase 1',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.location_city_outlined),
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: _advanceFromStep1,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('Next', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                              SizedBox(width: 8),
+                              Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    // ----------------------------------------------------
+                    // STEP 2 FOR DEVELOPER: REP / DIRECTOR NAME
+                    // ----------------------------------------------------
+                    if (_selectedRole == 'DEVELOPER' && _currentStep == 2) ...[
+                      TextFormField(
+                        controller: _firstNameCtrl,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'Director / Rep. First Name',
+                          hintText: 'e.g. Tunde',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _lastNameCtrl,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'Director / Rep. Last Name',
+                          hintText: 'e.g. Bakare',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.badge_outlined),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _handleBackStep,
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Back', style: TextStyle(fontWeight: FontWeight.w700)),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton(
+                              onPressed: _advanceFromStep2Developer,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text('Next', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                                  SizedBox(width: 6),
+                                  Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    // ----------------------------------------------------
+                    // FINAL STEP: CONTACT, PHONE OTP, EMAIL OTP & PASSWORD
+                    // (Step 2 for Buyer, Step 3 for Developer)
+                    // ----------------------------------------------------
+                    if ((_selectedRole == 'BUYER' && _currentStep == 2) ||
+                        (_selectedRole == 'DEVELOPER' && _currentStep == 3)) ...[
+                      // PHONE NUMBER + TWILIO VERIFY BUTTON
+                      TextFormField(
+                        controller: _phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        onChanged: (_) {
+                          if (_isPhoneVerified) setState(() => _isPhoneVerified = false);
+                        },
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Phone number is required';
+                          if (v.trim().length < 10) return 'Enter a valid phone number';
+                          if (!_isPhoneVerified) return 'Please tap Verify to confirm your phone';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number (+234...)',
+                          hintText: '08026990956',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.phone_outlined),
+                          suffixIcon: Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: _isPhoneVerified
+                                ? const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 18),
+                                      SizedBox(width: 4),
+                                      Text('Verified', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 11)),
+                                    ],
+                                  )
+                                : TextButton(
+                                    onPressed: _isSendingPhoneOtp ? null : _handleVerifyPhone,
+                                    child: _isSendingPhoneOtp
+                                        ? const SizedBox(height: 14, width: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                        : const Text('Verify Phone', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.primary)),
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // EMAIL ADDRESS + RESEND VERIFY BUTTON
+                      TextFormField(
+                        controller: _emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        autocorrect: false,
+                        onChanged: (_) {
+                          if (_isEmailVerified) setState(() => _isEmailVerified = false);
+                        },
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Email is required';
+                          final emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+\.\w{2,}$');
+                          if (!emailRegex.hasMatch(v.trim())) return 'Enter a valid email address';
+                          if (!_isEmailVerified) return 'Please tap Verify to confirm your email';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          labelText: _selectedRole == 'DEVELOPER' ? 'Official Business Email' : 'Email Address',
+                          hintText: _selectedRole == 'DEVELOPER' ? 'info@company.com' : 'you@example.com',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.mail_outline),
+                          suffixIcon: Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: _isEmailVerified
                                 ? const Row(
@@ -702,179 +1026,181 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ? const SizedBox(height: 14, width: 14, child: CircularProgressIndicator(strokeWidth: 2))
                                         : const Text('Verify Email', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.primary)),
                                   ),
-                          )
-                        : null,
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // PASSWORD INPUT
-                TextFormField(
-                  controller: _passwordCtrl,
-                  obscureText: _obscurePassword,
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Password is required';
-                    if (_isRegistering && v.length < 8) return 'Password must be at least 8 characters';
-                    return null;
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                  ),
-                ),
-
-                if (!_isRegistering)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
-                        );
-                      },
-                      child: const Text('Forgot Password?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
-                    ),
-                  )
-                else
-                  const SizedBox(height: 24),
-
-                // SUBMIT BUTTON (SIGN IN OR CREATE ACCOUNT)
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: auth.isLoading
-                        ? null
-                        : () async {
-                            if (!_formKey.currentState!.validate()) return;
-                            if (_isRegistering) {
-                              if (!_isEmailVerified) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Please verify your email address before proceeding.')),
-                                );
-                                return;
-                              }
-                              if (!_isPhoneVerified) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Please verify your phone number before proceeding.')),
-                                );
-                                return;
-                              }
-
-                              final devInfo = _selectedRole == 'DEVELOPER'
-                                  ? {
-                                      'companyName': _companyNameCtrl.text.trim(),
-                                      'cacNumber': _cacCtrl.text.trim(),
-                                      'officeAddress': _officeAddressCtrl.text.trim(),
-                                    }
-                                  : null;
-
-                              final success = await auth.register(
-                                email: _emailCtrl.text.trim(),
-                                password: _passwordCtrl.text,
-                                firstName: _firstNameCtrl.text.trim(),
-                                lastName: _lastNameCtrl.text.trim(),
-                                phone: _phoneCtrl.text.trim(),
-                                role: _selectedRole,
-                                developerInfo: devInfo,
-                              );
-                              if (success && mounted) {
-                                Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
-                                Navigator.pop(context);
-                              }
-                            } else {
-                              // Sign In with 2FA Challenge Flow
-                              final loginRes = await auth.login(_emailCtrl.text.trim(), _passwordCtrl.text);
-                              if (!mounted) return;
-
-                              if (loginRes['requires2FA'] == true) {
-                                // Navigate to dedicated 2FA OTP verification screen
-                                final verified = await Navigator.push<bool>(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => LoginOtpScreen(
-                                      twoFactorToken: loginRes['twoFactorToken'],
-                                      email: loginRes['email'],
-                                      maskedDestination: loginRes['maskedDestination'],
-                                    ),
-                                  ),
-                                );
-                                if (verified == true && mounted) {
-                                  Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
-                                  Navigator.pop(context);
-                                }
-                              } else if (loginRes['success'] == true) {
-                                Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
-                                Navigator.pop(context);
-                              }
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: auth.isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : Text(
-                            _isRegistering ? 'Create Account' : 'Sign In',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
                           ),
-                  ),
-                ),
-
-                // BIOMETRIC QUICK LOGIN BUTTON (WHEN SIGNING IN & ENABLED)
-                if (!_isRegistering && _canUseBiometrics) ...[
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton.icon(
-                      onPressed: _handleBiometricLogin,
-                      icon: const Icon(Icons.fingerprint_rounded, color: AppColors.primary, size: 24),
-                      label: const Text(
-                        'Unlock with Face ID / Fingerprint',
-                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
                       ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.primary),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      const SizedBox(height: 14),
+
+                      // PASSWORD FIELD
+                      TextFormField(
+                        controller: _passwordCtrl,
+                        obscureText: _obscurePassword,
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Password is required';
+                          if (v.length < 8) return 'Password must be at least 8 characters';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          hintText: 'At least 8 characters',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // CONFIRM PASSWORD FIELD
+                      TextFormField(
+                        controller: _confirmPasswordCtrl,
+                        obscureText: _obscureConfirmPassword,
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Please confirm your password';
+                          if (v != _passwordCtrl.text) return 'Passwords do not match';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Confirm Password',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock_reset_outlined),
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                            onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ACTIONS: BACK & CREATE ACCOUNT
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _handleBackStep,
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Back', style: TextStyle(fontWeight: FontWeight.w700)),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton(
+                              onPressed: auth.isLoading
+                                  ? null
+                                  : () async {
+                                      if (!_formKey.currentState!.validate()) return;
+                                      if (!_isPhoneVerified) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Please tap "Verify Phone" to confirm your phone number.')),
+                                        );
+                                        return;
+                                      }
+                                      if (!_isEmailVerified) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Please tap "Verify Email" to confirm your email address.')),
+                                        );
+                                        return;
+                                      }
+
+                                      final devInfo = _selectedRole == 'DEVELOPER'
+                                          ? {
+                                              'companyName': _companyNameCtrl.text.trim(),
+                                              'cacNumber': _cacCtrl.text.trim(),
+                                              'officeAddress': _officeAddressCtrl.text.trim(),
+                                            }
+                                          : null;
+
+                                      final success = await auth.register(
+                                        email: _emailCtrl.text.trim(),
+                                        password: _passwordCtrl.text,
+                                        firstName: _firstNameCtrl.text.trim(),
+                                        lastName: _lastNameCtrl.text.trim(),
+                                        phone: _phoneCtrl.text.trim(),
+                                        role: _selectedRole,
+                                        developerInfo: devInfo,
+                                      );
+                                      if (success && mounted) {
+                                        Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
+                                        Navigator.pop(context);
+                                      }
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: auth.isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : Text(
+                                      _selectedRole == 'DEVELOPER' ? 'Create Corporate Account' : 'Create Account',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    const SizedBox(height: 18),
+                    Center(
+                      child: TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _isRegistering = false;
+                            _currentStep = 1;
+                            _formKey.currentState?.reset();
+                          });
+                        },
+                        child: const Text(
+                          'Already have an account? Sign In',
+                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
-
-                const SizedBox(height: 16),
-                Center(
-                  child: TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _isRegistering = !_isRegistering;
-                        _isEmailVerified = false;
-                        _isPhoneVerified = false;
-                        _formKey.currentState?.reset();
-                      });
-                    },
-                    child: Text(
-                      _isRegistering ? 'Already have an account? Sign In' : "Don't have an account? Register",
-                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+
+  String _getHeaderTitle() {
+    if (!_isRegistering) return 'Welcome to Hometrust';
+    if (_selectedRole == 'BUYER') {
+      return _currentStep == 1 ? 'Personal Information' : 'Contact & Security';
+    } else {
+      if (_currentStep == 1) return 'Corporate Profile';
+      if (_currentStep == 2) return 'Authorized Director / Rep';
+      return 'Official Contact & Security';
+    }
+  }
+
+  String _getHeaderSubtitle() {
+    if (!_isRegistering) {
+      return 'Verify title documents, track off-plan milestones & pay in escrow instalments.';
+    }
+    if (_selectedRole == 'BUYER') {
+      return _currentStep == 1
+          ? 'Enter your legal first and last name to get started.'
+          : 'Verify your phone number and email address with OTP codes to secure your transactions.';
+    } else {
+      if (_currentStep == 1) return 'Enter your company name and CAC RC number as registered with CAC Nigeria.';
+      if (_currentStep == 2) return 'Enter the legal name of the primary director or authorized company representative.';
+      return 'Verify official phone number and corporate email address for escrow management.';
+    }
+  }
 }
+
