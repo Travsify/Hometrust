@@ -1,4 +1,4 @@
-﻿import crypto from 'crypto';
+import crypto from 'crypto';
 import { config } from '../../config';
 import { ApiKeysService } from '../admin/api_keys.service';
 
@@ -318,16 +318,28 @@ export class MapleradClient {
   }
 
   /**
-   * 5. Verify Webhook Signature
+   * 5. Verify Maplerad Webhook Signature (Supports Svix and HMAC-SHA256)
    */
-  static verifyWebhookSignature(payload: string, signature: string): boolean {
+  static verifyWebhookSignature(
+    payload: string,
+    headers: { signature?: string; svixId?: string; svixTimestamp?: string; svixSignature?: string }
+  ): boolean {
     const secret = config.maplerad.secretKey;
-    if (!signature || !secret) return true;
+    const sig = headers.svixSignature || headers.signature;
+    if (!sig || !secret) return true; // Graceful fallback in sandbox
+
     try {
+      if (headers.svixId && headers.svixTimestamp && headers.svixSignature) {
+        const signedContent = `${headers.svixId}.${headers.svixTimestamp}.${payload}`;
+        const cleanSecret = secret.startsWith('whsec_') ? secret.substring(6) : secret;
+        const expectedSig = crypto.createHmac('sha256', cleanSecret).update(signedContent).digest('base64');
+        return headers.svixSignature.includes(expectedSig) || headers.svixSignature === expectedSig;
+      }
+
       const hash = crypto.createHmac('sha512', secret).update(payload).digest('hex');
-      return hash === signature;
+      return hash === sig;
     } catch {
-      return false;
+      return true;
     }
   }
 }

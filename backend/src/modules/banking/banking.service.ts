@@ -461,25 +461,57 @@ export class BankingService {
   }
 
   /**
-   * Process incoming Fincra webhook when a buyer transfers money into their virtual account
+   * Process incoming Maplerad/Fincra webhook when a buyer transfers money into their virtual account
+   * Automatically captures deposit, credits escrow wallet, and updates milestone plans
    */
   static async handleWebhook(event: any) {
-    if (event.event === 'collection.successful' || event.event === 'virtual_account.credited') {
-      const { accountNumber, amount, customerReference } = event.data || {};
+    const eventType = event.event || event.type || '';
+    const isCollection = 
+      eventType.includes('collection') || 
+      eventType.includes('virtual_account') || 
+      eventType.includes('credit') ||
+      eventType.includes('deposit') ||
+      eventType.includes('successful');
 
-      const account = await prisma.virtualAccount.findUnique({
-        where: { accountNumber },
-        include: { user: true, developer: true },
-      });
+    if (isCollection) {
+      const data = event.data || event;
+      const accountNumber = data.account_number || data.accountNumber || data.virtual_account_number;
+      const customerId = data.customer_id || data.customerId;
+      const rawAmount = data.amount || data.settlement_amount || 0;
+      const reference = data.reference || data.id || `MPR-DEP-${Date.now()}`;
+
+      // Convert kobo to Naira if needed
+      let amount = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount;
+      if (amount > 100000 && data.currency === 'NGN' && !eventType.includes('fincra')) {
+        // Maplerad amounts are often in kobo (100 kobo = 1 NGN)
+        amount = amount / 100;
+      }
+
+      let account = null;
+      if (accountNumber) {
+        account = await prisma.virtualAccount.findUnique({
+          where: { accountNumber },
+          include: { user: true, developer: true },
+        });
+      }
+
+      if (!account && customerId) {
+        account = await prisma.virtualAccount.findFirst({
+          where: { fincraAccountId: customerId },
+          include: { user: true, developer: true },
+        });
+      }
 
       if (account) {
-        // Credit virtual account balance
+        // 1. Credit virtual account balance
         await prisma.virtualAccount.update({
           where: { id: account.id },
-          data: { balance: { increment: parseFloat(amount) } },
+          data: { balance: { increment: amount } },
         });
 
-        // If user has an active purchase, auto-credit the next instalment!
+        console.log(`[MAPLERAD AUTO-CAPTURE] Credited ₦${amount.toLocaleString()} to Account ${account.accountNumber} (${account.accountName})`);
+
+        // 2. If user has an active purchase, auto-credit the next instalment!
         if (account.userId) {
           const activePurchase = await prisma.purchase.findFirst({
             where: { userId: account.userId, status: 'ACTIVE' },
@@ -487,7 +519,7 @@ export class BankingService {
           });
 
           if (activePurchase) {
-            const paidAmount = parseFloat(amount);
+            const paidAmount = amount;
             const newAmountPaid = activePurchase.amountPaid + paidAmount;
             const newBalance = Math.max(0, activePurchase.totalPrice - newAmountPaid);
             const isCompleted = newBalance <= 0;
@@ -504,7 +536,7 @@ export class BankingService {
             // Record payment entry
             await prisma.payment.create({
               data: {
-                paymentReference: `EV-VBA-TRF-${Date.now()}`,
+                paymentReference: reference,
                 userId: account.userId,
                 purchaseId: activePurchase.id,
                 developerId: activePurchase.property?.developerId || account.developerId,
@@ -517,8 +549,24 @@ export class BankingService {
                 paidAt: new Date(),
               },
             });
+
+            console.log(`[ESCROW AUTO-CAPTURE] Applied ₦${paidAmount.toLocaleString()} to Purchase ${activePurchase.id}. New Balance: ₦${newBalance.toLocaleString()}`);
           }
         }
+
+        // 3. Audit Log
+        await AuditService.log({
+          adminEmail: account.user?.email || account.developer?.email || 'system@hometrustng.com',
+          action: 'PAYMENT_AUTO_CAPTURED',
+          entityType: 'VIRTUAL_ACCOUNT',
+          entityId: account.id,
+          details: {
+            accountNumber: account.accountNumber,
+            amount,
+            reference,
+            provider: 'MAPLERAD',
+          },
+        });
       }
     }
     return { success: true };

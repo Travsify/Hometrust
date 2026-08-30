@@ -96,9 +96,19 @@ export class BankingController {
   static async webhook(req: Request, res: Response): Promise<void> {
     try {
       const signature = (req.headers['x-maplerad-signature'] || req.headers['x-fincra-signature']) as string;
+      const svixId = req.headers['svix-id'] as string;
+      const svixTimestamp = req.headers['svix-timestamp'] as string;
+      const svixSignature = req.headers['svix-signature'] as string;
       const rawPayload = JSON.stringify(req.body);
 
-      if (signature && !MapleradClient.verifyWebhookSignature(rawPayload, signature)) {
+      const isValid = MapleradClient.verifyWebhookSignature(rawPayload, {
+        signature,
+        svixId,
+        svixTimestamp,
+        svixSignature,
+      });
+
+      if (!isValid) {
         res.status(400).send('Invalid signature');
         return;
       }
