@@ -6,6 +6,7 @@ import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/persistent_bottom_nav.dart';
 
 class LegalRequestScreen extends StatefulWidget {
   const LegalRequestScreen({super.key});
@@ -125,6 +126,7 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
     final isSufficient = walletBalance >= _calculatedFee && _calculatedFee > 0;
 
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,

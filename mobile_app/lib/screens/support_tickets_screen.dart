@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/persistent_bottom_nav.dart';
 
 class SupportTicketsScreen extends StatefulWidget {
   const SupportTicketsScreen({super.key});
@@ -486,6 +487,7 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
     }).toList();
 
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text(

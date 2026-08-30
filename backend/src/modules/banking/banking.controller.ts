@@ -52,7 +52,15 @@ export class BankingController {
         sendError(res, 'Unauthorized', 401);
         return;
       }
-      const account = await BankingService.getVirtualAccount(req.user.id, req.query.developerId as string);
+      let account = await BankingService.getVirtualAccount(req.user.id, req.query.developerId as string);
+
+      // Background: sync with Flutterwave to recover any uncredited deposits
+      if (account) {
+        BankingService.recoverUncreditedDeposits(req.user.id).catch((e: any) =>
+          console.warn('[SYNC RECOVERY BG]', e.message)
+        );
+      }
+
       sendSuccess(res, account, 'Virtual bank account retrieved');
     } catch (error: any) {
       sendError(res, error.message, 400);

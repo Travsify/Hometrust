@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
+import '../widgets/persistent_bottom_nav.dart';
 
 class ReceiptsLedgerScreen extends StatefulWidget {
   final String purchaseId;
@@ -63,6 +64,7 @@ class _ReceiptsLedgerScreenState extends State<ReceiptsLedgerScreen> {
     final payments = (ledger?['paymentsList'] as List?) ?? [];
 
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,

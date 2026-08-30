@@ -284,20 +284,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 5. BOLDER PREPARE DOCUMENTS BOX UNDERNEATH GRID
-              _buildPrepareDocumentsBanner(context),
-              const SizedBox(height: 14),
-
-              // 6. EVERYTHING REAL ESTATE (AI Real Estate Dictionary & Lexicon)
-              _buildRealEstateDictionaryBanner(context),
-              const SizedBox(height: 14),
-
-              // 7. PURCHASES & INSTALMENTS PORTAL
-              _buildPurchasesBanner(context, purchaseProvider),
-              const SizedBox(height: 14),
-
-              // 8. CHARTER A BUILDER (BUILD FOR ME)
-              _buildCharterBuilderBanner(context),
+              // 5. QUICK ACCESS SERVICE GRID (2x2)
+              _buildQuickServiceGrid(context, purchaseProvider),
 
               // 9. ACTIVE PURCHASES SNAPSHOT (If user has ongoing purchases)
               if (purchaseProvider.userPurchases.isNotEmpty) ...[
@@ -711,6 +699,188 @@ class _HomeScreenState extends State<HomeScreen> {
           }),
         ),
       ],
+    );
+  }
+  // 5. QUICK ACCESS SERVICE GRID (2x2)
+  Widget _buildQuickServiceGrid(BuildContext context, PurchaseProvider purchaseProvider) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final activeCount = purchaseProvider.userPurchases.where((p) => p.status == 'ACTIVE').length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Quick Services',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _buildServiceGridTile(
+                context,
+                icon: Icons.history_edu_rounded,
+                label: 'Legal Documents',
+                subtitle: 'Deed of Assignment, POA & Contract of Sale',
+                gradientColors: const [Color(0xFF059669), Color(0xFF047857)],
+                bgColor: const Color(0xFFECFDF5),
+                borderColor: const Color(0xFF6EE7B7),
+                badge: null,
+                onTap: () {
+                  if (!auth.isAuthenticated) {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                    return;
+                  }
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalRequestScreen()));
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildServiceGridTile(
+                context,
+                icon: Icons.menu_book_rounded,
+                label: 'Real Estate A-Z',
+                subtitle: 'AI Dictionary & Lexicon for terms & acronyms',
+                gradientColors: const [Color(0xFF7C3AED), Color(0xFF6D28D9)],
+                bgColor: const Color(0xFFF5F3FF),
+                borderColor: const Color(0xFFC4B5FD),
+                badge: null,
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const RealEstateDictionaryScreen()));
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildServiceGridTile(
+                context,
+                icon: Icons.receipt_long_rounded,
+                label: 'Purchases',
+                subtitle: 'Instalments, off-plan orders & escrow schedules',
+                gradientColors: const [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                bgColor: const Color(0xFFEFF6FF),
+                borderColor: const Color(0xFF93C5FD),
+                badge: activeCount > 0 ? '$activeCount Active' : null,
+                onTap: () {
+                  if (!auth.isAuthenticated) {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                    return;
+                  }
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchasesScreen()));
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildServiceGridTile(
+                context,
+                icon: Icons.architecture_rounded,
+                label: 'Charter Builder',
+                subtitle: 'Build custom properties with COREN engineers',
+                gradientColors: const [Color(0xFFEA580C), Color(0xFFC2410C)],
+                bgColor: const Color(0xFFFFF7ED),
+                borderColor: const Color(0xFFFDBA74),
+                badge: null,
+                onTap: () {
+                  if (!auth.isAuthenticated) {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                    return;
+                  }
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const BuildForMeScreen()));
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildServiceGridTile(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required List<Color> gradientColors,
+    required Color bgColor,
+    required Color borderColor,
+    required String? badge,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor, width: 1.2),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: gradientColors,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: gradientColors[0].withValues(alpha: 0.3),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Center(child: Icon(icon, color: Colors.white, size: 20)),
+                  ),
+                  if (badge != null) ...[
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: gradientColors[0],
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        badge,
+                        style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 9.5, color: Color(0xFF64748B), height: 1.3),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

@@ -922,6 +922,72 @@ export class BankingService {
     // Matches if either first or last name or full name is found
     return firstMatch || lastMatch;
   }
+  /**
+   * Recover uncredited Flutterwave deposits for a user.
+   * Called in background on wallet fetch to capture any missed webhook credits.
+   */
+  static async recoverUncreditedDeposits(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { virtualAccounts: true },
+    });
+    if (!user || !user.virtualAccounts?.length) return;
+
+    const account = user.virtualAccounts[0];
+    const txs = await FlutterwaveClient.fetchCustomerTransactions(user.email);
+
+    for (const tx of txs) {
+      if (tx.status === 'successful' && tx.amount > 0) {
+        const txRef = String(tx.tx_ref || tx.id || tx.flw_ref);
+        const existingPayment = await prisma.payment.findFirst({
+          where: {
+            OR: [
+              { paymentReference: txRef },
+              { receiptNumber: txRef },
+            ],
+          },
+        });
+
+        if (!existingPayment) {
+          const amount = Number(tx.amount);
+          console.log(`[SYNC RECOVERY] Crediting uncredited deposit of ₦${amount} (Ref: ${txRef}) for ${user.email}`);
+
+          await prisma.$transaction([
+            prisma.virtualAccount.update({
+              where: { id: account.id },
+              data: { balance: { increment: amount } },
+            }),
+            prisma.payment.create({
+              data: {
+                userId: user.id,
+                amount,
+                currency: 'NGN',
+                purpose: 'ESCROW_WALLET_CREDIT',
+                paystackChannel: 'bank_transfer',
+                paymentReference: txRef,
+                receiptNumber: `HT-RCP-${tx.id || Date.now()}`,
+                status: 'SUCCESS',
+                totalAmount: amount,
+                paidAt: new Date(tx.created_at || Date.now()),
+              },
+            }),
+          ]);
+
+          NotificationsService.createAndDispatch({
+            userId: user.id,
+            title: '💰 Escrow Wallet Credited',
+            message: `Your deposit of ₦${amount.toLocaleString()} via bank transfer has been synced & credited to your escrow wallet.`,
+            type: 'PAYMENT',
+            actionDetails: [
+              { label: 'Amount Credited', value: `₦${amount.toLocaleString()}` },
+              { label: 'Payment Reference', value: txRef },
+              { label: 'Status', value: 'Confirmed & Cleared' },
+            ],
+          }).catch(() => {});
+        }
+      }
+    }
+  }
 
   /**
    * Process incoming Paystack/Flutterwave webhook when money hits a virtual account.

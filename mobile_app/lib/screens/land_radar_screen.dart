@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'verify_screen.dart';
 
 class LandRadarScreen extends StatefulWidget {
@@ -117,6 +118,7 @@ class _LandRadarScreenState extends State<LandRadarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Free Land Risk Radar (36 States)'),

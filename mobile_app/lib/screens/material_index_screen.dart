@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/persistent_bottom_nav.dart';
 
 class MaterialIndexScreen extends StatefulWidget {
   const MaterialIndexScreen({super.key});
@@ -494,6 +495,7 @@ class _MaterialIndexScreenState extends State<MaterialIndexScreen> {
     }).toList();
 
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Material Price Index', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),

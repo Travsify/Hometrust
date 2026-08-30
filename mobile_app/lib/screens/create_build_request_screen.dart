@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'wallet_screen.dart';
 
 class CreateBuildRequestScreen extends StatefulWidget {
@@ -123,6 +124,7 @@ class _CreateBuildRequestScreenState extends State<CreateBuildRequestScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Charter A Builder', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
@@ -368,7 +370,7 @@ class _CreateBuildRequestScreenState extends State<CreateBuildRequestScreen> {
                     const SizedBox(height: 8),
                     const Text(
                       'To prevent frivolous requests, a ₦25,000 commitment fee is deducted from your dedicated Escrow Wallet upon submission. '
-                      'Once approved, Hometrust Admin will initiate an in-app chat with you directly to finalize your drawings & BOQ.',
+                      'Once approved, a Hometrust team expert will reach out to you via in-app chat to finalize your drawings & BOQ.',
                       style: TextStyle(fontSize: 11.5, color: Color(0xFF064E3B), height: 1.4),
                     ),
                   ],

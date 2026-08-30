@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/network/api_client.dart';
+import '../widgets/persistent_bottom_nav.dart';
 
 class RealEstateDictionaryScreen extends StatefulWidget {
   const RealEstateDictionaryScreen({super.key});
@@ -545,6 +546,7 @@ Return a valid JSON object with the following schema:
     final results = _filteredTerms;
 
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text(

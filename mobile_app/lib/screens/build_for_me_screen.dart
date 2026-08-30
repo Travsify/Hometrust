@@ -4,6 +4,7 @@ import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'create_build_request_screen.dart';
 import 'chat_screen.dart';
 import 'wallet_screen.dart';
@@ -170,6 +171,7 @@ class _BuildForMeScreenState extends State<BuildForMeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Charter A Builder', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF0F172A))),
@@ -426,10 +428,10 @@ class _BuildForMeScreenState extends State<BuildForMeScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text('Pending Admin Approval (₦25k Commitment Paid)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF92400E))),
+                                        Text('Pending Review (₦25k Commitment Paid)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF92400E))),
                                         SizedBox(height: 2),
                                         Text(
-                                          'Admin is currently reviewing your site details & architectural drawings. Admin will approve and start an In-App Chat with you directly.',
+                                          'Our team is currently reviewing your site details & architectural drawings. A team expert will reach out to you via In-App Chat shortly.',
                                           style: TextStyle(fontSize: 10.5, color: Color(0xFFB45309), height: 1.3),
                                         ),
                                       ],
@@ -458,7 +460,7 @@ class _BuildForMeScreenState extends State<BuildForMeScreen> {
                                         Text('Proposal Approved & Chat Active ✅', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF065F46))),
                                         SizedBox(height: 2),
                                         Text(
-                                          'Hometrust Admin has approved your proposal and is chatting with you in-app.',
+                                          'A Hometrust team expert has approved your proposal and is chatting with you in-app.',
                                           style: TextStyle(fontSize: 10.5, color: Color(0xFF064E3B)),
                                         ),
                                       ],
@@ -473,8 +475,8 @@ class _BuildForMeScreenState extends State<BuildForMeScreen> {
                                         MaterialPageRoute(
                                           builder: (_) => ChatScreen(
                                             recipientId: engineer?['id'],
-                                            recipientName: engineer != null ? '${engineer['firstName']} ${engineer['lastName']}' : 'Hometrust Admin Lead',
-                                            recipientRole: 'Admin Project Lead',
+                                            recipientName: engineer != null ? '${engineer['firstName']} ${engineer['lastName']}' : 'Hometrust Team Expert',
+                                            recipientRole: 'Project Lead',
                                             propertyTitle: title,
                                           ),
                                         ),

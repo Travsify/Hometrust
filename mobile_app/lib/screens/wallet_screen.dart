@@ -5,6 +5,7 @@ import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'kyc_screen.dart';
 
 class WalletScreen extends StatefulWidget {
@@ -734,6 +735,7 @@ class _WalletScreenState extends State<WalletScreen> {
     }).toList();
 
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text(

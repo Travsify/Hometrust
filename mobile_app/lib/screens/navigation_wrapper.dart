@@ -19,10 +19,10 @@ class NavigationWrapper extends StatefulWidget {
   const NavigationWrapper({super.key});
 
   @override
-  State<NavigationWrapper> createState() => _NavigationWrapperState();
+  State<NavigationWrapper> createState() => NavigationWrapperState();
 }
 
-class _NavigationWrapperState extends State<NavigationWrapper> {
+class NavigationWrapperState extends State<NavigationWrapper> {
   int _currentIndex = 0;
 
   List<Widget> _getBuyerScreens() => [

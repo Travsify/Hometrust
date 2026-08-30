@@ -4,6 +4,7 @@ import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/in_app_call_modal.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'chat_screen.dart';
 import 'login_screen.dart';
 
@@ -79,6 +80,7 @@ class _DevelopersScreenState extends State<DevelopersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,

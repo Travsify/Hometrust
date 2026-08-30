@@ -5,6 +5,7 @@ import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../core/network/socket_service.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'chat_screen.dart';
 
 class InboxScreen extends StatefulWidget {
@@ -62,6 +63,7 @@ class _InboxScreenState extends State<InboxScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text(
