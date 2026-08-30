@@ -699,12 +699,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
 
-                          const Divider(height: 24, color: Color(0xFF334155)),
+                          const Divider(height: 20, color: Color(0xFF1E3A2B)),
 
                           if (accNum.isNotEmpty) ...[
                             // Account Number with One-Tap Copy
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -740,46 +741,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(height: 12),
 
-                            // Bank Name & Account Name with One-Tap Copy
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                InkWell(
-                                  onTap: () => _copyToClipboard(bankName, 'Bank Name'),
-                                  child: Row(
+                            // Stacked Bank & Account Info Container (Never overflows)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      const Icon(Icons.account_balance_rounded, color: Color(0xFF94A3B8), size: 13),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        bankName,
-                                        style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.w700),
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.account_balance_rounded, color: Color(0xFF34D399), size: 14),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                bankName,
+                                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                      const SizedBox(width: 4),
-                                      const Icon(Icons.copy_rounded, color: Color(0xFF64748B), size: 12),
+                                      InkWell(
+                                        onTap: () => _copyToClipboard(bankName, 'Bank Name'),
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                          child: Icon(Icons.copy_rounded, color: Color(0xFF94A3B8), size: 13),
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                ),
-                                InkWell(
-                                  onTap: () => _copyToClipboard(accName, 'Account Name'),
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(maxWidth: 150),
-                                    child: Row(
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.person_rounded, color: Color(0xFF94A3B8), size: 14),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                accName,
+                                                style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w600),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      InkWell(
+                                        onTap: () => _copyToClipboard(accName, 'Account Name'),
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                          child: Icon(Icons.copy_rounded, color: Color(0xFF94A3B8), size: 13),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  InkWell(
+                                    onTap: _showReceiveModal,
+                                    child: const Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Flexible(
-                                          child: Text(
-                                            accName,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w600),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        const Icon(Icons.copy_rounded, color: Color(0xFF64748B), size: 12),
+                                        Text('View Complete Bank Details & Guide', style: TextStyle(color: Color(0xFF34D399), fontSize: 10.5, fontWeight: FontWeight.w800)),
+                                        SizedBox(width: 4),
+                                        Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF34D399), size: 9),
                                       ],
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ],
 

@@ -240,7 +240,29 @@ export class FlutterwaveClient {
   }
 
   /**
-   * 4. Verify Flutterwave Webhook Secret Hash
+   * 4. Fetch recent transactions for a customer directly from Flutterwave API
+   */
+  static async fetchCustomerTransactions(customerEmail: string): Promise<any[]> {
+    const { secretKey, baseUrl } = await this.getCredentials();
+    if (!secretKey) return [];
+
+    try {
+      const cleanEmail = encodeURIComponent(customerEmail.toLowerCase().trim());
+      const response = await fetch(`${baseUrl}/transactions?customer_email=${cleanEmail}&status=successful`, {
+        headers: { Authorization: `Bearer ${secretKey}` },
+      });
+      const resData: any = await response.json();
+      if (response.ok && resData?.status === 'success' && Array.isArray(resData.data)) {
+        return resData.data;
+      }
+    } catch (e: any) {
+      console.warn('[FLUTTERWAVE] fetchCustomerTransactions notice:', e.message);
+    }
+    return [];
+  }
+
+  /**
+   * 5. Verify Flutterwave Webhook Secret Hash
    */
   static verifyWebhookSignature(secretHashHeader?: string): boolean {
     const configuredHash = process.env.FLUTTERWAVE_SECRET_HASH || config.flutterwave?.secretHash || '';

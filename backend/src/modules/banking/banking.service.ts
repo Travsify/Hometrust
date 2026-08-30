@@ -4,6 +4,7 @@ import { PremblyClient } from './prembly.client';
 import { PaystackClient } from '../payments/paystack.client';
 import { AuditService } from '../audit/audit.service';
 import { ResendService } from '../notifications/resend.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export class BankingService {
   /**
@@ -875,6 +876,66 @@ export class BankingService {
       }
     ).catch(console.warn);
 
+    // Query Flutterwave API for any recent uncredited collections for this user
+    try {
+      const txs = await FlutterwaveClient.fetchCustomerTransactions(user.email);
+      for (const tx of txs) {
+        if (tx.status === 'successful' && tx.amount > 0) {
+          const txRef = String(tx.tx_ref || tx.id || tx.flw_ref);
+          const existingPayment = await prisma.payment.findFirst({
+            where: {
+              OR: [
+                { paymentReference: txRef },
+                { receiptNumber: txRef },
+              ],
+            },
+          });
+
+          if (!existingPayment && account) {
+            const amount = Number(tx.amount);
+            console.log(`[SYNC RECOVERY] Crediting uncredited deposit of ₦${amount} (Ref: ${txRef}) for ${user.email}`);
+
+            await prisma.$transaction([
+              prisma.virtualAccount.update({
+                where: { id: account.id },
+                data: { balance: { increment: amount } },
+              }),
+              prisma.payment.create({
+                data: {
+                  userId: user.id,
+                  amount,
+                  currency: 'NGN',
+                  purpose: 'ESCROW_WALLET_CREDIT',
+                  paystackChannel: 'bank_transfer',
+                  paymentReference: txRef,
+                  receiptNumber: `HT-RCP-${tx.id || Date.now()}`,
+                  status: 'SUCCESS',
+                  totalAmount: amount,
+                  paidAt: new Date(tx.created_at || Date.now()),
+                },
+              }),
+            ]);
+
+            account.balance += amount;
+
+            NotificationsService.createAndDispatch({
+              userId: user.id,
+              title: '💰 Escrow Wallet Credited',
+              message: `Your deposit of ₦${amount.toLocaleString()} via bank transfer has been synced & credited to your escrow wallet.`,
+              type: 'PAYMENT',
+              actionDetails: [
+                { label: 'Amount Credited', value: `₦${amount.toLocaleString()}` },
+                { label: 'Payment Reference', value: txRef },
+                { label: 'Status', value: 'Confirmed & Cleared' },
+              ],
+            }).catch(() => {});
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn('[SYNC FLW TXS WARNING]', e.message);
+    }
+
     return {
       success: true,
       message: 'Dedicated Virtual Bank Account synchronized successfully!',
@@ -883,15 +944,15 @@ export class BankingService {
   }
 
   /**
-   * Fuzzy name matcher — checks if sender name contains BOTH the holder's first & last name
+   * Flexible name matcher — checks if sender name contains the holder's first or last name
    * Handles name order differences, abbreviations, and extra middle names
    */
   private static senderNameMatchesHolder(senderRaw: string, holderFirstName: string, holderLastName: string): boolean {
-    if (!senderRaw) return false;
+    if (!senderRaw || senderRaw.trim().length === 0) return true;
 
     const normalize = (s: string) =>
       s.toUpperCase()
-        .replace(/\b(MR|MRS|MS|MISS|DR|PROF|CHIEF|ALHAJI|ALHAJA|PASTOR|REV|ENGR|BARR|HON|ESQ)\b\.?/g, '')
+        .replace(/\b(MR|MRS|MS|MISS|DR|PROF|CHIEF|ALHAJI|ALHAJA|PASTOR|REV|ENGR|BARR|HON|ESQ|TRF|TRANSFER|NIP|FROM|TO|PAYMENT|FBN|GTB|ACCESS|ZENITH|WEMA|UBA)\b\.?/g, '')
         .replace(/[^A-Z\s]/g, '')
         .trim()
         .split(/\s+/)
@@ -902,13 +963,13 @@ export class BankingService {
     const lastWords = normalize(holderLastName);
 
     const wordInSender = (w: string) =>
-      senderWords.some(sw => sw === w || sw.startsWith(w.substring(0, 4)));
+      senderWords.some(sw => sw === w || sw.includes(w) || w.includes(sw) || sw.startsWith(w.substring(0, 3)));
 
     const firstMatch = firstWords.some(wordInSender);
     const lastMatch = lastWords.some(wordInSender);
 
-    // Both first name AND last name must be traceable in the sender name
-    return firstMatch && lastMatch;
+    // Matches if either first or last name or full name is found
+    return firstMatch || lastMatch;
   }
 
   /**
