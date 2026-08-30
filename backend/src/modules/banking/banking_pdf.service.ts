@@ -51,7 +51,7 @@ export class BankingPdfService {
       doc.text(`Dedicated Bank: ${data.bankName}`, 52, y + 54);
 
       doc.text(`NUBAN Account: ${data.accountNumber}`, 320, y + 26);
-      doc.text(`Currency: Nigerian Naira (NGN / ₦)`, 320, y + 40);
+      doc.text(`Currency: Nigerian Naira (NGN)`, 320, y + 40);
       doc.font('Helvetica-Bold').fillColor('#059669');
       doc.text(`Available Balance: NGN ${data.balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 320, y + 54);
 
@@ -99,7 +99,7 @@ export class BankingPdfService {
       y = Math.max(y + 20, 720);
       doc.rect(40, y, 515, 45).fillAndStroke('#ECFDF5', '#6EE7B7');
       doc.fillColor('#065F46').fontSize(8).font('Helvetica');
-      doc.text('Official Hometrust Verification Seal: This statement is an authentic record of CBN-regulated escrow transactions.', 50, y + 10);
+      doc.text('Official Hometrust Verification Seal: This statement is an authentic record of CBN-regulated escrow transactions in Nigerian Naira (NGN).', 50, y + 10);
       doc.text('Questions or dispute inquiries? Email: finance@hometrustng.com | Web: https://hometrustng.com', 50, y + 25);
 
       doc.end();
@@ -147,14 +147,14 @@ export class BankingPdfService {
 
       // Amount Banner inside receipt
       doc.rect(60, y + 20, 475, 55).fill('#ECFDF5');
-      doc.fillColor('#065F46').fontSize(10).font('Helvetica-Bold').text('TOTAL TRANSACTION AMOUNT (NGN / ₦)', 75, y + 30);
+      doc.fillColor('#065F46').fontSize(10).font('Helvetica-Bold').text('TOTAL TRANSACTION AMOUNT (NGN)', 75, y + 30);
       doc.fontSize(18).fillColor('#059669').text(`NGN ${Number(data.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 75, y + 46);
 
       // Detail Rows
       let rowY = y + 95;
       const details = [
         { label: 'Transaction Status', value: 'SUCCESSFUL & VERIFIED', isGreen: true },
-        { label: 'Currency / Denomination', value: 'Nigerian Naira (NGN / ₦)' },
+        { label: 'Currency / Denomination', value: 'Nigerian Naira (NGN)' },
         { label: 'Transaction Reference', value: data.reference },
         { label: 'Payment Type / Purpose', value: data.purpose || data.type },
         { label: 'Account Holder / Customer', value: `${data.userName} (${data.email})` },
@@ -174,7 +174,7 @@ export class BankingPdfService {
       y = 500;
       doc.rect(40, y, 515, 60).fillAndStroke('#F8FAFC', '#CBD5E1');
       doc.fillColor('#0F172A').fontSize(8.5).font('Helvetica-Bold').text('AUTHENTICITY & ESCROW WARRANTY', 55, y + 12);
-      doc.fillColor('#475569').fontSize(8).font('Helvetica').text('This document serves as an electronic legal confirmation of funds processed through Hometrust escrow services. Retain this receipt for tax, audit, and property allocation records.', 55, y + 26);
+      doc.fillColor('#475569').fontSize(8).font('Helvetica').text('This document serves as an electronic legal confirmation of funds processed through Hometrust escrow services in Nigerian Naira (NGN). Retain this receipt for tax, audit, and property allocation records.', 55, y + 26);
       doc.text('Direct verification: https://hometrustng.com/receipts/verify | Support: finance@hometrustng.com', 55, y + 42);
 
       doc.end();
