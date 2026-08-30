@@ -310,6 +310,53 @@ export class ResendService {
   }
 
   /**
+   * 7. Payment / Withdrawal Reversal & Refund Email
+   */
+  static async sendReversalReceiptEmail(
+    to: string,
+    name: string,
+    amount: number,
+    details: { reason: string; reference: string; newBalance: number; txType?: string }
+  ): Promise<boolean> {
+    const txLabel = details.txType || 'Withdrawal';
+    const title = 'Transaction Reversal & Refund Notice';
+    const subject = `Reversal Notice: ₦${amount.toLocaleString()} Refunded to Your Escrow Wallet`;
+
+    const body = `
+      <div class="title" style="color: #f59e0b;">🔄 Funds Reversed &amp; Refunded</div>
+      <div class="subtitle">Hello <strong>${name}</strong>, your ${txLabel.toLowerCase()} request could not be finalized by the banking network and has been safely returned to your escrow wallet.</div>
+      
+      <div class="highlight-card" style="border-left: 4px solid #f59e0b;">
+        <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Amount Refunded</div>
+        <div class="amount-val" style="color: #38bdf8;">₦${amount.toLocaleString()}</div>
+        <div style="font-size: 12px; color: #34d399; font-weight: 700;">Restored Escrow Balance: ₦${details.newBalance.toLocaleString()}</div>
+      </div>
+
+      <div class="content-box">
+        <div class="info-row"><span class="info-label">Transaction Type</span><span class="info-value">${txLabel}</span></div>
+        <div class="info-row"><span class="info-label">Reference</span><span class="info-value">${details.reference}</span></div>
+        <div class="info-row"><span class="info-label">Reversal Reason</span><span class="info-value" style="color: #f87171;">${details.reason}</span></div>
+        <div class="info-row"><span class="info-label">Date &amp; Time</span><span class="info-value">${new Date().toLocaleString()}</span></div>
+        <div class="info-row"><span class="info-label">Resolution Status</span><span class="info-value" style="color: #34d399;">REFUNDED TO WALLET ✅</span></div>
+      </div>
+
+      <div class="security-box">
+        <p class="security-text">
+          🛡️ <strong>Safety Guarantee:</strong> Your funds have been completely restored to your Hometrust Escrow Wallet. No deductions occurred. You can access your funds immediately on your app dashboard.
+        </p>
+      </div>
+    `;
+
+    await this.sendAdminAlert(
+      'TRANSACTION_REVERSED',
+      `Reversal: ₦${amount.toLocaleString()} for ${name}`,
+      `User ${name} (${to}) received reversal refund of ₦${amount.toLocaleString()}. Reason: ${details.reason}. Ref: ${details.reference}`
+    );
+
+    return this.sendRaw(to, subject, this.getBaseHtml(title, body));
+  }
+
+  /**
    * 7. Admin Platform Alerts
    */
   static async sendAdminAlert(action: string, title: string, message: string): Promise<boolean> {

@@ -5,6 +5,7 @@ import { PaystackClient } from '../payments/paystack.client';
 import { AuditService } from '../audit/audit.service';
 import { ResendService } from '../notifications/resend.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { OneSignalService } from '../notifications/onesignal.service';
 
 export class BankingService {
   /**
@@ -674,12 +675,6 @@ export class BankingService {
     }
 
     if (withdrawalStatus === 'FAILED') {
-      // Revert wallet balance decrement so user's funds remain intact
-      await prisma.virtualAccount.update({
-        where: { id: account.id },
-        data: { balance: { increment: params.amount } },
-      });
-
       await prisma.withdrawal.update({
         where: { id: withdrawal.id },
         data: {
@@ -687,6 +682,17 @@ export class BankingService {
           failureReason: failureMsg,
           fincraPayoutId: `${usedProvider}:${externalRef}`,
         },
+      });
+
+      // Execute automated reversal & refund with full notification & audit dispatch
+      await this.processReversalAndRefund({
+        userId: params.userId || account.userId,
+        amount: params.amount,
+        reason: failureMsg || 'Settlement gateway rejected outbound transfer',
+        reference: ref,
+        originalTxType: 'WITHDRAWAL',
+        bankName: params.bankName,
+        accountNumber: params.accountNumber,
       });
 
       throw new Error(
@@ -754,6 +760,121 @@ export class BankingService {
     }
 
     return withdrawal;
+  }
+
+  /**
+   * Universal Reversal & Refund Engine
+   * Restores wallet balance, records ledger transaction, adds persistent bell notification,
+   * dispatches OneSignal mobile push notification, sends transactional email, and logs audit record.
+   */
+  static async processReversalAndRefund(params: {
+    userId: string;
+    amount: number;
+    reason: string;
+    reference: string;
+    originalTxType?: 'WITHDRAWAL' | 'DEPOSIT' | 'ESCROW_PAYMENT';
+    bankName?: string;
+    accountNumber?: string;
+  }) {
+    const { userId, amount, reason, reference, originalTxType = 'WITHDRAWAL' } = params;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { virtualAccounts: true },
+    });
+    if (!user) return null;
+
+    const account = user.virtualAccounts[0];
+    let newBalance = amount;
+    if (account) {
+      const updatedAccount = await prisma.virtualAccount.update({
+        where: { id: account.id },
+        data: { balance: { increment: amount } },
+      });
+      newBalance = updatedAccount.balance;
+    }
+
+    // 1. Transaction Ledger Record
+    const revRef = `HT-REV-${Date.now()}`;
+    await prisma.payment.create({
+      data: {
+        userId,
+        amount,
+        totalAmount: amount,
+        currency: 'NGN',
+        purpose: 'WALLET_REVERSAL',
+        status: 'SUCCESS',
+        paymentReference: revRef,
+        paystackChannel: 'REVERSAL',
+        paidAt: new Date(),
+        receiptNumber: `HT-RCP-REV-${Date.now()}`,
+      },
+    }).catch((e) => console.warn('[REVERSAL PAYMENT LOG ERROR]', e.message));
+
+    // 2. Persistent In-App Notification Bell & Real-time Socket
+    const notifTitle = '🔄 Funds Reversed & Restored';
+    const notifMessage = `Your ${originalTxType.toLowerCase()} of ₦${amount.toLocaleString()} has been reversed and refunded to your escrow wallet. Reason: ${reason}. Current Balance: ₦${newBalance.toLocaleString()}.`;
+
+    await NotificationsService.createAndDispatch({
+      userId,
+      title: notifTitle,
+      message: notifMessage,
+      type: 'PAYMENT',
+      linkUrl: '/wallet',
+      actionDetails: [
+        { label: 'Amount Refunded', value: `₦${amount.toLocaleString()}` },
+        { label: 'Restored Balance', value: `₦${newBalance.toLocaleString()}` },
+        { label: 'Reversal Reason', value: reason },
+        { label: 'Reference', value: reference },
+      ],
+    }).catch(() => {});
+
+    // 3. Mobile Push Notification via OneSignal
+    OneSignalService.sendPushToUser({
+      userId,
+      title: notifTitle,
+      message: `₦${amount.toLocaleString()} was reversed and refunded to your Hometrust Escrow Wallet. Reason: ${reason}`,
+      data: {
+        type: 'PAYMENT_REVERSED',
+        amount,
+        newBalance,
+        reference,
+      },
+    }).catch(() => {});
+
+    // 4. Transactional Reversal Email via Resend
+    const recipientEmail = user.email;
+    const recipientName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Hometrust Customer';
+    if (recipientEmail) {
+      ResendService.sendReversalReceiptEmail(recipientEmail, recipientName, amount, {
+        reason,
+        reference,
+        newBalance,
+        txType: originalTxType,
+      }).catch(console.warn);
+    }
+
+    // 5. Security Audit Log
+    await AuditService.log({
+      adminEmail: 'system@hometrust.ng',
+      action: 'PAYMENT_REVERSED_AND_REFUNDED',
+      entityType: 'VIRTUAL_ACCOUNT',
+      entityId: account?.id || userId,
+      details: {
+        userId,
+        amount,
+        reason,
+        reference,
+        newBalance,
+        originalTxType,
+      },
+    }).catch(() => {});
+
+    return {
+      success: true,
+      newBalance,
+      reference: revRef,
+    };
   }
 
   /**
@@ -1030,34 +1151,6 @@ export class BankingService {
   }
 
   /**
-   * Flexible name matcher — checks if sender name contains the holder's first or last name
-   * Handles name order differences, abbreviations, and extra middle names
-   */
-  private static senderNameMatchesHolder(senderRaw: string, holderFirstName: string, holderLastName: string): boolean {
-    if (!senderRaw || senderRaw.trim().length === 0) return true;
-
-    const normalize = (s: string) =>
-      s.toUpperCase()
-        .replace(/\b(MR|MRS|MS|MISS|DR|PROF|CHIEF|ALHAJI|ALHAJA|PASTOR|REV|ENGR|BARR|HON|ESQ|TRF|TRANSFER|NIP|FROM|TO|PAYMENT|FBN|GTB|ACCESS|ZENITH|WEMA|UBA)\b\.?/g, '')
-        .replace(/[^A-Z\s]/g, '')
-        .trim()
-        .split(/\s+/)
-        .filter(w => w.length > 1);
-
-    const senderWords = normalize(senderRaw);
-    const firstWords = normalize(holderFirstName);
-    const lastWords = normalize(holderLastName);
-
-    const wordInSender = (w: string) =>
-      senderWords.some(sw => sw === w || sw.includes(w) || w.includes(sw) || sw.startsWith(w.substring(0, 3)));
-
-    const firstMatch = firstWords.some(wordInSender);
-    const lastMatch = lastWords.some(wordInSender);
-
-    // Matches if either first or last name or full name is found
-    return firstMatch || lastMatch;
-  }
-  /**
    * Recover uncredited Flutterwave deposits for a user.
    * Called in background on wallet fetch to capture any missed webhook credits.
    */
@@ -1170,6 +1263,39 @@ export class BankingService {
    */
   static async handleWebhook(event: any) {
     const eventType = event.event || event.type || event['event.type'] || '';
+    const data = event.data || event;
+
+    // ── Handle Reversals / Failed Transfers from Webhook ─────────────────────
+    const isReversal =
+      eventType.includes('transfer.failed') ||
+      eventType.includes('transfer.reversed') ||
+      eventType.includes('refund') ||
+      eventType.includes('reversed');
+
+    if (isReversal) {
+      console.log(`[WEBHOOK] Processing reversal event: ${eventType}`);
+      const transferRef = data.reference || data.tx_ref || data.id;
+      const withdrawal = await prisma.withdrawal.findFirst({
+        where: {
+          OR: [
+            { reference: String(transferRef) },
+            { fincraPayoutId: { contains: String(transferRef) } },
+          ],
+        },
+      });
+
+      if (withdrawal && withdrawal.userId) {
+        await this.processReversalAndRefund({
+          userId: withdrawal.userId,
+          amount: withdrawal.amount,
+          reason: data.complete_message || data.narration || data.reason || 'Transfer reversed by banking network',
+          reference: withdrawal.reference,
+          originalTxType: 'WITHDRAWAL',
+        });
+      }
+      return { success: true };
+    }
+
     const isCollection =
       eventType.includes('charge.success') ||
       eventType.includes('charge.completed') ||
@@ -1181,8 +1307,6 @@ export class BankingService {
       eventType.includes('successful');
 
     if (!isCollection) return { success: true };
-
-    const data = event.data || event;
 
     // ── Extract account identifier ──────────────────────────────────────────
     const accountNumber =
