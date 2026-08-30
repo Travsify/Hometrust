@@ -463,18 +463,17 @@ export class BankingService {
         accountNumber: params.accountNumber,
         accountName: params.accountName,
         reference: ref,
-        status: 'PROCESSING',
+        status: 'PENDING',
       },
     });
 
     // Dispatch via Maplerad Transfer
     const payoutRes = await MapleradClient.transfer({
-      amount: netAmount,
-      bankCode: params.bankCode,
       accountNumber: params.accountNumber,
-      recipientName: params.accountName,
+      bankCode: params.bankCode,
+      amount: netAmount,
       reference: ref,
-      reason: 'Hometrust Escrow Milestone Disbursement',
+      narration: `Hometrust Escrow Settlement ${ref}`,
     });
 
     await prisma.withdrawal.update({
@@ -497,6 +496,205 @@ export class BankingService {
     }
 
     return withdrawal;
+  }
+
+  /**
+   * Pay for In-App Services (Property Instalments, Legal Title Searches, Inspections, Materials)
+   * directly from Virtual Escrow Wallet Balance
+   */
+  static async payFromWallet(params: {
+    userId: string;
+    amount: number;
+    purpose?: string;
+    purchaseId?: string;
+    verificationId?: string;
+    inspectionId?: string;
+    description?: string;
+  }) {
+    if (params.amount <= 0) {
+      throw new Error('Invalid payment amount');
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: params.userId },
+      include: { virtualAccounts: true },
+    });
+
+    if (!user) throw new Error('User not found');
+
+    const account = user.virtualAccounts?.[0];
+    if (!account || account.balance < params.amount) {
+      throw new Error(`Insufficient escrow wallet balance. Required: ₦${params.amount.toLocaleString()}, Available: ₦${(account?.balance || 0).toLocaleString()}`);
+    }
+
+    // Deduct from wallet balance
+    const updatedAccount = await prisma.virtualAccount.update({
+      where: { id: account.id },
+      data: { balance: { decrement: params.amount } },
+    });
+
+    const paymentRef = `WALLET-PAY-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    // Record Payment Entry
+    const payment = await prisma.payment.create({
+      data: {
+        paymentReference: paymentRef,
+        userId: user.id,
+        purchaseId: params.purchaseId,
+        amount: params.amount,
+        platformFee: 0,
+        processingFee: 0,
+        totalAmount: params.amount,
+        purpose: params.purpose || 'IN_APP_PAYMENT',
+        status: 'SUCCESS',
+        paidAt: new Date(),
+      },
+    });
+
+    // If purchase installment, update purchase
+    if (params.purchaseId) {
+      const purchase = await prisma.purchase.findUnique({ where: { id: params.purchaseId } });
+      if (purchase) {
+        const newPaid = purchase.amountPaid + params.amount;
+        const newBal = Math.max(0, purchase.totalPrice - newPaid);
+        await prisma.purchase.update({
+          where: { id: purchase.id },
+          data: {
+            amountPaid: newPaid,
+            outstandingBalance: newBal,
+            status: newBal <= 0 ? 'COMPLETED' : 'ACTIVE',
+          },
+        });
+      }
+    }
+
+    // If Legal Verification Request, update status
+    if (params.verificationId) {
+      await prisma.verificationRequest.update({
+        where: { id: params.verificationId },
+        data: { status: 'PAYMENT_CONFIRMED' },
+      }).catch(console.warn);
+    }
+
+    // If Inspection booking, update status
+    if (params.inspectionId) {
+      await prisma.inspection.update({
+        where: { id: params.inspectionId },
+        data: { status: 'CONFIRMED' },
+      }).catch(console.warn);
+    }
+
+    // Dispatch Payment Receipt Email
+    ResendService.sendPaymentReceivedEmail(
+      user.email,
+      `${user.firstName} ${user.lastName}`,
+      params.amount,
+      updatedAccount.balance,
+      paymentRef
+    ).catch(console.warn);
+
+    // Audit Log
+    await AuditService.log({
+      adminEmail: user.email,
+      action: 'WALLET_IN_APP_PAYMENT',
+      entityType: 'PAYMENT',
+      entityId: payment.id,
+      details: {
+        amount: params.amount,
+        purpose: params.purpose,
+        newBalance: updatedAccount.balance,
+        paymentRef,
+      },
+    });
+
+    return {
+      success: true,
+      payment,
+      newWalletBalance: updatedAccount.balance,
+    };
+  }
+
+  /**
+   * Re-generate / Upgrade to Live CBN Providus Virtual Account for Sandbox Users
+   */
+  static async syncLiveVirtualAccount(userId: string, developerId?: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true, developer: true, virtualAccounts: true },
+    });
+
+    if (!user) throw new Error('User not found');
+
+    const isDeveloper = !!user.developer || !!developerId;
+    let newAccountRes;
+
+    if (isDeveloper && user.developer) {
+      newAccountRes = await MapleradClient.createVirtualAccount({
+        firstName: user.developer.companyName,
+        lastName: 'Corporate',
+        email: user.email,
+        phone: user.phone || '08012345678',
+        isCorporate: true,
+        companyName: user.developer.companyName,
+        rcNumber: user.developer.cacNumber,
+      });
+    } else {
+      const nin = user.profile?.nin || '12345678901';
+      newAccountRes = await MapleradClient.createVirtualAccount({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone || '08012345678',
+        nin,
+      });
+    }
+
+    // Upsert VirtualAccount record
+    let account = user.virtualAccounts?.[0];
+    if (account) {
+      account = await prisma.virtualAccount.update({
+        where: { id: account.id },
+        data: {
+          accountNumber: newAccountRes.data.account_number,
+          accountName: newAccountRes.data.account_name,
+          bankName: newAccountRes.data.bank_name,
+          fincraAccountId: newAccountRes.data.id,
+          status: 'ACTIVE',
+        },
+      });
+    } else {
+      account = await prisma.virtualAccount.create({
+        data: {
+          userId: user.id,
+          developerId: user.developer?.id,
+          accountNumber: newAccountRes.data.account_number,
+          accountName: newAccountRes.data.account_name,
+          bankName: newAccountRes.data.bank_name,
+          currency: 'NGN',
+          accountType: isDeveloper ? 'CORPORATE' : 'INDIVIDUAL',
+          status: 'ACTIVE',
+          balance: 0,
+          fincraAccountId: newAccountRes.data.id,
+        },
+      });
+    }
+
+    // Dispatch email
+    ResendService.sendVirtualAccountIssuedEmail(
+      user.email,
+      isDeveloper && user.developer ? user.developer.companyName : `${user.firstName} ${user.lastName}`,
+      {
+        accountNumber: account.accountNumber,
+        bankName: account.bankName,
+        accountName: account.accountName,
+      }
+    ).catch(console.warn);
+
+    return {
+      success: true,
+      message: 'Live Central Bank Providus account synchronized successfully!',
+      virtualAccount: account,
+    };
   }
 
   /**

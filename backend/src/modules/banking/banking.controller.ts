@@ -87,7 +87,41 @@ export class BankingController {
         accountNumber: req.body.accountNumber,
         accountName: req.body.accountName,
       });
-      sendSuccess(res, result, 'Withdrawal request queued successfully', 201);
+      sendSuccess(res, result, 'Withdrawal request processed successfully', 201);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async payFromWallet(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await BankingService.payFromWallet({
+        userId: req.user.id,
+        amount: parseFloat(req.body.amount),
+        purpose: req.body.purpose,
+        purchaseId: req.body.purchaseId,
+        verificationId: req.body.verificationId,
+        inspectionId: req.body.inspectionId,
+        description: req.body.description,
+      });
+      sendSuccess(res, result, 'Payment deducted successfully from Escrow Wallet', 200);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async syncLiveAccount(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await BankingService.syncLiveVirtualAccount(req.user.id, req.body.developerId);
+      sendSuccess(res, result, result.message, 200);
     } catch (error: any) {
       sendError(res, error.message, 400);
     }

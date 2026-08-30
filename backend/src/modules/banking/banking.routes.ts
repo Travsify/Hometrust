@@ -17,6 +17,10 @@ router.get('/my-account', requireAuth, BankingController.getMyVirtualAccount);
 // Name Enquiry
 router.post('/resolve-account', requireAuth, BankingController.resolveBankAccount);
 
+// In-App Payments from Wallet & Live Synchronization
+router.post('/pay-from-wallet', requireAuth, BankingController.payFromWallet);
+router.post('/sync-live-account', requireAuth, BankingController.syncLiveAccount);
+
 // Payout / Withdrawal
 router.post('/withdraw', requireAuth, BankingController.requestWithdrawal);
 
