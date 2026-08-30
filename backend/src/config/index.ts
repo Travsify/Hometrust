@@ -60,9 +60,10 @@ export const config = {
     baseUrl: process.env.PREMBLY_BASE_URL || 'https://api.prembly.com/identitypass/verification',
   },
 
-  maplerad: {
-    secretKey: process.env.MAPLERAD_SECRET_KEY || '',
-    publicKey: process.env.MAPLERAD_PUBLIC_KEY || '',
-    baseUrl: process.env.MAPLERAD_BASE_URL || 'https://api.maplerad.com/v1',
+  flutterwave: {
+    secretKey: process.env.FLUTTERWAVE_SECRET_KEY || '',
+    publicKey: process.env.FLUTTERWAVE_PUBLIC_KEY || '',
+    baseUrl: process.env.FLUTTERWAVE_BASE_URL || 'https://api.flutterwave.com/v3',
+    secretHash: process.env.FLUTTERWAVE_SECRET_HASH || 'hometrust_flw_webhook_secret_2026',
   },
 };

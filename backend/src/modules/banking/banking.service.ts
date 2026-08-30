@@ -1,5 +1,5 @@
 import { prisma } from '../../utils/prisma';
-import { MapleradClient } from './maplerad.client';
+import { FlutterwaveClient } from './flutterwave.client';
 import { PremblyClient } from './prembly.client';
 import { PaystackClient } from '../payments/paystack.client';
 import { AuditService } from '../audit/audit.service';
@@ -7,7 +7,7 @@ import { ResendService } from '../notifications/resend.service';
 
 export class BankingService {
   /**
-   * Internal Helper: Issues Dedicated Virtual Account (Paystack DVA Live -> Maplerad Fallback)
+   * Internal Helper: Issues Dedicated Virtual Account (Paystack DVA Live -> Flutterwave Fallback)
    */
   private static async issueDedicatedVirtualAccount(params: {
     firstName: string;
@@ -61,21 +61,21 @@ export class BankingService {
       lastError = err.message;
     }
 
-    // Secondary Fallback: Maplerad
+    // Secondary Fallback: Flutterwave Live Dedicated Virtual Accounts
     try {
-      console.log(`[BANKING] Falling back to Maplerad for ${params.email}...`);
-      const mapleradRes = await MapleradClient.createVirtualAccount(params);
-      if (mapleradRes?.data?.account_number) {
+      console.log(`[BANKING] Falling back to Flutterwave for ${params.email}...`);
+      const flwRes = await FlutterwaveClient.createVirtualAccount(params);
+      if (flwRes?.data?.account_number) {
         return {
-          accountNumber: mapleradRes.data.account_number,
-          accountName: mapleradRes.data.account_name,
-          bankName: mapleradRes.data.bank_name,
-          accountId: mapleradRes.data.id,
-          provider: 'MAPLERAD',
+          accountNumber: flwRes.data.account_number,
+          accountName: flwRes.data.account_name,
+          bankName: flwRes.data.bank_name,
+          accountId: flwRes.data.id,
+          provider: 'FLUTTERWAVE',
         };
       }
     } catch (err: any) {
-      console.warn(`[BANKING] Maplerad notice:`, err.message);
+      console.warn(`[BANKING] Flutterwave notice:`, err.message);
       lastError = err.message;
     }
 
@@ -519,14 +519,14 @@ export class BankingService {
   }
 
   /**
-   * Name Enquiry for destination bank account via Maplerad
+   * Name Enquiry for destination bank account via Flutterwave
    */
   static async resolveBankAccount(bankCode: string, accountNumber: string) {
-    return MapleradClient.nameEnquiry(accountNumber, bankCode);
+    return FlutterwaveClient.nameEnquiry(accountNumber, bankCode);
   }
 
   /**
-   * Request Developer Withdrawal / Payout to any Nigerian Commercial Bank via Maplerad
+   * Request Developer Withdrawal / Payout to any Nigerian Commercial Bank via Flutterwave
    */
   static async requestWithdrawal(params: {
     developerId?: string;
@@ -573,8 +573,8 @@ export class BankingService {
       },
     });
 
-    // Dispatch via Maplerad Transfer
-    const payoutRes = await MapleradClient.transfer({
+    // Dispatch via Flutterwave Transfer
+    const payoutRes = await FlutterwaveClient.transfer({
       accountNumber: params.accountNumber,
       bankCode: params.bankCode,
       amount: netAmount,
@@ -586,7 +586,7 @@ export class BankingService {
       where: { id: withdrawal.id },
       data: {
         status: payoutRes.status ? 'SUCCESS' : 'FAILED',
-        fincraPayoutId: payoutRes.data?.reference,
+        fincraPayoutId: String(payoutRes.data?.reference || payoutRes.data?.id),
       },
     });
 
@@ -721,7 +721,7 @@ export class BankingService {
   }
 
   /**
-   * Re-generate / Upgrade to Live CBN Providus Virtual Account for Sandbox Users
+   * Re-generate / Upgrade Dedicated Virtual Account
    */
   static async syncLiveVirtualAccount(userId: string, developerId?: string) {
     const user = await prisma.user.findUnique({
@@ -732,25 +732,25 @@ export class BankingService {
     if (!user) throw new Error('User not found');
 
     const isDeveloper = !!user.developer || !!developerId;
-    let newAccountRes;
+    let vbaRes;
 
     if (isDeveloper && user.developer) {
-      newAccountRes = await MapleradClient.createVirtualAccount({
+      vbaRes = await this.issueDedicatedVirtualAccount({
         firstName: user.developer.companyName,
         lastName: 'Corporate',
         email: user.email,
-        phone: user.phone || '08012345678',
+        phone: user.phone || '09061518843',
         isCorporate: true,
         companyName: user.developer.companyName,
         rcNumber: user.developer.cacNumber,
       });
     } else {
-      const nin = user.profile?.nin || '12345678901';
-      newAccountRes = await MapleradClient.createVirtualAccount({
+      const nin = user.profile?.nin || undefined;
+      vbaRes = await this.issueDedicatedVirtualAccount({
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        phone: user.phone || '08012345678',
+        phone: user.phone || '09061518843',
         nin,
       });
     }
@@ -761,10 +761,10 @@ export class BankingService {
       account = await prisma.virtualAccount.update({
         where: { id: account.id },
         data: {
-          accountNumber: newAccountRes.data.account_number,
-          accountName: newAccountRes.data.account_name,
-          bankName: newAccountRes.data.bank_name,
-          fincraAccountId: newAccountRes.data.id,
+          accountNumber: vbaRes.accountNumber,
+          accountName: vbaRes.accountName,
+          bankName: vbaRes.bankName,
+          fincraAccountId: vbaRes.accountId,
           status: 'ACTIVE',
         },
       });
@@ -773,14 +773,14 @@ export class BankingService {
         data: {
           userId: user.id,
           developerId: user.developer?.id,
-          accountNumber: newAccountRes.data.account_number,
-          accountName: newAccountRes.data.account_name,
-          bankName: newAccountRes.data.bank_name,
+          accountNumber: vbaRes.accountNumber,
+          accountName: vbaRes.accountName,
+          bankName: vbaRes.bankName,
           currency: 'NGN',
           accountType: isDeveloper ? 'CORPORATE' : 'INDIVIDUAL',
           status: 'ACTIVE',
           balance: 0,
-          fincraAccountId: newAccountRes.data.id,
+          fincraAccountId: vbaRes.accountId,
         },
       });
     }
@@ -798,18 +798,20 @@ export class BankingService {
 
     return {
       success: true,
-      message: 'Live Central Bank Providus account synchronized successfully!',
+      message: 'Dedicated Virtual Bank Account synchronized successfully!',
       virtualAccount: account,
     };
   }
 
   /**
-   * Process incoming Maplerad/Fincra webhook when a buyer transfers money into their virtual account
+   * Process incoming Paystack/Flutterwave webhook when a buyer transfers money into their virtual account
    * Automatically captures deposit, credits escrow wallet, and updates milestone plans
    */
   static async handleWebhook(event: any) {
-    const eventType = event.event || event.type || '';
+    const eventType = event.event || event.type || event['event.type'] || '';
     const isCollection = 
+      eventType.includes('charge.success') ||
+      eventType.includes('dedicated_account') || 
       eventType.includes('collection') || 
       eventType.includes('virtual_account') || 
       eventType.includes('credit') ||
@@ -818,14 +820,14 @@ export class BankingService {
 
     if (isCollection) {
       const data = event.data || event;
-      const accountNumber = data.account_number || data.accountNumber || data.virtual_account_number;
-      const customerId = data.customer_id || data.customerId;
+      const accountNumber = data.account_number || data.accountNumber || data.virtual_account_number || data.customer?.dedicated_account?.account_number;
+      const customerCode = data.customer?.customer_code || data.customer_id || data.customerId;
       const rawAmount = data.amount || data.settlement_amount || 0;
-      const reference = data.reference || data.id || `MPR-DEP-${Date.now()}`;
+      const reference = data.reference || data.tx_ref || data.id || `HT-DEP-${Date.now()}`;
 
       let amount = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount;
-      // If event explicitly came from real Maplerad webhook with currency NGN in kobo:
-      if (data.amount_in_kobo) {
+      // In Paystack, amount is sent in kobo (e.g. 5000000 kobo = ₦50,000)
+      if (data.currency === 'NGN' && amount > 10000 && !eventType.includes('flutterwave')) {
         amount = amount / 100;
       }
 
@@ -837,9 +839,9 @@ export class BankingService {
         });
       }
 
-      if (!account && customerId) {
+      if (!account && customerCode) {
         account = await prisma.virtualAccount.findFirst({
-          where: { fincraAccountId: customerId },
+          where: { fincraAccountId: customerCode },
           include: { user: true, developer: true },
         });
       }
@@ -851,7 +853,7 @@ export class BankingService {
           data: { balance: { increment: amount } },
         });
 
-        console.log(`[MAPLERAD AUTO-CAPTURE] Credited ₦${amount.toLocaleString()} to Account ${account.accountNumber} (${account.accountName})`);
+        console.log(`[ESCROW AUTO-CAPTURE] Credited ₦${amount.toLocaleString()} to Account ${account.accountNumber} (${account.accountName})`);
 
         // 2. If user has an active purchase, auto-credit the next instalment!
         if (account.userId) {
@@ -919,7 +921,7 @@ export class BankingService {
             accountNumber: account.accountNumber,
             amount,
             reference,
-            provider: 'MAPLERAD',
+            provider: 'PAYSTACK_DVA',
           },
         });
       }

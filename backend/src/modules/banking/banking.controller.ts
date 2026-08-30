@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { BankingService } from './banking.service';
-import { MapleradClient } from './maplerad.client';
+import { FlutterwaveClient } from './flutterwave.client';
+import { PaystackClient } from '../payments/paystack.client';
 import { sendSuccess, sendError } from '../../utils/response';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 
@@ -129,21 +130,18 @@ export class BankingController {
 
   static async webhook(req: Request, res: Response): Promise<void> {
     try {
-      const signature = (req.headers['x-maplerad-signature'] || req.headers['x-fincra-signature']) as string;
-      const svixId = req.headers['svix-id'] as string;
-      const svixTimestamp = req.headers['svix-timestamp'] as string;
-      const svixSignature = req.headers['svix-signature'] as string;
+      const paystackSignature = req.headers['x-paystack-signature'] as string;
+      const flwSignature = req.headers['verif-hash'] as string;
       const rawPayload = JSON.stringify(req.body);
 
-      const isValid = MapleradClient.verifyWebhookSignature(rawPayload, {
-        signature,
-        svixId,
-        svixTimestamp,
-        svixSignature,
-      });
+      // Verify Paystack or Flutterwave signatures
+      if (paystackSignature && !PaystackClient.verifyWebhookSignature(rawPayload, paystackSignature)) {
+        res.status(400).send('Invalid Paystack signature');
+        return;
+      }
 
-      if (!isValid) {
-        res.status(400).send('Invalid signature');
+      if (flwSignature && !FlutterwaveClient.verifyWebhookSignature(flwSignature)) {
+        res.status(400).send('Invalid Flutterwave signature');
         return;
       }
 

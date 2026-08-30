@@ -263,7 +263,7 @@ export class ResendService {
     const title = 'Milestone Disbursement Processed';
     const body = `
       <div class="title">💸 Disbursement Processed</div>
-      <div class="subtitle">Hello <strong>${name}</strong>, your milestone withdrawal request has been successfully dispatched via Maplerad.</div>
+      <div class="subtitle">Hello <strong>${name}</strong>, your milestone withdrawal request has been successfully dispatched to your bank account.</div>
       
       <div class="highlight-card">
         <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Amount Disbursed</div>
