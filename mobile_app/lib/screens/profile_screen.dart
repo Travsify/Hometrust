@@ -14,6 +14,7 @@ import 'wallet_screen.dart';
 import 'chat_screen.dart';
 import 'inbox_screen.dart';
 import 'build_for_me_screen.dart';
+import 'support_tickets_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -273,13 +274,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
       {'name': 'Zenith Bank', 'code': '000015'},
       {'name': 'First Bank of Nigeria', 'code': '000016'},
       {'name': 'United Bank for Africa (UBA)', 'code': '000004'},
+      {'name': 'Wema Bank', 'code': '000017'},
+      {'name': 'FCMB (First City Monument Bank)', 'code': '000003'},
+      {'name': 'Fidelity Bank', 'code': '000007'},
+      {'name': 'Stanbic IBTC Bank', 'code': '000012'},
+      {'name': 'Sterling Bank', 'code': '000001'},
+      {'name': 'Union Bank of Nigeria', 'code': '000018'},
+      {'name': 'Providus Bank', 'code': '000023'},
+      {'name': 'Polaris Bank', 'code': '000008'},
+      {'name': 'Ecobank Nigeria', 'code': '000010'},
+      {'name': 'Keystone Bank', 'code': '000002'},
+      {'name': 'Jaiz Bank', 'code': '000006'},
+      {'name': 'Taj Bank', 'code': '000026'},
+      {'name': 'Lotus Bank', 'code': '000029'},
+      {'name': 'Parallex Bank', 'code': '000030'},
+      {'name': 'Premium Trust Bank', 'code': '000031'},
+      {'name': 'Signature Bank', 'code': '000034'},
+      {'name': 'Titan Trust Bank', 'code': '000025'},
+      {'name': 'Unity Bank', 'code': '000011'},
       {'name': 'Kuda Microfinance Bank', 'code': '090267'},
       {'name': 'OPay (PayCom)', 'code': '090325'},
       {'name': 'Palmpay', 'code': '090405'},
-      {'name': 'Providus Bank', 'code': '000023'},
-      {'name': 'Stanbic IBTC Bank', 'code': '000012'},
-      {'name': 'Sterling Bank', 'code': '000001'},
-      {'name': 'Wema Bank', 'code': '000017'},
+      {'name': 'Moniepoint MFB', 'code': '090405'},
+      {'name': 'FairMoney MFB', 'code': '090551'},
+      {'name': 'Rubies MFB', 'code': '090175'},
+      {'name': 'Dot MFB', 'code': '090470'},
+      {'name': 'Carbon MFB', 'code': '090551'},
+      {'name': 'VFD Microfinance Bank', 'code': '090110'},
     ];
 
     showModalBottomSheet(
@@ -474,7 +495,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: isWithdrawing
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Confirm & Withdraw to Bank', style: TextStyle(fontWeight: FontWeight.w800)),
+                          : const Text('Confirm Withdrawal', style: TextStyle(fontWeight: FontWeight.w800)),
                     ),
                   ),
                 ],
@@ -1171,6 +1192,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             isSupport: true,
                           ),
                         ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1, color: AppColors.cardBorder),
+                  _buildMenuItem(
+                    icon: Icons.confirmation_number_outlined,
+                    title: 'Support Tickets',
+                    subtitle: 'Open urgent, high, or medium priority tickets & track replies',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SupportTicketsScreen()),
                       );
                     },
                   ),

@@ -408,8 +408,90 @@ class _BuildForMeScreenState extends State<BuildForMeScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Assigned Engineer Card or Pay Consultation
-                          if (!isConsultationPaid) ...[
+                          // Project Status & Action Box
+                          if (status == 'PENDING_ADMIN_APPROVAL') ...[
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFFBEB),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFFCD34D)),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.hourglass_top_rounded, color: Color(0xFFD97706), size: 20),
+                                  SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Pending Admin Approval (₦25k Commitment Paid)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF92400E))),
+                                        SizedBox(height: 2),
+                                        Text(
+                                          'Admin is currently reviewing your site details & architectural drawings. Admin will approve and start an In-App Chat with you directly.',
+                                          style: TextStyle(fontSize: 10.5, color: Color(0xFFB45309), height: 1.3),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else if (status == 'APPROVED_IN_CONSULTATION') ...[
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFECFDF5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.mark_chat_read_rounded, color: Color(0xFF059669), size: 22),
+                                  const SizedBox(width: 10),
+                                  const Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Proposal Approved & Chat Active ✅', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF065F46))),
+                                        SizedBox(height: 2),
+                                        Text(
+                                          'Hometrust Admin has approved your proposal and is chatting with you in-app.',
+                                          style: TextStyle(fontSize: 10.5, color: Color(0xFF064E3B)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  ElevatedButton.icon(
+                                    icon: const Icon(Icons.chat_bubble_rounded, size: 14),
+                                    label: const Text('Open Chat', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ChatScreen(
+                                            recipientId: engineer?['id'],
+                                            recipientName: engineer != null ? '${engineer['firstName']} ${engineer['lastName']}' : 'Hometrust Admin Lead',
+                                            recipientRole: 'Admin Project Lead',
+                                            propertyTitle: title,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF059669),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      elevation: 0,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else if (!isConsultationPaid) ...[
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(

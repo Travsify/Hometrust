@@ -1,4 +1,5 @@
 import { prisma } from '../../utils/prisma';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export class SupportService {
   /** User: open a new support ticket */
@@ -8,17 +9,35 @@ export class SupportService {
     message: string;
     priority?: string;
   }) {
+    const priority = (data.priority || 'NORMAL').toUpperCase();
+    const validPriorities = ['URGENT', 'HIGH', 'MEDIUM', 'NORMAL', 'LOW'];
+    const cleanPriority = validPriorities.includes(priority) ? priority : 'NORMAL';
+
     const ticket = await prisma.supportTicket.create({
       data: {
         userId,
         subject: data.subject.trim(),
         category: data.category || 'GENERAL',
         message: data.message.trim(),
-        priority: data.priority || 'NORMAL',
+        priority: cleanPriority,
         status: 'OPEN',
       },
       include: { user: { select: { firstName: true, lastName: true, email: true } } },
     });
+
+    // Notify user that ticket was created
+    await NotificationsService.createAndDispatch({
+      userId,
+      title: `🎫 Support Ticket Created: ${ticket.subject}`,
+      message: `Your ticket has been logged with [${cleanPriority}] priority. A Hometrust support officer will reply shortly.`,
+      type: 'SYSTEM',
+      actionDetails: [
+        { label: 'Ticket Subject', value: ticket.subject },
+        { label: 'Category', value: ticket.category },
+        { label: 'Priority', value: cleanPriority },
+        { label: 'Status', value: 'OPEN' },
+      ],
+    }).catch(() => {});
 
     // Notify admin via audit log
     await prisma.auditLog.create({
@@ -27,7 +46,7 @@ export class SupportService {
         action: 'SUPPORT_TICKET_OPENED',
         entityType: 'SUPPORT_TICKET',
         entityId: ticket.id,
-        details: JSON.stringify({ subject: ticket.subject, category: ticket.category, userId }),
+        details: JSON.stringify({ subject: ticket.subject, category: ticket.category, priority: cleanPriority, userId }),
       },
     });
 
@@ -105,14 +124,17 @@ export class SupportService {
       include: { user: { select: { firstName: true, lastName: true, email: true } } },
     });
 
-    // In-app notification to the user
-    await prisma.notification.create({
-      data: {
-        userId: ticket.userId,
-        title: `Support Reply: ${ticket.subject}`,
-        message: `Hometrust Support has replied to your ticket. Reply: "${reply.trim().substring(0, 100)}${reply.length > 100 ? '...' : ''}"`,
-        type: 'SYSTEM',
-      },
+    // In-app push notification + email to user
+    await NotificationsService.createAndDispatch({
+      userId: ticket.userId,
+      title: `💬 Support Reply: ${ticket.subject}`,
+      message: `Hometrust Support has replied to your ticket: "${reply.trim().substring(0, 120)}${reply.length > 120 ? '...' : ''}"`,
+      type: 'SYSTEM',
+      actionDetails: [
+        { label: 'Ticket Subject', value: ticket.subject },
+        { label: 'Admin Reply', value: reply.trim() },
+        { label: 'Status', value: 'IN_PROGRESS' },
+      ],
     }).catch(() => {});
 
     await prisma.auditLog.create({
@@ -143,13 +165,15 @@ export class SupportService {
 
     // Notify user when ticket is resolved/closed
     if (status === 'RESOLVED' || status === 'CLOSED') {
-      await prisma.notification.create({
-        data: {
-          userId: ticket.userId,
-          title: `Ticket ${status === 'RESOLVED' ? 'Resolved ✅' : 'Closed'}`,
-          message: `Your support ticket "${ticket.subject}" has been marked as ${status.toLowerCase()}.`,
-          type: 'SYSTEM',
-        },
+      await NotificationsService.createAndDispatch({
+        userId: ticket.userId,
+        title: `Ticket ${status === 'RESOLVED' ? 'Resolved ✅' : 'Closed'}`,
+        message: `Your support ticket "${ticket.subject}" has been marked as ${status.toLowerCase()}.`,
+        type: 'SYSTEM',
+        actionDetails: [
+          { label: 'Ticket Subject', value: ticket.subject },
+          { label: 'Final Status', value: status },
+        ],
       }).catch(() => {});
     }
 

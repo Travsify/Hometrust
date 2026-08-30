@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
+import 'wallet_screen.dart';
 
 class CreateBuildRequestScreen extends StatefulWidget {
   const CreateBuildRequestScreen({super.key});
@@ -13,8 +14,8 @@ class _CreateBuildRequestScreenState extends State<CreateBuildRequestScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
-  final _budgetCtrl = TextEditingController(text: '35000000');
+  final _cityCtrl = TextEditingController(text: 'Lekki');
+  final _budgetCtrl = TextEditingController(text: '45,000,000');
   final _notesCtrl = TextEditingController();
 
   String _buildingType = '4_BEDROOM_DUPLEX';
@@ -70,9 +71,41 @@ class _CreateBuildRequestScreenState extends State<CreateBuildRequestScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _submitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: const Color(0xFFEF4444)),
-        );
+        final errStr = e.toString().replaceAll('Exception: ', '');
+        if (errStr.toLowerCase().contains('insufficient') || errStr.toLowerCase().contains('balance')) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFD97706)),
+                  SizedBox(width: 8),
+                  Text('Fund Escrow Wallet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                ],
+              ),
+              content: const Text(
+                'A ₦25,000 commitment fee is required in your Dedicated Escrow Wallet to submit this proposal. '
+                'Please fund your wallet via bank transfer to continue.',
+                style: TextStyle(fontSize: 13, height: 1.4),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  child: const Text('Deposit Funds', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errStr), backgroundColor: const Color(0xFFEF4444)),
+          );
+        }
       }
     }
   }
@@ -312,25 +345,55 @@ class _CreateBuildRequestScreenState extends State<CreateBuildRequestScreen> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
+
+              // ₦25,000 Commitment Fee Notice Box
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.verified_user_rounded, color: Color(0xFF059669), size: 20),
+                        SizedBox(width: 8),
+                        Text('₦25,000 Proposal Commitment Fee', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Color(0xFF065F46))),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'To prevent frivolous requests, a ₦25,000 commitment fee is deducted from your dedicated Escrow Wallet upon submission. '
+                      'Once approved, Hometrust Admin will initiate an in-app chat with you directly to finalize your drawings & BOQ.',
+                      style: TextStyle(fontSize: 11.5, color: Color(0xFF064E3B), height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
 
               // Submit Button
               SizedBox(
                 width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
+                height: 54,
+                child: ElevatedButton.icon(
+                  icon: _submitting
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 20),
+                  label: Text(
+                    _submitting ? 'Submitting & Locking Fee...' : 'Submit Request (₦25,000 Escrow)',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
+                  ),
                   onPressed: _submitting ? null : _submitRequest,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     elevation: 0,
                   ),
-                  child: _submitting
-                      ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                      : const Text(
-                          'Submit Building Request',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
-                        ),
                 ),
               ),
               const SizedBox(height: 20),

@@ -729,6 +729,8 @@ model BuildRequest {
   specialRequirements       String?
   
   // Fees & Escrow
+  submissionFee             Float             @default(25000) // ₦25,000 seriousness / commitment fee
+  isSubmissionFeePaid       Boolean           @default(false)
   consultationFee           Float             @default(50000)
   isConsultationPaid        Boolean           @default(false)
   totalContractValue        Float?
@@ -737,8 +739,10 @@ model BuildRequest {
   defectRetentionPercentage Float             @default(5.0) // 5.0% held for 90 days post-handover
   legalContractUrl          String?
   
-  status                    String            @default("REQUESTED") // REQUESTED, CONSULTATION_PAID, ENGINEER_ASSIGNED, BOQ_REVIEW, LEGAL_CONTRACT_PENDING, CONTRACT_SIGNED, ACTIVE_CONSTRUCTION, COMPLETED, CANCELLED
+  status                    String            @default("PENDING_ADMIN_APPROVAL") // PENDING_ADMIN_APPROVAL, APPROVED_IN_CONSULTATION, CONSULTATION_PAID, ENGINEER_ASSIGNED, BOQ_REVIEW, LEGAL_CONTRACT_PENDING, CONTRACT_SIGNED, ACTIVE_CONSTRUCTION, COMPLETED, CANCELLED
   adminNotes                String?
+  approvedByAdminId         String?
+  approvedAt                DateTime?
   createdAt                 DateTime          @default(now())
   updatedAt                 DateTime          @updatedAt
 
