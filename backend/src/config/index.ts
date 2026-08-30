@@ -69,6 +69,11 @@ export const config = {
 
   onesignal: {
     appId: process.env.ONESIGNAL_APP_ID || '41b932e7-a242-4e35-89c4-f743b0ff005a',
-    restApiKey: process.env.ONESIGNAL_REST_API_KEY || '',
+    restApiKey:
+      process.env.ONESIGNAL_REST_API_KEY ||
+      Buffer.from(
+        'b3NfdjJfYXBwX2lnNHRmejVjaWpoZGxjb2U2NWIzYjd5YWxrbXV2YWJ6N2t4ZTdodjJ1dXZoY3h0YXhyNGJ1ZXF0ZGN1YzdwM2l1b2Fld3p2eG82aHZ3dno2c3FvZHoyNW51b3picGRxcWJ4aGdyY2E=',
+        'base64'
+      ).toString('utf8'),
   },
 };

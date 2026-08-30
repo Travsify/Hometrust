@@ -692,16 +692,18 @@ export class BankingService {
       targetUser = dev?.user;
     }
 
-    const devEmail = targetUser?.email || account.developer?.email || account.user?.email || '';
-    const devName = targetUser
+    const recipientEmail = targetUser?.email || account.developer?.email || account.user?.email || '';
+    const recipientName = targetUser
       ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
       : (account.developer?.companyName || params.accountName || 'Account Holder');
+    const userRole = targetUser?.role || (account.developer ? 'DEVELOPER' : 'BUYER');
 
-    if (devEmail) {
-      ResendService.sendWithdrawalDispatchedEmail(devEmail, devName, netAmount, {
+    if (recipientEmail) {
+      ResendService.sendWithdrawalDispatchedEmail(recipientEmail, recipientName, netAmount, {
         bankName: params.bankName,
         accountNumber: params.accountNumber,
         reference: ref,
+        userRole,
       }).catch(console.warn);
     }
 
@@ -709,8 +711,8 @@ export class BankingService {
     if (notifyUserId) {
       await NotificationsService.createAndDispatch({
         userId: notifyUserId,
-        title: '💸 Escrow Payout Dispatched',
-        message: `Your withdrawal of ₦${netAmount.toLocaleString()} to ${params.bankName} (${params.accountNumber}) has been dispatched.`,
+        title: '💸 Escrow Withdrawal Dispatched',
+        message: `Your withdrawal of ₦${netAmount.toLocaleString()} to ${params.bankName} (${params.accountNumber}) has been successfully processed & dispatched.`,
         type: 'PAYMENT',
         actionDetails: [
           { label: 'Amount Requested', value: `₦${params.amount.toLocaleString()}` },

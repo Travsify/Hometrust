@@ -1,4 +1,4 @@
-﻿import { config } from '../../config';
+import { config } from '../../config';
 
 export interface OneSignalPushParams {
   userId: string;
@@ -25,14 +25,11 @@ export class OneSignalService {
         include_aliases: {
           external_id: [params.userId],
         },
-        include_external_user_ids: [params.userId],
-        channel_for_external_user_ids: 'push',
         headings: { en: params.title },
         contents: { en: params.message },
         data: params.data || {},
         priority: 10,
         ios_sound: 'default',
-        android_sound: 'default',
       };
 
       if (params.url) {

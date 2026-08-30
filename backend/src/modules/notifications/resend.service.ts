@@ -257,30 +257,49 @@ export class ResendService {
   }
 
   /**
-   * 6. Milestone Payout / Withdrawal Dispatched Email
+   * 6. Escrow Wallet Withdrawal / Disbursement Dispatched Email
    */
-  static async sendWithdrawalDispatchedEmail(to: string, name: string, amount: number, details: { bankName: string; accountNumber: string; reference: string }): Promise<boolean> {
-    const title = 'Milestone Disbursement Processed';
+  static async sendWithdrawalDispatchedEmail(
+    to: string,
+    name: string,
+    amount: number,
+    details: { bankName: string; accountNumber: string; reference: string; userRole?: string }
+  ): Promise<boolean> {
+    const isDeveloper = details.userRole === 'DEVELOPER';
+    const title = isDeveloper ? 'Milestone Disbursement Processed' : 'Escrow Withdrawal Dispatched';
+    const subject = isDeveloper
+      ? `Milestone Disbursement: ₦${amount.toLocaleString()} Dispatched to ${details.bankName}`
+      : `Withdrawal Confirmation: ₦${amount.toLocaleString()} Dispatched to ${details.bankName}`;
+    const subtitle = isDeveloper
+      ? `Hello <strong>${name}</strong>, your construction milestone disbursement has been successfully dispatched to your corporate bank account.`
+      : `Hello <strong>${name}</strong>, your escrow wallet withdrawal request has been successfully processed and dispatched to your bank account.`;
+
     const body = `
-      <div class="title">💸 Disbursement Processed</div>
-      <div class="subtitle">Hello <strong>${name}</strong>, your milestone withdrawal request has been successfully dispatched to your bank account.</div>
+      <div class="title">💸 ${isDeveloper ? 'Milestone Disbursement Processed' : 'Withdrawal Successfully Processed'}</div>
+      <div class="subtitle">${subtitle}</div>
       
       <div class="highlight-card">
-        <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Amount Disbursed</div>
+        <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700;">${isDeveloper ? 'Amount Disbursed' : 'Amount Withdrawn'}</div>
         <div class="amount-val">₦${amount.toLocaleString()}</div>
-        <div style="font-size: 12px; color: #34d399;">Settlement Sent to Bank</div>
+        <div style="font-size: 12px; color: #34d399;">Dispatched from Escrow to Destination Bank</div>
       </div>
 
       <div class="content-box">
         <div class="info-row"><span class="info-label">Destination Bank</span><span class="info-value">${details.bankName}</span></div>
         <div class="info-row"><span class="info-label">Account Number</span><span class="info-value">${details.accountNumber}</span></div>
-        <div class="info-row"><span class="info-label">Disbursement Reference</span><span class="info-value">${details.reference}</span></div>
-        <div class="info-row"><span class="info-label">Status</span><span class="info-value" style="color: #34d399;">PROCESSED ✅</span></div>
+        <div class="info-row"><span class="info-label">Beneficiary Name</span><span class="info-value">${name}</span></div>
+        <div class="info-row"><span class="info-label">Transaction Reference</span><span class="info-value">${details.reference}</span></div>
+        <div class="info-row"><span class="info-label">Status</span><span class="info-value" style="color: #34d399;">DISPATCHED & COMPLETED ✅</span></div>
       </div>
     `;
 
-    await this.sendAdminAlert('WITHDRAWAL_DISBURSED', `Disbursement: ₦${amount.toLocaleString()}`, `Developer: ${name} (${to}) received ₦${amount.toLocaleString()} to ${details.bankName} ${details.accountNumber}.`);
-    return this.sendRaw(to, `Disbursement Notification: ₦${amount.toLocaleString()} Sent to ${details.bankName}`, this.getBaseHtml(title, body));
+    const adminLabel = isDeveloper ? 'Developer' : 'Buyer';
+    await this.sendAdminAlert(
+      'WITHDRAWAL_DISBURSED',
+      `Withdrawal: ₦${amount.toLocaleString()}`,
+      `${adminLabel}: ${name} (${to}) withdrew ₦${amount.toLocaleString()} to ${details.bankName} (${details.accountNumber}). Ref: ${details.reference}`
+    );
+    return this.sendRaw(to, subject, this.getBaseHtml(title, body));
   }
 
   /**
