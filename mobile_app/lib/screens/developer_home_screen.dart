@@ -5,7 +5,6 @@ import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
 import '../providers/auth_provider.dart';
-import '../widgets/admin_sidebar_drawer.dart';
 import 'developer_boq_validator_screen.dart';
 import 'developer_projects_screen.dart';
 import 'developer_subscribers_screen.dart';
@@ -16,6 +15,7 @@ import 'legal_request_screen.dart';
 import 'notifications_screen.dart';
 import 'kyc_screen.dart';
 import 'inbox_screen.dart';
+import 'wallet_screen.dart';
 
 class DeveloperHomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -29,6 +29,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
   final PageController _spotlightController = PageController();
   int _currentSpotlightIndex = 0;
   bool _isLoading = true;
+  bool _isBalanceVisible = false;
   Map<String, dynamic>? _stats;
   String? _errorMessage;
 
@@ -115,40 +116,33 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      drawer: const AdminSidebarDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: Builder(
-          builder: (ctx) => IconButton(
-            icon: const Icon(Icons.menu_rounded, color: Color(0xFF0F172A), size: 24),
-            tooltip: 'Platform Management Menu',
-            onPressed: () => Scaffold.of(ctx).openDrawer(),
-          ),
-        ),
+        titleSpacing: 16,
         title: Row(
           children: [
             // App Icon with verified border
             Container(
-              width: 28,
-              height: 28,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(7),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.3), width: 1.2),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(7),
                 child: Image.asset(
                   'assets/icon/app_icon.png',
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     color: const Color(0xFF0F172A),
-                    child: const Icon(Icons.apartment_rounded, color: Color(0xFF10B981), size: 16),
+                    child: const Icon(Icons.apartment_rounded, color: Color(0xFF10B981), size: 18),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,33 +202,6 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
           ],
         ),
         actions: [
-          // ── SWITCH TO BUYER MODE BUTTON ──
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                authProvider.toggleDeveloperMode();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Switched to Buyer Mode — go to Profile tab to switch back anytime.'),
-                    backgroundColor: Color(0xFF0F172A),
-                    duration: Duration(seconds: 4),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.swap_horiz_rounded, size: 15, color: Colors.white),
-              label: const Text(
-                'Buyer Mode',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0284C7),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                elevation: 0,
-              ),
-            ),
-          ),
           // ── DEVELOPER INBOX BUTTON ──
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF334155), size: 22),
@@ -357,15 +324,15 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                 ),
               ),
 
-              // 2. ESCROW WALLET & DEDICATED CORPORATE BANK ACCOUNT CARD
-              _buildCorporateEscrowCard(context, virtualAccount, availableBalance, lockedEscrow, grossRevenue, isVerified),
+              // 2. WALLET & ESCROW OVERVIEW CARD (Privacy-enabled)
+              _buildWalletCard(context, virtualAccount, availableBalance, lockedEscrow, grossRevenue, isVerified),
               const SizedBox(height: 16),
 
               // 3. SLIDEABLE SPOTLIGHT HERO BANNER CAROUSEL
               _buildSpotlightCarousel(context),
               const SizedBox(height: 16),
 
-              // 4. 2x2 BENTO BOX GRID (Exact match to buyer screen layout)
+              // 4. BENTO BOX GRID (Tools, Projects & Wallet Ledger)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -386,8 +353,8 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                   Expanded(
                     child: Column(
                       children: [
-                        // Bento 3: Land Radar & Boundary Scan
-                        _buildLandRadarBentoCard(context),
+                        // Bento 3: Wallet & Settlement Vault
+                        _buildWalletBentoCard(context, availableBalance, lockedEscrow),
                         const SizedBox(height: 14),
                         // Bento 4: Contractor BOQ Price Validator
                         _buildBoqBentoCard(context),
@@ -396,6 +363,8 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 14),
+              _buildLandRadarBentoCard(context),
               const SizedBox(height: 16),
 
               // 5. SUBSCRIBER CRM & IN-APP COMMUNICATIONS BANNER
@@ -421,8 +390,8 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
   }
 
 
-  // ── 1. DEDICATED CORPORATE NUBAN & ESCROW WALLET CARD ──
-  Widget _buildCorporateEscrowCard(
+  // ── 1. WALLET & ESCROW OVERVIEW CARD (Privacy-enabled) ──
+  Widget _buildWalletCard(
     BuildContext context,
     Map<String, dynamic>? vba,
     double availableBalance,
@@ -432,209 +401,197 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
   ) {
     final acctNum = vba?['accountNumber']?.toString();
     final bankName = vba?['bankName']?.toString() ?? 'Providus Bank';
-    final acctName = vba?['accountName']?.toString() ?? 'Hometrust Dedicated Corporate Escrow';
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0D5C3A), Color(0xFF083C25)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: const Color(0xFF0F172A),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0D5C3A).withValues(alpha: 0.35),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.15),
             blurRadius: 14,
-            offset: const Offset(0, 5),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: const [
-                  Icon(Icons.account_balance_rounded, color: Color(0xFF34D399), size: 16),
-                  SizedBox(width: 6),
-                  Text(
-                    'CORPORATE ESCROW NUBAN',
-                    style: TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.6,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: Title & Privacy Eye Toggle
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF10B981), size: 16),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Wallet',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                decoration: BoxDecoration(
-                  color: isVerified
-                      ? const Color(0xFF10B981).withValues(alpha: 0.2)
-                      : const Color(0xFFEF4444).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  isVerified ? 'HOMETRUST ESCROW PROTECTED' : 'KYC REQUIRED',
-                  style: TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w800,
-                    color: isVerified ? const Color(0xFF34D399) : const Color(0xFFF87171),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Account Details Container
-          if (acctNum != null && acctNum.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Corporate Dedicated NUBAN', style: TextStyle(color: Color(0xFF64748B), fontSize: 10, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 2),
-                          Text(acctNum, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy_rounded, color: Color(0xFF38BDF8), size: 18),
-                        onPressed: () => _copyToClipboard(acctNum, 'Account Number'),
-                        tooltip: 'Copy NUBAN',
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ],
-                  ),
-                  const Divider(color: Color(0xFF334155), height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(bankName, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.w600)),
-                      Text(
-                        acctName.length > 24 ? '${acctName.substring(0, 22)}...' : acctName,
-                        style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 11, fontWeight: FontWeight.w700),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            )
-          else
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.hourglass_top_rounded, color: Color(0xFFFBBF24), size: 18),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Dedicated Escrow NUBAN will be assigned upon KYB review.',
-                      style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            _isBalanceVisible ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                            color: const Color(0xFF94A3B8),
+                            size: 20,
+                          ),
+                          tooltip: _isBalanceVisible ? 'Hide Balance' : 'Show Balance',
+                          onPressed: () => setState(() => _isBalanceVisible = !_isBalanceVisible),
+                          constraints: const BoxConstraints(),
+                          padding: const EdgeInsets.all(4),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.chevron_right_rounded, color: Color(0xFF64748B), size: 20),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 14),
+                  ],
+                ),
+                const SizedBox(height: 12),
 
-          // Available Balance vs Locked Escrow
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF059669).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.3)),
+                // Available Balance (Withdrawable)
+                const Text(
+                  'Available Balance (Withdrawable)',
+                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _isBalanceVisible ? CurrencyFormatter.format(availableBalance) : '₦ • • • • • • • •',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+                const SizedBox(height: 14),
+
+                // Sub-metrics: Locked in Escrow & Dedicated Account
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
                     children: [
-                      const Text(
-                        'Available Balance',
-                        style: TextStyle(color: Color(0xFF6EE7B7), fontSize: 11, fontWeight: FontWeight.w600),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.lock_clock_rounded, size: 12, color: Color(0xFF38BDF8)),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Locked in Escrow',
+                                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w700),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              _isBalanceVisible ? CurrencyFormatter.format(lockedEscrow) : '₦ • • • • •',
+                              style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 12.5, fontWeight: FontWeight.w900),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        CurrencyFormatter.format(availableBalance),
-                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900),
+                      Container(height: 28, width: 1, color: Colors.white.withValues(alpha: 0.1)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.account_balance_rounded, size: 12, color: Color(0xFF34D399)),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Dedicated Account',
+                                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w700),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              acctNum != null && acctNum.isNotEmpty ? '$acctNum ($bankName)' : 'Providus Bank',
+                              style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 11.5, fontWeight: FontWeight.w800),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0284C7).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.3)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Locked in Escrow',
-                        style: TextStyle(color: Color(0xFF7DD3FC), fontSize: 11, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        CurrencyFormatter.format(lockedEscrow),
-                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+                const SizedBox(height: 14),
 
-          // Request Payout Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _showPayoutModal(context),
-              icon: const Icon(Icons.payments_outlined, size: 16, color: Colors.white),
-              label: const Text('Request Bank Settlement Payout', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF059669),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
-              ),
+                // Action Buttons Row: Fund Wallet & Withdraw
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+                        },
+                        icon: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF34D399)),
+                        label: const Text('Fund Wallet', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF059669)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+                        },
+                        icon: const Icon(Icons.arrow_upward_rounded, size: 16, color: Colors.white),
+                        label: const Text('Withdraw', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF059669),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -767,6 +724,81 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // ── 3. BENTO BOX: WALLET & ESCROW SETTLEMENT ──
+  Widget _buildWalletBentoCard(BuildContext context, double availableBalance, double lockedEscrow) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+      },
+      child: Container(
+        height: 165,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF059669).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF059669), size: 20),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('WALLET', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w900, color: Color(0xFF065F46))),
+                ),
+              ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Wallet', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                const SizedBox(height: 2),
+                Text(
+                  _isBalanceVisible ? CurrencyFormatter.format(availableBalance) : '₦••••••••',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF059669)),
+                ),
+                const SizedBox(height: 2),
+                const Text('Fund, withdraw, or view statements', style: TextStyle(fontSize: 9.5, color: Color(0xFF64748B))),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: const [
+                Text(
+                  'Manage Wallet',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
+                ),
+                Icon(Icons.arrow_forward_rounded, size: 14, color: Color(0xFF059669)),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 

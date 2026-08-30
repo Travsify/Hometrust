@@ -10,7 +10,6 @@ class AuthProvider with ChangeNotifier {
   String? _token;
   bool _isLoading = false;
   String? _errorMessage;
-  bool _isDeveloperMode = true;
   final LocalAuthentication _localAuth = LocalAuthentication();
 
   UserModel? get user => _user;
@@ -18,20 +17,16 @@ class AuthProvider with ChangeNotifier {
   bool get isAuthenticated => _token != null;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  bool get isDeveloperMode => _isDeveloperMode && _user?.role == 'DEVELOPER';
+  bool get isDeveloperMode => _user?.role == 'DEVELOPER';
 
   void toggleDeveloperMode() {
-    _isDeveloperMode = !_isDeveloperMode;
-    SharedPreferences.getInstance().then((prefs) {
-      prefs.setBool('developer_mode_active', _isDeveloperMode);
-    });
-    notifyListeners();
+    // Mode toggling is disabled by platform policy.
+    // Buyers strictly remain in Buyer Portal; Developers strictly remain in Developer Portal.
   }
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
-    _isDeveloperMode = prefs.getBool('developer_mode_active') ?? true;
     if (_token != null) {
       try {
         final userData = await ApiClient.get('/auth/me');
@@ -52,11 +47,9 @@ class AuthProvider with ChangeNotifier {
   Future<void> logout() async {
     _user = null;
     _token = null;
-    _isDeveloperMode = true;
     SocketService.instance.disconnect();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
-    await prefs.remove('developer_mode_active');
     notifyListeners();
   }
 

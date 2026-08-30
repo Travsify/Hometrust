@@ -6,7 +6,6 @@ import '../core/utils/currency_formatter.dart';
 import '../providers/auth_provider.dart';
 import '../providers/property_provider.dart';
 import '../providers/purchase_provider.dart';
-import '../widgets/admin_sidebar_drawer.dart';
 import 'verify_screen.dart';
 import 'legal_request_screen.dart';
 import 'land_radar_screen.dart';
@@ -70,46 +69,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      drawer: const AdminSidebarDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: Builder(
-          builder: (ctx) => IconButton(
-            icon: const Icon(Icons.menu_rounded, color: Color(0xFF0F172A), size: 24),
-            tooltip: 'Platform Management Menu',
-            onPressed: () => Scaffold.of(ctx).openDrawer(),
-          ),
-        ),
         title: Row(
           children: [
             // Hometrust Official App Icon
             Container(
-              width: 28,
-              height: 28,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(7),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3), width: 1.2),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(7),
                 child: Image.asset(
                   'assets/icon/app_icon.png',
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     color: const Color(0xFF0F172A),
-                    child: const Icon(Icons.shield_rounded, color: Color(0xFF10B981), size: 16),
+                    child: const Icon(Icons.shield_rounded, color: Color(0xFF10B981), size: 18),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             const Text(
               'Hometrust',
               style: TextStyle(
                 color: Color(0xFF0F172A),
                 fontWeight: FontWeight.w900,
-                fontSize: 18,
+                fontSize: 19,
                 letterSpacing: -0.5,
               ),
             ),

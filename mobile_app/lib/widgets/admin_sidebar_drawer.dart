@@ -14,6 +14,7 @@ import '../screens/material_index_screen.dart';
 import '../screens/real_estate_dictionary_screen.dart';
 import '../screens/support_tickets_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/developer_profile_screen.dart';
 
 class AdminSidebarDrawer extends StatelessWidget {
   const AdminSidebarDrawer({super.key});
@@ -256,7 +257,12 @@ class AdminSidebarDrawer extends StatelessWidget {
                   subtitle: '2FA, Biometrics & Virtual NUBAN',
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => user?.role == 'DEVELOPER' ? const DeveloperProfileScreen() : const ProfileScreen(),
+                      ),
+                    );
                   },
                 ),
               ],
