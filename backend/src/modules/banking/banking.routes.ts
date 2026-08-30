@@ -21,6 +21,8 @@ router.post('/resolve-account', requireAuth, BankingController.resolveBankAccoun
 // In-App Payments from Wallet & Live Synchronization
 router.post('/pay-from-wallet', requireAuth, BankingController.payFromWallet);
 router.post('/sync-live-account', requireAuth, BankingController.syncLiveAccount);
+router.get('/all-transactions', requireAuth, BankingController.listAllTransactions);
+router.get('/all-notifications', requireAuth, BankingController.listAllDispatchedNotifications);
 
 // PDF Statement & Receipt Export
 router.get('/statement/pdf', requireAuth, BankingController.downloadStatementPdf);

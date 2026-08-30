@@ -586,4 +586,135 @@ export class AdminService {
 
     return updated;
   }
+
+  static async getAllTransactions(filters?: { status?: string; type?: string; search?: string; page?: number; limit?: number }) {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 100;
+    const skip = (page - 1) * limit;
+
+    const [payments, withdrawals] = await Promise.all([
+      prisma.payment.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+          developer: { select: { id: true, companyName: true, email: true } },
+          purchase: {
+            include: {
+              property: { select: { id: true, title: true, address: true, city: true, state: true } },
+            },
+          },
+        },
+      }),
+      prisma.withdrawal.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+          developer: { select: { id: true, companyName: true, email: true } },
+        },
+      }),
+    ]);
+
+    const txs: any[] = [];
+
+    for (const p of payments) {
+      txs.push({
+        id: p.id,
+        type: 'CREDIT',
+        amount: p.totalAmount,
+        currency: 'NGN',
+        status: p.status === 'SUCCESS' || p.status === 'CONFIRMED' || p.status === 'COMPLETED' ? 'SUCCESS' : p.status,
+        purpose: p.purpose || 'ESCROW_FUNDING',
+        description: p.purchase?.property?.title ? `Property Payment: ${p.purchase.property.title}` : (p.purpose || 'Escrow Deposit'),
+        reference: p.paymentReference,
+        channel: p.paystackChannel || 'DIRECT_BANK_TRANSFER',
+        userName: p.user ? `${p.user.firstName} ${p.user.lastName}`.trim() : (p.developer?.companyName || 'User'),
+        userEmail: p.user?.email || p.developer?.email || '',
+        createdAt: p.createdAt,
+      });
+    }
+
+    for (const w of withdrawals) {
+      txs.push({
+        id: w.id,
+        type: 'DEBIT',
+        amount: w.amount,
+        currency: 'NGN',
+        status: w.status,
+        purpose: 'WITHDRAWAL',
+        description: `Payout to ${w.accountName} (${w.bankName} - ${w.accountNumber})`,
+        reference: w.reference,
+        channel: w.bankName || 'COMMERCIAL_BANK_TRANSFER',
+        userName: w.accountName || (w.user ? `${w.user.firstName} ${w.user.lastName}`.trim() : (w.developer?.companyName || 'Developer')),
+        userEmail: w.user?.email || w.developer?.email || '',
+        bankName: w.bankName,
+        accountNumber: w.accountNumber,
+        accountName: w.accountName,
+        createdAt: w.createdAt,
+      });
+    }
+
+    let filtered = txs;
+    if (filters?.type && filters.type !== 'ALL') {
+      filtered = filtered.filter(t => t.type === filters.type);
+    }
+    if (filters?.status && filters.status !== 'ALL') {
+      filtered = filtered.filter(t => t.status === filters.status);
+    }
+    if (filters?.search) {
+      const q = filters.search.toLowerCase();
+      filtered = filtered.filter(t =>
+        t.reference.toLowerCase().includes(q) ||
+        t.userName.toLowerCase().includes(q) ||
+        t.userEmail.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q)
+      );
+    }
+
+    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const total = filtered.length;
+    const paginated = filtered.slice(skip, skip + limit);
+
+    return {
+      transactions: paginated,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  static async getAllDispatchedNotifications(filters?: { search?: string; page?: number; limit?: number }) {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 100;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (filters?.search) {
+      where.OR = [
+        { title: { contains: filters.search, mode: 'insensitive' } },
+        { message: { contains: filters.search, mode: 'insensitive' } },
+        { user: { email: { contains: filters.search, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [notifications, total] = await Promise.all([
+      prisma.notification.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+        },
+      }),
+      prisma.notification.count({ where }),
+    ]);
+
+    return {
+      notifications,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
 }

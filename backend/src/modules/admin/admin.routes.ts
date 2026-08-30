@@ -9,6 +9,8 @@ router.use(requireAuth, requireRoles('SUPER_ADMIN', 'ADMIN', 'FINANCE_MANAGER', 
 
 router.get('/metrics', AdminController.getMetrics);
 router.get('/payments', AdminController.getPayments);
+router.get('/transactions', AdminController.getAllTransactions);
+router.get('/notifications', AdminController.getDispatchedNotifications);
 router.get('/users', AdminController.getUsers);
 router.patch('/users/:id/status', requireRoles('SUPER_ADMIN', 'ADMIN'), AdminController.updateUserStatus);
 router.patch('/users/:id/role', requireRoles('SUPER_ADMIN'), AdminController.updateUserRole);

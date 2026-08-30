@@ -167,7 +167,7 @@ class _KycScreenState extends State<KycScreen> {
         setState(() {
           _loadingMessage = isDeveloper
               ? 'Verifying CAC Registration (${_cacCtrl.text.trim()}) & Director Records...'
-              : 'Verifying National Identity (NIN & BVN) via Prembly IdentityPass...';
+              : 'Verifying National Identity (NIN & BVN)...';
         });
       }
 

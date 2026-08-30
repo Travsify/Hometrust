@@ -238,4 +238,42 @@ export class AdminController {
       sendError(res, error.message, 400);
     }
   }
+
+  static async getAllTransactions(req: Request, res: Response): Promise<void> {
+    try {
+      const filters = {
+        type: req.query.type ? String(req.query.type) : undefined,
+        status: req.query.status ? String(req.query.status) : undefined,
+        search: req.query.search ? String(req.query.search) : undefined,
+        page: req.query.page ? parseInt(String(req.query.page), 10) : 1,
+        limit: req.query.limit ? parseInt(String(req.query.limit), 10) : 100,
+      };
+      const result = await AdminService.getAllTransactions(filters);
+      sendSuccess(res, result.transactions, 'All platform transactions retrieved successfully', 200, {
+        total: result.total,
+        page: result.page,
+        totalPages: result.totalPages,
+      });
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async getDispatchedNotifications(req: Request, res: Response): Promise<void> {
+    try {
+      const filters = {
+        search: req.query.search ? String(req.query.search) : undefined,
+        page: req.query.page ? parseInt(String(req.query.page), 10) : 1,
+        limit: req.query.limit ? parseInt(String(req.query.limit), 10) : 100,
+      };
+      const result = await AdminService.getAllDispatchedNotifications(filters);
+      sendSuccess(res, result.notifications, 'All dispatched notifications retrieved successfully', 200, {
+        total: result.total,
+        page: result.page,
+        totalPages: result.totalPages,
+      });
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }

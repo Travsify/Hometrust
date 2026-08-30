@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import '../core/network/api_client.dart';
+import '../core/network/socket_service.dart';
 import '../models/user_model.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -35,6 +36,12 @@ class AuthProvider with ChangeNotifier {
       try {
         final userData = await ApiClient.get('/auth/me');
         _user = UserModel.fromJson(userData);
+        if (_user != null) {
+          SocketService.instance.connect(
+            userId: _user!.id,
+            userName: '${_user!.firstName} ${_user!.lastName}'.trim(),
+          );
+        }
       } catch (e) {
         await logout();
       }
@@ -46,6 +53,7 @@ class AuthProvider with ChangeNotifier {
     _user = null;
     _token = null;
     _isDeveloperMode = true;
+    SocketService.instance.disconnect();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('developer_mode_active');
@@ -181,6 +189,12 @@ class AuthProvider with ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', _token!);
         await prefs.setString('saved_email', cleanIdentifier);
+        if (_user != null) {
+          SocketService.instance.connect(
+            userId: _user!.id,
+            userName: '${_user!.firstName} ${_user!.lastName}'.trim(),
+          );
+        }
         notifyListeners();
         return {'success': true, 'requires2FA': false};
       }
@@ -219,6 +233,12 @@ class AuthProvider with ChangeNotifier {
         await prefs.setString('saved_email', emailForBiometrics);
       }
       await prefs.setString('biometric_auth_token', _token!);
+      if (_user != null) {
+        SocketService.instance.connect(
+          userId: _user!.id,
+          userName: '${_user!.firstName} ${_user!.lastName}'.trim(),
+        );
+      }
 
       _isLoading = false;
       notifyListeners();
@@ -275,6 +295,12 @@ class AuthProvider with ChangeNotifier {
         await prefs.setString('auth_token', _token!);
         final userData = await ApiClient.get('/auth/me');
         _user = UserModel.fromJson(userData);
+        if (_user != null) {
+          SocketService.instance.connect(
+            userId: _user!.id,
+            userName: '${_user!.firstName} ${_user!.lastName}'.trim(),
+          );
+        }
         notifyListeners();
         return true;
       }

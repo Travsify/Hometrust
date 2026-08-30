@@ -5,6 +5,7 @@ import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/admin_sidebar_drawer.dart';
 import 'developer_boq_validator_screen.dart';
 import 'developer_projects_screen.dart';
 import 'developer_subscribers_screen.dart';
@@ -114,33 +115,40 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      drawer: const AdminSidebarDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        titleSpacing: 16,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu_rounded, color: Color(0xFF0F172A), size: 24),
+            tooltip: 'Platform Management Menu',
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
         title: Row(
           children: [
             // App Icon with verified border
             Container(
-              width: 32,
-              height: 32,
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(7),
                 border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.3), width: 1.2),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(7),
+                borderRadius: BorderRadius.circular(6),
                 child: Image.asset(
                   'assets/icon/app_icon.png',
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     color: const Color(0xFF0F172A),
-                    child: const Icon(Icons.apartment_rounded, color: Color(0xFF10B981), size: 18),
+                    child: const Icon(Icons.apartment_rounded, color: Color(0xFF10B981), size: 16),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

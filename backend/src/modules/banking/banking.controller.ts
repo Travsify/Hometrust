@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { BankingService } from './banking.service';
 import { FlutterwaveClient } from './flutterwave.client';
 import { PaystackClient } from '../payments/paystack.client';
+import { AdminService } from '../admin/admin.service';
 import { sendSuccess, sendError } from '../../utils/response';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 import { prisma } from '../../utils/prisma';
@@ -215,6 +216,44 @@ export class BankingController {
     try {
       const kycList = await BankingService.listAllKyc();
       sendSuccess(res, kycList, 'All Prembly KYC verifications retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async listAllTransactions(req: Request, res: Response): Promise<void> {
+    try {
+      const filters = {
+        type: req.query.type ? String(req.query.type) : undefined,
+        status: req.query.status ? String(req.query.status) : undefined,
+        search: req.query.search ? String(req.query.search) : undefined,
+        page: req.query.page ? parseInt(String(req.query.page), 10) : 1,
+        limit: req.query.limit ? parseInt(String(req.query.limit), 10) : 100,
+      };
+      const result = await AdminService.getAllTransactions(filters);
+      sendSuccess(res, result.transactions, 'All platform transactions retrieved', 200, {
+        total: result.total,
+        page: result.page,
+        totalPages: result.totalPages,
+      });
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async listAllDispatchedNotifications(req: Request, res: Response): Promise<void> {
+    try {
+      const filters = {
+        search: req.query.search ? String(req.query.search) : undefined,
+        page: req.query.page ? parseInt(String(req.query.page), 10) : 1,
+        limit: req.query.limit ? parseInt(String(req.query.limit), 10) : 100,
+      };
+      const result = await AdminService.getAllDispatchedNotifications(filters);
+      sendSuccess(res, result.notifications, 'All dispatched notifications retrieved', 200, {
+        total: result.total,
+        page: result.page,
+        totalPages: result.totalPages,
+      });
     } catch (error: any) {
       sendError(res, error.message, 400);
     }

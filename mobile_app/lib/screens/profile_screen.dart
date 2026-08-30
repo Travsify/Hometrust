@@ -441,7 +441,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   TextField(
                     controller: accNameCtrl,
                     decoration: InputDecoration(
-                      hintText: isResolving ? 'Detecting receiver name via Flutterwave...' : 'Auto-detected via Flutterwave API',
+                      hintText: isResolving ? 'Detecting account holder...' : 'e.g. Chiroma Adeleke',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
@@ -453,7 +453,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF059669))),
                         SizedBox(width: 8),
-                        Text('Auto-fetching receiver name from Flutterwave...', style: TextStyle(fontSize: 11, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
+                        Text('Verifying beneficiary account with bank...', style: TextStyle(fontSize: 11, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ] else if (resolvedAccountName != null && resolvedAccountName!.isNotEmpty) ...[

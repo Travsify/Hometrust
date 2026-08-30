@@ -645,8 +645,26 @@ export class BankingService {
     });
 
     // Send Withdrawal Dispatched Email
-    const devEmail = account.developer?.email || account.user?.email || '';
-    const devName = account.developer?.companyName || `${account.user?.firstName || ''} ${account.user?.lastName || ''}`;
+    const targetUserId = params.userId || account.userId;
+    let targetUser: any = null;
+    if (targetUserId) {
+      targetUser = await prisma.user.findUnique({
+        where: { id: targetUserId },
+        include: { developer: true },
+      });
+    } else if (account.developerId) {
+      const dev = await prisma.developer.findUnique({
+        where: { id: account.developerId },
+        include: { user: true },
+      });
+      targetUser = dev?.user;
+    }
+
+    const devEmail = targetUser?.email || account.developer?.email || account.user?.email || '';
+    const devName = targetUser
+      ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
+      : (account.developer?.companyName || params.accountName || 'Account Holder');
+
     if (devEmail) {
       ResendService.sendWithdrawalDispatchedEmail(devEmail, devName, netAmount, {
         bankName: params.bankName,
@@ -655,20 +673,24 @@ export class BankingService {
       }).catch(console.warn);
     }
 
-    if (account.userId) {
-      NotificationsService.createAndDispatch({
-        userId: account.userId,
-        title: '💸 Withdrawal Dispatched',
+    const notifyUserId = targetUser?.id || targetUserId || account.userId;
+    if (notifyUserId) {
+      await NotificationsService.createAndDispatch({
+        userId: notifyUserId,
+        title: '💸 Escrow Payout Dispatched',
         message: `Your withdrawal of ₦${netAmount.toLocaleString()} to ${params.bankName} (${params.accountNumber}) has been dispatched.`,
         type: 'PAYMENT',
         actionDetails: [
-          { label: 'Amount', value: `₦${netAmount.toLocaleString()}` },
+          { label: 'Amount Requested', value: `₦${params.amount.toLocaleString()}` },
+          { label: 'NIP Transfer Fee', value: `₦${fee.toLocaleString()}` },
+          { label: 'Net Disbursed', value: `₦${netAmount.toLocaleString()}` },
           { label: 'Destination Bank', value: params.bankName },
           { label: 'Account Number', value: params.accountNumber },
+          { label: 'Beneficiary', value: params.accountName },
           { label: 'Reference', value: ref },
           { label: 'Status', value: withdrawalStatus },
         ],
-      }).catch(() => {});
+      }).catch(console.warn);
     }
 
     return withdrawal;
