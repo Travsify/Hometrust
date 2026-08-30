@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_constants.dart';
 
@@ -106,15 +107,42 @@ class ApiClient {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     final authHeaders = await _headers(includeContentType: false);
 
+    MediaType? mediaType;
+    final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : '';
+    if (['jpg', 'jpeg'].contains(ext)) {
+      mediaType = MediaType('image', 'jpeg');
+    } else if (ext == 'png') {
+      mediaType = MediaType('image', 'png');
+    } else if (ext == 'webp') {
+      mediaType = MediaType('image', 'webp');
+    } else if (ext == 'gif') {
+      mediaType = MediaType('image', 'gif');
+    } else if (ext == 'mp4' || ext == 'm4v') {
+      mediaType = MediaType('video', 'mp4');
+    } else if (ext == 'mov') {
+      mediaType = MediaType('video', 'quicktime');
+    } else if (ext == 'mp3') {
+      mediaType = MediaType('audio', 'mpeg');
+    } else if (ext == 'wav') {
+      mediaType = MediaType('audio', 'wav');
+    } else if (ext == 'pdf') {
+      mediaType = MediaType('application', 'pdf');
+    }
+
     final request = http.MultipartRequest('POST', url)
       ..headers.addAll(authHeaders)
-      ..files.add(http.MultipartFile.fromBytes(fieldName, fileBytes, filename: fileName));
+      ..files.add(http.MultipartFile.fromBytes(
+        fieldName,
+        fileBytes,
+        filename: fileName,
+        contentType: mediaType,
+      ));
 
     for (final entry in extraFields.entries) {
       request.fields[entry.key] = entry.value;
     }
 
-    final streamed = await request.send().timeout(const Duration(seconds: 60));
+    final streamed = await request.send().timeout(const Duration(seconds: 300));
     final response = await http.Response.fromStream(streamed);
     return _handleResponse(response);
   }

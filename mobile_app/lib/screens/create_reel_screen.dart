@@ -108,9 +108,15 @@ class _CreateReelScreenState extends State<CreateReelScreen> {
         fieldName: 'file',
       );
 
-      final String? mediaUrl = uploadRes['fileUrl'];
+      String? mediaUrl;
+      if (uploadRes is Map) {
+        mediaUrl = uploadRes['fileUrl']?.toString() ?? uploadRes['data']?['fileUrl']?.toString() ?? uploadRes['url']?.toString();
+      } else if (uploadRes is String) {
+        mediaUrl = uploadRes;
+      }
+
       if (mediaUrl == null || mediaUrl.isEmpty) {
-        throw Exception('Server failed to return media file URL');
+        throw Exception('Server returned unexpected upload response: $uploadRes');
       }
 
       setState(() => _uploadStatusText = 'Publishing site story to followers...');
@@ -137,10 +143,12 @@ class _CreateReelScreenState extends State<CreateReelScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isUploading = false);
+        final errText = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to publish reel: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text('Failed to publish reel: $errText'),
             backgroundColor: const Color(0xFFDC2626),
+            duration: const Duration(seconds: 6),
           ),
         );
       }

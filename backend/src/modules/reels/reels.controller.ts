@@ -3,6 +3,7 @@ import { ReelsService } from './reels.service';
 import { sendSuccess, sendError } from '../../utils/response';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 import { prisma } from '../../utils/prisma';
+import { DevelopersService } from '../developers/developers.service';
 
 export class ReelsController {
   /**
@@ -15,14 +16,13 @@ export class ReelsController {
         return;
       }
 
-      // Find developer record for user
-      const developer = await prisma.developer.findUnique({
+      // Find developer record for user or provision profile
+      let developer = await prisma.developer.findUnique({
         where: { userId: req.user.id },
       });
 
       if (!developer) {
-        sendError(res, 'Only registered corporate developers can post site updates', 403);
-        return;
+        developer = await DevelopersService.getDeveloperByUserId(req.user.id);
       }
 
       const {
