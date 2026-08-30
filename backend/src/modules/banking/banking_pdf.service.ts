@@ -1,4 +1,4 @@
-﻿import fs from 'fs';
+import fs from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit';
 import { config } from '../../config';
@@ -11,13 +11,22 @@ export class BankingPdfService {
     bankName: string;
     balance: number;
     transactions: any[];
+    filterType?: string;
   }): Promise<{ filePath: string; fileName: string }> {
-    const fileName = `Hometrust_Statement_${Date.now()}.pdf`;
+    const filterSuffix = data.filterType && data.filterType !== 'ALL' ? `_${data.filterType}` : '';
+    const fileName = `Hometrust_Statement${filterSuffix}_${Date.now()}.pdf`;
     const uploadDir = config.storage?.uploadDir || path.join(process.cwd(), 'uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
     const filePath = path.join(uploadDir, fileName);
+
+    let subtitle = 'ESCROW & PROPERTY STATEMENT OF ACCOUNT';
+    if (data.filterType === 'CREDIT' || data.filterType === 'INFLOW') {
+      subtitle = 'ESCROW STATEMENT: INFLOW & DEPOSIT TRANSACTIONS';
+    } else if (data.filterType === 'DEBIT' || data.filterType === 'OUTFLOW') {
+      subtitle = 'ESCROW STATEMENT: OUTFLOW & WITHDRAWAL TRANSACTIONS';
+    }
 
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ margin: 40, size: 'A4' });
@@ -27,7 +36,7 @@ export class BankingPdfService {
       // Header Banner
       doc.rect(40, 40, 515, 65).fill('#059669');
       doc.fillColor('#FFFFFF').fontSize(22).font('Helvetica-Bold').text('HOMETRUST', 55, 52);
-      doc.fontSize(9).font('Helvetica').text('ESCROW & PROPERTY STATEMENT OF ACCOUNT', 55, 78);
+      doc.fontSize(8.5).font('Helvetica').text(subtitle, 55, 78);
       doc.fontSize(8.5).font('Helvetica').text(`Generated: ${new Date().toLocaleString()}`, 380, 55, { align: 'right' });
       doc.text('Security: Bank-Grade NDPR Verified', 380, 72, { align: 'right' });
 

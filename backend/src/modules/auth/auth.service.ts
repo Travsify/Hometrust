@@ -5,6 +5,7 @@ import { config } from '../../config';
 import { AuditService } from '../audit/audit.service';
 import { ResendService } from '../notifications/resend.service';
 import { TwilioService } from '../notifications/twilio.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export class AuthService {
   // Generate random 6-digit OTP
@@ -426,6 +427,20 @@ export class AuthService {
         loginAt: new Date().toISOString(),
       },
     });
+
+    // Instant multi-channel login notification (Email, In-App, Push)
+    NotificationsService.createAndDispatch({
+      userId: user.id,
+      title: '🔐 Successful Account Login',
+      message: `You signed in to your Hometrust escrow account at ${new Date().toLocaleTimeString('en-NG')} on ${new Date().toLocaleDateString('en-NG')}. If this was not you, please secure your account immediately.`,
+      type: 'SECURITY',
+      sendEmail: true,
+      actionDetails: [
+        { label: 'Account Holder', value: `${user.firstName} ${user.lastName}` },
+        { label: 'Timestamp', value: new Date().toUTCString() },
+        { label: 'Security Channel', value: '2FA Mobile/Web App' },
+      ],
+    }).catch(err => console.warn('[AUTH] Login notification notice:', err.message));
 
     const isVerified = Boolean(
       (user.profile && (user.profile.nin || user.profile.bvnVerified)) ||

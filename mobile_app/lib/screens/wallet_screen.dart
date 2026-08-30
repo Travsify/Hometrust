@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../core/constants/api_constants.dart';
 import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
@@ -583,7 +584,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
   void _downloadStatementPdf() async {
     final token = await ApiClient.getToken();
-    final url = Uri.parse('${ApiConstants.baseUrl}/banking/statement/pdf?token=$token');
+    final url = Uri.parse('${ApiConstants.baseUrl}/banking/statement/pdf?type=$_selectedFilter&token=$token');
     try {
       final launched = await launchUrl(url, mode: LaunchMode.externalApplication);
       if (!launched) {
@@ -592,7 +593,7 @@ class _WalletScreenState extends State<WalletScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Statement PDF downloaded to device storage.')),
+          const SnackBar(content: Text('Downloading statement PDF...')),
         );
       }
     }
@@ -634,22 +635,12 @@ Description: $desc
 Date: $date
 Security: Guaranteed by CBN Licensed Escrow Banking
 ═══════════════════════════════════
-Verify Online: https://hometrustng.com
+Official Web Verification: https://hometrustng.com
 ''';
 
-    Clipboard.setData(ClipboardData(text: receiptText.trim()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Expanded(child: Text('Receipt copied to clipboard! You can share via WhatsApp, Email, or SMS.')),
-          ],
-        ),
-        backgroundColor: Color(0xFF059669),
-        duration: Duration(seconds: 4),
-      ),
+    Share.share(
+      receiptText.trim(),
+      subject: 'Official Hometrust Receipt - $ref',
     );
   }
 

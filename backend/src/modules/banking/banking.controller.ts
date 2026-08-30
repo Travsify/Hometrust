@@ -235,7 +235,14 @@ export class BankingController {
         return;
       }
       const account = user.virtualAccounts?.[0];
-      const transactions = await BankingService.getMyTransactions(req.user.id);
+      const filterType = (String(req.query.type || 'ALL')).toUpperCase();
+      let transactions = await BankingService.getMyTransactions(req.user.id);
+
+      if (filterType === 'CREDIT' || filterType === 'INFLOW') {
+        transactions = transactions.filter((t: any) => t.type === 'CREDIT');
+      } else if (filterType === 'DEBIT' || filterType === 'OUTFLOW') {
+        transactions = transactions.filter((t: any) => t.type === 'DEBIT');
+      }
 
       const pdf = await BankingPdfService.generateStatementPdf({
         userName: `${user.firstName} ${user.lastName}`,
@@ -244,6 +251,7 @@ export class BankingController {
         bankName: account?.bankName || 'Hometrust Dedicated Bank',
         balance: account?.balance || 0,
         transactions,
+        filterType,
       });
 
       res.setHeader('Content-Type', 'application/pdf');

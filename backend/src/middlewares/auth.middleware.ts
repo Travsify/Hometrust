@@ -21,12 +21,18 @@ export const authenticate = async (
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token: string | undefined;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.query?.token && typeof req.query.token === 'string') {
+      token = req.query.token;
+    }
+
+    if (!token) {
       sendError(res, 'Authentication token missing or invalid', 401);
       return;
     }
-
-    const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, config.jwtSecret) as {
       id: string;
       email: string;

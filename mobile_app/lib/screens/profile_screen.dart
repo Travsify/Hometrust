@@ -257,50 +257,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showWithdrawModal() {
-    if (_virtualAccount == null) return;
-    final balance = (_virtualAccount!['balance'] ?? 0).toDouble();
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final balance = (_virtualAccount?['balance'] as num?)?.toDouble() ?? auth.user?.virtualAccountBalance ?? 0.0;
 
     final amountCtrl = TextEditingController();
     final accNumCtrl = TextEditingController();
-    String selectedBankCode = '000014'; // Access Bank default
+    final accNameCtrl = TextEditingController();
+    String selectedBankCode = '044'; // Access Bank default
     String selectedBankName = 'Access Bank';
-    String resolvedAccountName = '';
+    String? resolvedAccountName;
     bool isResolving = false;
     bool isWithdrawing = false;
 
     final banks = [
-      {'name': 'Access Bank', 'code': '000014'},
-      {'name': 'GTBank (Guaranty Trust)', 'code': '000013'},
-      {'name': 'Zenith Bank', 'code': '000015'},
-      {'name': 'First Bank of Nigeria', 'code': '000016'},
-      {'name': 'United Bank for Africa (UBA)', 'code': '000004'},
-      {'name': 'Wema Bank', 'code': '000017'},
-      {'name': 'FCMB (First City Monument Bank)', 'code': '000003'},
-      {'name': 'Fidelity Bank', 'code': '000007'},
-      {'name': 'Stanbic IBTC Bank', 'code': '000012'},
-      {'name': 'Sterling Bank', 'code': '000001'},
-      {'name': 'Union Bank of Nigeria', 'code': '000018'},
-      {'name': 'Providus Bank', 'code': '000023'},
-      {'name': 'Polaris Bank', 'code': '000008'},
-      {'name': 'Ecobank Nigeria', 'code': '000010'},
-      {'name': 'Keystone Bank', 'code': '000002'},
-      {'name': 'Jaiz Bank', 'code': '000006'},
-      {'name': 'Taj Bank', 'code': '000026'},
-      {'name': 'Lotus Bank', 'code': '000029'},
-      {'name': 'Parallex Bank', 'code': '000030'},
-      {'name': 'Premium Trust Bank', 'code': '000031'},
-      {'name': 'Signature Bank', 'code': '000034'},
-      {'name': 'Titan Trust Bank', 'code': '000025'},
-      {'name': 'Unity Bank', 'code': '000011'},
-      {'name': 'Kuda Microfinance Bank', 'code': '090267'},
-      {'name': 'OPay (PayCom)', 'code': '090325'},
-      {'name': 'Palmpay', 'code': '090405'},
-      {'name': 'Moniepoint MFB', 'code': '090405'},
-      {'name': 'FairMoney MFB', 'code': '090551'},
-      {'name': 'Rubies MFB', 'code': '090175'},
-      {'name': 'Dot MFB', 'code': '090470'},
-      {'name': 'Carbon MFB', 'code': '090551'},
-      {'name': 'VFD Microfinance Bank', 'code': '090110'},
+      {'name': 'Access Bank', 'code': '044'},
+      {'name': 'Guaranty Trust Bank (GTB)', 'code': '058'},
+      {'name': 'Zenith Bank', 'code': '057'},
+      {'name': 'United Bank for Africa (UBA)', 'code': '033'},
+      {'name': 'First Bank of Nigeria', 'code': '011'},
+      {'name': 'Wema Bank', 'code': '035'},
+      {'name': 'FCMB (First City Monument Bank)', 'code': '214'},
+      {'name': 'Fidelity Bank', 'code': '070'},
+      {'name': 'Stanbic IBTC Bank', 'code': '221'},
+      {'name': 'Sterling Bank', 'code': '232'},
+      {'name': 'Union Bank of Nigeria', 'code': '032'},
+      {'name': 'Providus Bank', 'code': '101'},
+      {'name': 'Polaris Bank', 'code': '076'},
+      {'name': 'Ecobank Nigeria', 'code': '050'},
+      {'name': 'Keystone Bank', 'code': '082'},
+      {'name': 'Jaiz Bank', 'code': '301'},
+      {'name': 'Taj Bank', 'code': '302'},
+      {'name': 'Lotus Bank', 'code': '303'},
+      {'name': 'Parallex Bank', 'code': '526'},
+      {'name': 'Premium Trust Bank', 'code': '105'},
+      {'name': 'Signature Bank', 'code': '106'},
+      {'name': 'Titan Trust Bank', 'code': '102'},
+      {'name': 'Unity Bank', 'code': '215'},
+      {'name': 'Kuda Microfinance Bank', 'code': '50211'},
+      {'name': 'OPay (Paycom)', 'code': '999992'},
+      {'name': 'PalmPay', 'code': '999991'},
+      {'name': 'Moniepoint MFB', 'code': '50515'},
+      {'name': 'FairMoney MFB', 'code': '51318'},
+      {'name': 'Rubies MFB', 'code': '125'},
+      {'name': 'Dot MFB', 'code': '50163'},
+      {'name': 'Carbon MFB', 'code': '565'},
+      {'name': 'VFD Microfinance Bank', 'code': '566'},
     ];
 
     showModalBottomSheet(
@@ -310,22 +311,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) {
           void resolveAccount() async {
-            if (accNumCtrl.text.trim().length != 10) return;
+            final accNum = accNumCtrl.text.trim();
+            if (accNum.length != 10) return;
             setModalState(() => isResolving = true);
             try {
               final res = await ApiClient.post('/banking/resolve-account', {
                 'bankCode': selectedBankCode,
-                'accountNumber': accNumCtrl.text.trim(),
+                'accountNumber': accNum,
               });
-              setModalState(() {
-                resolvedAccountName = res['account_name'] ?? res['accountName'] ?? 'Verified Account';
-                isResolving = false;
-              });
+              if (res != null) {
+                final name = res['account_name'] ?? res['accountName'] ?? '';
+                if (name.isNotEmpty) {
+                  accNameCtrl.text = name;
+                  setModalState(() {
+                    resolvedAccountName = name;
+                    isResolving = false;
+                  });
+                  return;
+                }
+              }
+              setModalState(() => isResolving = false);
             } catch (e) {
-              setModalState(() {
-                resolvedAccountName = '';
-                isResolving = false;
-              });
+              setModalState(() => isResolving = false);
             }
           }
 
@@ -348,7 +355,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Withdraw to Bank Account', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                      const Row(
+                        children: [
+                          Icon(Icons.arrow_upward_rounded, color: AppColors.primary, size: 20),
+                          SizedBox(width: 8),
+                          Text('Withdraw from Escrow', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                        ],
+                      ),
                       IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
                     ],
                   ),
@@ -361,8 +374,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 16),
 
+                  // Amount Field
+                  const Text('Amount to Withdraw (₦)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: amountCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      prefixText: '₦ ',
+                      hintText: 'e.g. 50000',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
                   // Destination Bank Dropdown
-                  const Text('Select Destination Bank', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                  const Text('Destination Commercial Bank', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
                     value: selectedBankCode,
@@ -372,17 +400,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     items: banks.map((b) => DropdownMenuItem(value: b['code'], child: Text(b['name']!, style: const TextStyle(fontSize: 13)))).toList(),
                     onChanged: (val) {
-                      setModalState(() {
-                        selectedBankCode = val!;
-                        selectedBankName = banks.firstWhere((b) => b['code'] == val)['name']!;
-                      });
-                      if (accNumCtrl.text.length == 10) resolveAccount();
+                      if (val != null) {
+                        setModalState(() {
+                          selectedBankCode = val;
+                          selectedBankName = banks.firstWhere((b) => b['code'] == val)['name']!;
+                        });
+                        resolveAccount();
+                      }
                     },
                   ),
                   const SizedBox(height: 14),
 
                   // Account Number Field
-                  const Text('10-Digit NUBAN Account Number', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                  const Text('NUBAN Account Number (10 Digits)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
                   const SizedBox(height: 6),
                   TextField(
                     controller: accNumCtrl,
@@ -391,17 +421,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     decoration: InputDecoration(
                       counterText: '',
                       hintText: '0123456789',
-                      suffixIcon: isResolving
-                          ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)))
-                          : const Icon(Icons.account_balance_wallet_outlined, size: 20),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
                     onChanged: (v) {
-                      if (v.length == 10) resolveAccount();
+                      if (v.trim().length == 10) {
+                        resolveAccount();
+                      } else if (resolvedAccountName != null) {
+                        setModalState(() => resolvedAccountName = null);
+                      }
                     },
                   ),
 
-                  if (resolvedAccountName.isNotEmpty) ...[
+                  // Account Name Field
+                  const SizedBox(height: 14),
+                  const Text('Account Holder Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: accNameCtrl,
+                    decoration: InputDecoration(
+                      hintText: isResolving ? 'Detecting receiver name via Flutterwave...' : 'Auto-detected via Flutterwave API',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+
+                  if (isResolving) ...[
+                    const SizedBox(height: 8),
+                    const Row(
+                      children: [
+                        SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF059669))),
+                        SizedBox(width: 8),
+                        Text('Auto-fetching receiver name from Flutterwave...', style: TextStyle(fontSize: 11, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ] else if (resolvedAccountName != null && resolvedAccountName!.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -415,26 +469,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const Icon(Icons.check_circle_rounded, color: Color(0xFF059669), size: 16),
                           const SizedBox(width: 6),
                           Expanded(
-                            child: Text(resolvedAccountName, style: const TextStyle(color: Color(0xFF065F46), fontWeight: FontWeight.w800, fontSize: 12)),
+                            child: Text(
+                              'Receiver: $resolvedAccountName',
+                              style: const TextStyle(color: Color(0xFF065F46), fontWeight: FontWeight.w800, fontSize: 12),
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ],
-                  const SizedBox(height: 14),
 
-                  // Amount Field
-                  const Text('Amount to Withdraw (₦)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: amountCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      prefixText: '₦ ',
-                      hintText: '10,000',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
                   const SizedBox(height: 20),
 
                   SizedBox(
@@ -443,16 +487,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: isWithdrawing
                           ? null
                           : () async {
-                              final amount = double.tryParse(amountCtrl.text.replaceAll(',', '').trim()) ?? 0;
-                              if (amount < 1000) {
+                              final rawAmount = double.tryParse(amountCtrl.text.replaceAll(',', '').trim()) ?? 0;
+                              final accNum = accNumCtrl.text.trim();
+                              final accName = accNameCtrl.text.trim();
+
+                              if (rawAmount < 1000) {
                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Minimum withdrawal is ₦1,000')));
                                 return;
                               }
-                              if (amount > balance) {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Insufficient wallet balance')));
+                              if (rawAmount > balance) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Insufficient escrow wallet balance')));
                                 return;
                               }
-                              if (accNumCtrl.text.trim().length != 10) {
+                              if (accNum.length != 10) {
                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid 10-digit account number')));
                                 return;
                               }
@@ -460,11 +507,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               setModalState(() => isWithdrawing = true);
                               try {
                                 await ApiClient.post('/banking/withdraw', {
-                                  'amount': amount,
+                                  'amount': rawAmount,
                                   'bankCode': selectedBankCode,
                                   'bankName': selectedBankName,
-                                  'accountNumber': accNumCtrl.text.trim(),
-                                  'accountName': resolvedAccountName.isNotEmpty ? resolvedAccountName : 'Valued Customer',
+                                  'accountNumber': accNum,
+                                  'accountName': accName.isNotEmpty ? accName : 'Account Holder',
                                 });
 
                                 if (context.mounted) {
@@ -472,7 +519,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   _fetchAccount();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('💸 Withdrawal of ${CurrencyFormatter.format(amount)} processed successfully!'),
+                                      content: Text('💸 Withdrawal of ${CurrencyFormatter.format(rawAmount)} processed successfully!'),
                                       backgroundColor: const Color(0xFF059669),
                                     ),
                                   );
@@ -488,7 +535,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               }
                             },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F172A),
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

@@ -151,6 +151,7 @@ export class FlutterwaveClient {
     const { secretKey, baseUrl } = await this.getCredentials();
 
     try {
+      console.log(`[FLUTTERWAVE] Resolving account ${accountNumber} with bank ${bankCode}...`);
       const response = await fetch(`${baseUrl}/accounts/resolve`, {
         method: 'POST',
         headers: {
@@ -164,14 +165,15 @@ export class FlutterwaveClient {
       });
 
       const resData: any = await response.json();
+      console.log(`[FLUTTERWAVE] Name Enquiry status:`, resData?.status, resData?.message);
       if (response.ok && resData?.status === 'success' && resData?.data?.account_name) {
         return {
           status: true,
-          message: 'Account resolved',
+          message: 'Account resolved via Flutterwave',
           data: {
             account_name: resData.data.account_name,
-            account_number: accountNumber,
-            bank_code: bankCode,
+            account_number: accountNumber.trim(),
+            bank_code: bankCode.trim(),
           },
         };
       }
@@ -179,15 +181,36 @@ export class FlutterwaveClient {
       console.warn(`[FLUTTERWAVE] Name enquiry notice: ${e.message}`);
     }
 
-    return {
-      status: true,
-      message: 'Account verified',
-      data: {
-        account_name: 'Verified Developer Account',
-        account_number: accountNumber,
-        bank_code: bankCode,
-      },
-    };
+    // Secondary fallback: Paystack NIBSS name resolution
+    try {
+      const paystackKey = (config.paystack.secretKey || process.env.PAYSTACK_SECRET_KEY || '').trim();
+      if (paystackKey) {
+        console.log(`[PAYSTACK FALLBACK] Resolving account ${accountNumber} with bank ${bankCode}...`);
+        const psResponse = await fetch(`https://api.paystack.co/bank/resolve?account_number=${accountNumber.trim()}&bank_code=${bankCode.trim()}`, {
+          headers: {
+            Authorization: `Bearer ${paystackKey}`,
+          },
+        });
+
+        const psData: any = await psResponse.json();
+        console.log(`[PAYSTACK FALLBACK] Name Enquiry status:`, psData?.status, psData?.message);
+        if (psResponse.ok && psData?.status && psData?.data?.account_name) {
+          return {
+            status: true,
+            message: 'Account resolved via NIBSS',
+            data: {
+              account_name: psData.data.account_name,
+              account_number: accountNumber.trim(),
+              bank_code: bankCode.trim(),
+            },
+          };
+        }
+      }
+    } catch (e: any) {
+      console.warn(`[PAYSTACK FALLBACK] Name enquiry notice: ${e.message}`);
+    }
+
+    throw new Error('Unable to resolve recipient account holder name from Bank API. Please verify the account number and destination bank selected.');
   }
 
   /**
