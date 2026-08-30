@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding EstateVerify development database...');
+  console.log('Seeding Hometrust development database...');
 
   // 1. Create Default Platform Fees
   const fees = [
@@ -704,7 +704,7 @@ async function main() {
           percentage: m.percentage,
           status: m.status,
           orderIndex: m.order,
-          verifiedBy: 'EstateVerify Technical Inspection Team',
+          verifiedBy: 'Hometrust Technical Inspection Team',
         },
       });
     }
@@ -743,7 +743,7 @@ async function main() {
   // 6. Create Sample Verification Requests
   const verif1 = await prisma.verificationRequest.create({
     data: {
-      verificationCode: 'EV-VER-000123',
+      verificationCode: 'HT-VER-000123',
       userId: buyer1.id,
       propertyName: 'Plot 42, Block B, Lekki Phase 1',
       propertyAddress: 'Admiralty Way, Lekki Phase 1, Lagos',
@@ -892,23 +892,23 @@ async function main() {
   await prisma.auditLog.createMany({
     data: [
       {
-        adminEmail: 'admin@estateverify.ng',
+        adminEmail: 'admin@hometrust.ng',
         action: 'DEVELOPER_VERIFIED',
         entityType: 'DEVELOPER',
         entityId: createdDevelopers[0].id,
         details: JSON.stringify({ company: 'Landmark Africa Holdings', cacVerified: true }),
       },
       {
-        adminEmail: 'verification@estateverify.ng',
+        adminEmail: 'verification@hometrust.ng',
         action: 'VERIFICATION_REPORT_APPROVED',
         entityType: 'VERIFICATION_REQUEST',
         entityId: verif1.id,
-        details: JSON.stringify({ code: 'EV-VER-000123', outcome: 'VERIFIED' }),
+        details: JSON.stringify({ code: 'HT-VER-000123', outcome: 'VERIFIED' }),
       },
     ],
   });
 
-  console.log('EstateVerify database seeded successfully with comprehensive Nigerian proptech data!');
+  console.log('Hometrust database seeded successfully with comprehensive Nigerian proptech data!');
 }
 
 main()

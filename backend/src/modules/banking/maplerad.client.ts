@@ -66,7 +66,10 @@ export class MapleradClient {
     let phoneNum = cleanPhone.startsWith('+234') ? cleanPhone.substring(4) : (cleanPhone.startsWith('0') ? cleanPhone.substring(1) : cleanPhone);
 
     const idType = params.nin ? 'NIN' : (params.bvn ? 'BVN' : 'NIN');
-    const idNumber = params.nin || params.bvn || '22245678901';
+    const idNumber = params.nin || params.bvn;
+    if (!idNumber) {
+      throw new Error('NIN or BVN is required for Maplerad customer enrolment.');
+    }
 
     const payload = {
       first_name: params.firstName || 'Hometrust',
@@ -187,26 +190,9 @@ export class MapleradClient {
       }
     }
 
-    // Deterministic Dedicated Virtual Account generation in sandbox/fallback mode
-    const hashSeed = crypto.createHash('md5').update(`${params.email}_${params.phone}_hometrust`).digest('hex');
-    const numericPart = parseInt(hashSeed.substring(0, 8), 16).toString().padStart(8, '0').substring(0, 8);
-    const dedicatedAccountNumber = `90${numericPart}`;
-
-    console.log(`[MAPLERAD SANDBOX] Dedicated Virtual Account issued for ${params.email}: ${dedicatedAccountNumber} (Providus Bank)`);
-
-    return {
-      status: true,
-      message: 'Dedicated Virtual Account issued successfully via Maplerad',
-      data: {
-        id: `mpr_vac_${Date.now()}`,
-        account_number: dedicatedAccountNumber,
-        account_name: accountHolder,
-        bank_name: 'Providus Bank',
-        currency: 'NGN',
-        status: 'ACTIVE',
-        customer_id: customerId || `mpr_cust_${Date.now()}`,
-      },
-    };
+    // All attempts failed — throw error instead of generating fake account
+    console.error(`[MAPLERAD] All virtual account generation attempts failed for customer ${customerId || params.email}`);
+    throw new Error('Failed to generate a dedicated virtual bank account via Maplerad. Please try again or contact support.');
   }
 
   /**

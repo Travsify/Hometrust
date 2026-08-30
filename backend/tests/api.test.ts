@@ -4,13 +4,13 @@ import { prisma } from '../src/utils/prisma';
 
 jest.setTimeout(30000);
 
-describe('EstateVerify API Integration Test Suite', () => {
+describe('Hometrust API Integration Test Suite', () => {
   let authToken = '';
 
   beforeAll(async () => {
     // Clean up any test user if exists
     await prisma.user.deleteMany({
-      where: { email: { in: ['testbuyer@hometrust.ng', 'testbuyer@estateverify.ng'] } },
+      where: { email: { in: ['testbuyer@hometrust.ng'] } },
     });
   });
 

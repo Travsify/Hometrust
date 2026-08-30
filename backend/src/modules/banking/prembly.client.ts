@@ -25,166 +25,172 @@ export interface PremblyVerificationResponse {
 }
 
 export class PremblyClient {
-  private static defaultBaseUrl = 'https://api.prembly.com/identitypass/verification';
-  private static defaultApiKey = 'live_sk_2a238fff60994964b3f8d9a5a6178d23';
-  private static defaultPublicKey = 'live_pk_ffabb0478dd04d89b2b22729872f5b1d';
-  private static defaultAppId = 'app_hometrust_identity_2026';
-
   private static async getCredentials() {
     const dbKey = await ApiKeysService.getActiveKey('PREMBLY').catch(() => null);
-    const apiKey = dbKey || config.prembly.secretKey || this.defaultApiKey;
-    const publicKey = config.prembly.publicKey || this.defaultPublicKey;
-    const appId = config.prembly.appId || this.defaultAppId;
-    const baseUrl = config.prembly.baseUrl || this.defaultBaseUrl;
-    return { apiKey, publicKey, appId, baseUrl };
+    const apiKey = dbKey || config.prembly.secretKey;
+    const appId = config.prembly.appId;
+    const baseUrl = config.prembly.baseUrl;
+
+    if (!apiKey || apiKey.length < 10) {
+      throw new Error('Prembly API key is not configured. Set PREMBLY_API_KEY in environment variables.');
+    }
+
+    return { apiKey, appId, baseUrl };
   }
 
   /**
-   * Verify National Identity Number (NIN) against NIMC via Prembly IdentityPass
+   * Verify National Identity Number (NIN) against NIMC via Prembly IdentityPass (LIVE)
    */
   static async verifyNIN(nin: string, firstName?: string, lastName?: string): Promise<PremblyVerificationResponse> {
-    const { apiKey, appId, baseUrl } = await this.getCredentials();
-    try {
-      const response = await fetch(`${baseUrl}/nin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'app-id': appId,
-        },
-        body: JSON.stringify({
-          number_nin: nin,
-          first_name: firstName,
-          last_name: lastName,
-        }),
-      });
-
-      if (!response.ok) {
-        // If API fails or in sandbox mode, validate 11 digits format
-        if (nin && nin.length === 11 && /^\d+$/.test(nin)) {
-          return {
-            status: true,
-            message: 'NIN record verified against National Identity Database (NIMC)',
-            data: {
-              nin,
-              firstName: firstName || 'Verified',
-              lastName: lastName || 'User',
-              status: 'VERIFIED',
-            },
-          };
-        }
-        throw new Error('NIN validation failed with Prembly IdentityPass: Invalid or unverified NIN number.');
-      }
-
-      const data = (await response.json()) as PremblyVerificationResponse;
-      return data;
-    } catch (e: any) {
-      if (nin && nin.length === 11 && /^\d+$/.test(nin)) {
-        return {
-          status: true,
-          message: 'NIN record verified against National Identity Database (NIMC)',
-          data: {
-            nin,
-            firstName: firstName || 'Verified',
-            lastName: lastName || 'User',
-            status: 'VERIFIED',
-          },
-        };
-      }
-      throw new Error(`Prembly IdentityPass NIN verification failed: ${e.message}`);
+    if (!nin || nin.length !== 11 || !/^\d+$/.test(nin)) {
+      throw new Error('Invalid NIN format. NIN must be exactly 11 digits.');
     }
+
+    const { apiKey, appId, baseUrl } = await this.getCredentials();
+
+    console.log(`[PREMBLY] Verifying NIN ${nin.substring(0, 3)}****${nin.substring(8)} via live API...`);
+
+    const response = await fetch(`${baseUrl}/nin_wo_face`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'app-id': appId,
+      },
+      body: JSON.stringify({
+        number: nin,
+      }),
+    });
+
+    const data = (await response.json()) as any;
+
+    if (!response.ok) {
+      console.error(`[PREMBLY] NIN verification failed (HTTP ${response.status}):`, JSON.stringify(data));
+      throw new Error(data?.detail || data?.message || `Prembly NIN verification failed (HTTP ${response.status}). Please check your NIN and try again.`);
+    }
+
+    if (data?.verification?.status === 'NOT_VERIFIED' || data?.status === false) {
+      console.error('[PREMBLY] NIN verification returned NOT_VERIFIED:', JSON.stringify(data));
+      throw new Error('NIN verification failed. The provided NIN could not be verified against NIMC records.');
+    }
+
+    console.log(`[PREMBLY] NIN verified successfully for ${data?.data?.firstName || firstName || 'user'} ${data?.data?.lastName || lastName || ''}`);
+
+    return {
+      status: true,
+      message: 'NIN verified successfully against NIMC records via Prembly IdentityPass',
+      data: {
+        nin,
+        firstName: data?.data?.firstName || firstName,
+        lastName: data?.data?.lastName || lastName,
+        middleName: data?.data?.middleName,
+        dateOfBirth: data?.data?.dateOfBirth || data?.data?.birthdate,
+        gender: data?.data?.gender,
+        phone: data?.data?.phone || data?.data?.telephoneno,
+        status: 'VERIFIED',
+      },
+    };
   }
 
   /**
-   * Verify Bank Verification Number (BVN) against NIBSS via Prembly IdentityPass
+   * Verify Bank Verification Number (BVN) against NIBSS via Prembly IdentityPass (LIVE)
    */
   static async verifyBVN(bvn: string): Promise<PremblyVerificationResponse> {
-    const { apiKey, appId, baseUrl } = await this.getCredentials();
-    try {
-      const response = await fetch(`${baseUrl}/bvn`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'app-id': appId,
-        },
-        body: JSON.stringify({ number: bvn }),
-      });
-
-      if (!response.ok) {
-        if (bvn && bvn.length === 11 && /^\d+$/.test(bvn)) {
-          return {
-            status: true,
-            message: 'BVN verified successfully with NIBSS',
-            data: { bvn, status: 'VERIFIED' },
-          };
-        }
-        throw new Error('BVN validation failed with Prembly IdentityPass.');
-      }
-
-      const data = (await response.json()) as PremblyVerificationResponse;
-      return data;
-    } catch (e: any) {
-      if (bvn && bvn.length === 11 && /^\d+$/.test(bvn)) {
-        return {
-          status: true,
-          message: 'BVN verified successfully with NIBSS',
-          data: { bvn, status: 'VERIFIED' },
-        };
-      }
-      throw new Error(`Prembly IdentityPass BVN verification failed: ${e.message}`);
+    if (!bvn || bvn.length !== 11 || !/^\d+$/.test(bvn)) {
+      throw new Error('Invalid BVN format. BVN must be exactly 11 digits.');
     }
+
+    const { apiKey, appId, baseUrl } = await this.getCredentials();
+
+    console.log(`[PREMBLY] Verifying BVN ${bvn.substring(0, 3)}****${bvn.substring(8)} via live API...`);
+
+    const response = await fetch(`${baseUrl}/bvn`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'app-id': appId,
+      },
+      body: JSON.stringify({ number: bvn }),
+    });
+
+    const data = (await response.json()) as any;
+
+    if (!response.ok) {
+      console.error(`[PREMBLY] BVN verification failed (HTTP ${response.status}):`, JSON.stringify(data));
+      throw new Error(data?.detail || data?.message || `Prembly BVN verification failed (HTTP ${response.status}). Please check your BVN and try again.`);
+    }
+
+    if (data?.verification?.status === 'NOT_VERIFIED' || data?.status === false) {
+      console.error('[PREMBLY] BVN verification returned NOT_VERIFIED:', JSON.stringify(data));
+      throw new Error('BVN verification failed. The provided BVN could not be verified against NIBSS records.');
+    }
+
+    console.log(`[PREMBLY] BVN verified successfully for ${data?.data?.firstName || 'user'}`);
+
+    return {
+      status: true,
+      message: 'BVN verified successfully against NIBSS records via Prembly IdentityPass',
+      data: {
+        bvn,
+        firstName: data?.data?.firstName,
+        lastName: data?.data?.lastName,
+        dateOfBirth: data?.data?.dateOfBirth,
+        phone: data?.data?.phoneNumber || data?.data?.phone,
+        status: 'VERIFIED',
+      },
+    };
   }
 
   /**
-   * Verify Corporate CAC Registration against CAC Registry via Prembly IdentityPass
+   * Verify Corporate CAC Registration against CAC Registry via Prembly IdentityPass (LIVE)
    */
   static async verifyCAC(cacNumber: string, companyName: string): Promise<PremblyVerificationResponse> {
-    const { apiKey, appId, baseUrl } = await this.getCredentials();
-    try {
-      const response = await fetch(`${baseUrl}/cac`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'app-id': appId,
-        },
-        body: JSON.stringify({
-          rc_number: cacNumber,
-          company_name: companyName,
-        }),
-      });
-
-      if (!response.ok) {
-        if (cacNumber && cacNumber.trim().length >= 4) {
-          return {
-            status: true,
-            message: 'Corporate CAC status verified with Corporate Affairs Commission',
-            data: {
-              rc_number: cacNumber,
-              company_name: companyName,
-              status: 'ACTIVE',
-            },
-          };
-        }
-        throw new Error('CAC Corporate verification failed with Prembly IdentityPass.');
-      }
-
-      const data = (await response.json()) as PremblyVerificationResponse;
-      return data;
-    } catch (e: any) {
-      if (cacNumber && cacNumber.trim().length >= 4) {
-        return {
-          status: true,
-          message: 'Corporate CAC status verified with Corporate Affairs Commission',
-          data: {
-            rc_number: cacNumber,
-            company_name: companyName,
-            status: 'ACTIVE',
-          },
-        };
-      }
-      throw new Error(`Prembly IdentityPass CAC verification failed: ${e.message}`);
+    if (!cacNumber || cacNumber.trim().length < 4) {
+      throw new Error('Invalid CAC/RC number. Please provide a valid company registration number.');
     }
+
+    const { apiKey, appId, baseUrl } = await this.getCredentials();
+
+    console.log(`[PREMBLY] Verifying CAC ${cacNumber} for "${companyName}" via live API...`);
+
+    const response = await fetch(`${baseUrl}/cac`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'app-id': appId,
+      },
+      body: JSON.stringify({
+        rc_number: cacNumber,
+        company_name: companyName,
+      }),
+    });
+
+    const data = (await response.json()) as any;
+
+    if (!response.ok) {
+      console.error(`[PREMBLY] CAC verification failed (HTTP ${response.status}):`, JSON.stringify(data));
+      throw new Error(data?.detail || data?.message || `Prembly CAC verification failed (HTTP ${response.status}). Please check your RC number and try again.`);
+    }
+
+    if (data?.verification?.status === 'NOT_VERIFIED' || data?.status === false) {
+      console.error('[PREMBLY] CAC verification returned NOT_VERIFIED:', JSON.stringify(data));
+      throw new Error('CAC verification failed. The provided RC number could not be verified against Corporate Affairs Commission records.');
+    }
+
+    console.log(`[PREMBLY] CAC verified successfully: ${data?.data?.company_name || companyName} (RC: ${cacNumber})`);
+
+    return {
+      status: true,
+      message: 'Corporate CAC registration verified with Corporate Affairs Commission via Prembly IdentityPass',
+      data: {
+        rc_number: cacNumber,
+        company_name: data?.data?.company_name || companyName,
+        status: data?.data?.status || 'ACTIVE',
+        branchAddress: data?.data?.branchAddress,
+        registrationDate: data?.data?.registrationDate,
+      },
+    };
   }
 }

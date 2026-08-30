@@ -598,7 +598,7 @@ model VirtualAccount {
   user            User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
   developerId     String?
   developer       Developer?  @relation(fields: [developerId], references: [id], onDelete: Cascade)
-  accountName     String      // e.g. "EstateVerify / Babatunde Adeleke" or "EstateVerify / Mixta Africa Real Estate"
+  accountName     String      // e.g. "HOMETRUST / Babatunde Adeleke" or "HOMETRUST / Mixta Africa Real Estate"
   accountNumber   String      @unique
   bankName        String      // e.g. "Wema Bank", "Titan Bank", "Providus Bank"
   bankCode        String?

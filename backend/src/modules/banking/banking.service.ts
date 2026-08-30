@@ -331,14 +331,19 @@ export class BankingService {
       };
     } else {
       // 2. Individual KYC Pipeline via Prembly IdentityPass (NIN & BVN)
-      const nin = params?.nin || params?.idNumber || `NIN-${Math.floor(10000000000 + Math.random() * 90000000000)}`;
-      const bvn = params?.bvn || `BVN-${Math.floor(10000000000 + Math.random() * 90000000000)}`;
+      const nin = params?.nin || params?.idNumber;
+      const bvn = params?.bvn;
       const resAddr = params?.residentialAddress;
 
-      // Verify NIN / BVN with Prembly
-      if (nin && !nin.startsWith('NIN-')) {
+      if (!nin && !bvn) {
+        throw new Error('NIN or BVN is required for identity verification.');
+      }
+
+      // Verify NIN / BVN with Prembly (LIVE — no fallback)
+      if (nin) {
         await PremblyClient.verifyNIN(nin, user.firstName, user.lastName);
-      } else if (bvn && !bvn.startsWith('BVN-')) {
+      }
+      if (bvn) {
         await PremblyClient.verifyBVN(bvn);
       }
 
@@ -367,8 +372,8 @@ export class BankingService {
           lastName: user.lastName,
           email: user.email,
           phone: user.phone || '08012345678',
-          bvn: bvn.startsWith('BVN-') ? '22234567890' : bvn,
-          nin: nin.startsWith('NIN-') ? '12345678901' : nin,
+          bvn: bvn || undefined,
+          nin: nin || undefined,
         });
 
         account = await prisma.virtualAccount.create({

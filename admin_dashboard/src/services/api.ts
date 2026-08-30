@@ -10,7 +10,7 @@ const getApiBaseUrl = () => {
     return u.endsWith('/api/v1') ? u : `${u.replace(/\/$/, '')}/api/v1`;
   }
 
-  // In browser runtime, if on a domain like https://estateverify-app.onrender.com, use relative /api/v1
+  // In browser runtime, if on a domain like https://hometrust.onrender.com, use relative /api/v1
   if (typeof window !== 'undefined' && window.location) {
     if (window.location.hostname === 'localhost' && window.location.port === '3000') {
       return 'http://localhost:5000/api/v1';
@@ -32,7 +32,7 @@ export const api = axios.create({
 
 // Attach token if present
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('estateverify_admin_token') || 'mock_admin_token';
+  const token = localStorage.getItem('hometrust_admin_token') || localStorage.getItem('estateverify_admin_token') || 'mock_admin_token';
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -42,6 +42,8 @@ api.interceptors.request.use((config) => {
 export const loginAdmin = async (email: string, password: string) => {
   const response = await api.post('/auth/login', { email, password });
   if (response.data.success && response.data.data.token) {
+    localStorage.setItem('hometrust_admin_token', response.data.data.token);
+    localStorage.setItem('hometrust_admin_user', JSON.stringify(response.data.data.user));
     localStorage.setItem('estateverify_admin_token', response.data.data.token);
     localStorage.setItem('estateverify_admin_user', JSON.stringify(response.data.data.user));
   }

@@ -61,8 +61,8 @@ export const config = {
   },
 
   maplerad: {
-    secretKey: process.env.MAPLERAD_SECRET_KEY || 'mpr_sandbox_sk_8818b3b9-deaf-420e-bdc7-51eb3d7896d3',
-    publicKey: process.env.MAPLERAD_PUBLIC_KEY || 'mpr_sandbox_pk_219161a8098efd2bd20aec7b24f09ddc',
-    baseUrl: process.env.MAPLERAD_BASE_URL || 'https://sandbox.api.maplerad.com/v1',
+    secretKey: process.env.MAPLERAD_SECRET_KEY || '',
+    publicKey: process.env.MAPLERAD_PUBLIC_KEY || '',
+    baseUrl: process.env.MAPLERAD_BASE_URL || 'https://api.maplerad.com/v1',
   },
 };

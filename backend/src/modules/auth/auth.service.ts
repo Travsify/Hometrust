@@ -488,10 +488,12 @@ export class AuthService {
       where: { id: userId },
       include: {
         profile: true,
+        virtualAccounts: true,
         developer: {
           include: {
             directors: true,
             documents: true,
+            virtualAccounts: true,
           },
         },
       },

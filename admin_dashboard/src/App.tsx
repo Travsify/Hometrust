@@ -24,8 +24,8 @@ export const App: React.FC = () => {
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('estateverify_admin_user');
-    const token = localStorage.getItem('estateverify_admin_token');
+    const savedUser = localStorage.getItem('hometrust_admin_user') || localStorage.getItem('estateverify_admin_user');
+    const token = localStorage.getItem('hometrust_admin_token') || localStorage.getItem('estateverify_admin_token');
 
     if (savedUser && token) {
       try {
@@ -61,6 +61,8 @@ export const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('hometrust_admin_token');
+    localStorage.removeItem('hometrust_admin_user');
     localStorage.removeItem('estateverify_admin_token');
     localStorage.removeItem('estateverify_admin_user');
     setCurrentUser(null);

@@ -1,7 +1,7 @@
 {
-  "name": "estateverify-backend",
+  "name": "hometrust-backend",
   "version": "1.0.0",
-  "description": "EstateVerify API - Nigerian Real Estate Verification, Off-Plan & Pay-Small-Small Platform",
+  "description": "Hometrust API - Nigerian Real Estate Verification, Off-Plan & Pay-Small-Small Platform",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

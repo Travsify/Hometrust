@@ -7,7 +7,7 @@ interface LoginModalProps {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
-  const [email, setEmail] = useState('admin@estateverify.ng');
+  const [email, setEmail] = useState('admin@hometrust.ng');
   const [password, setPassword] = useState('Password123!');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
