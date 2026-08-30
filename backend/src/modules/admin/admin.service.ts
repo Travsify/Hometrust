@@ -215,6 +215,99 @@ export class AdminService {
     return user;
   }
 
+  static async revokeUserKyc(userId: string, adminUser: any, reason?: string) {
+    // 1. Mark existing KYC verifications as REJECTED
+    await prisma.kycVerification.updateMany({
+      where: { userId },
+      data: {
+        status: 'REJECTED',
+        rejectionReason: reason || 'Revoked by administration for re-verification',
+      },
+    });
+
+    // 2. Reset user profile verification flags
+    await prisma.userProfile.updateMany({
+      where: { userId },
+      data: {
+        bvnVerified: false,
+      },
+    });
+
+    // 3. Notify user in-app
+    await prisma.notification.create({
+      data: {
+        userId,
+        title: '⚠️ KYC Identity Verification Reset',
+        message: `Your identity verification badge has been reset by administration (${reason || 'Profile update required'}). Please visit your profile to submit your updated verification details.`,
+        type: 'KYC_STATUS',
+      },
+    }).catch(() => {});
+
+    // 4. Audit Log
+    await AuditService.log({
+      adminId: adminUser.id,
+      adminEmail: adminUser.email,
+      action: 'USER_KYC_REVOKED',
+      entityType: 'USER',
+      entityId: userId,
+      details: { reason: reason || 'Administrative Reset' },
+    });
+
+    return { success: true, message: 'User KYC verification revoked' };
+  }
+
+  static async verifyUserKyc(userId: string, adminUser: any) {
+    const existingKyc = await prisma.kycVerification.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (existingKyc) {
+      await prisma.kycVerification.update({
+        where: { id: existingKyc.id },
+        data: {
+          status: 'VERIFIED',
+          verifiedAt: new Date(),
+          rejectionReason: null,
+        },
+      });
+    } else {
+      await prisma.kycVerification.create({
+        data: {
+          userId,
+          kycType: 'INDIVIDUAL_KYC',
+          status: 'VERIFIED',
+          verifiedAt: new Date(),
+        },
+      });
+    }
+
+    await prisma.userProfile.upsert({
+      where: { userId },
+      update: { bvnVerified: true },
+      create: { userId, bvnVerified: true },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId,
+        title: '🛡️ KYC Identity Verified',
+        message: 'Your identity has been successfully verified by administration. All escrow privileges and dedicated account services are active.',
+        type: 'KYC_STATUS',
+      },
+    }).catch(() => {});
+
+    await AuditService.log({
+      adminId: adminUser.id,
+      adminEmail: adminUser.email,
+      action: 'USER_KYC_MANUALLY_APPROVED',
+      entityType: 'USER',
+      entityId: userId,
+    });
+
+    return { success: true, message: 'User KYC verified successfully' };
+  }
+
   static async getPlatformFees() {
     return prisma.platformFeeConfig.findMany({
       orderBy: { createdAt: 'asc' },

@@ -12,6 +12,8 @@ import {
   History,
   Settings,
   LogOut,
+  UserCheck,
+  MessageSquare,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,6 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, cur
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
     { id: 'verifications', label: 'Verification Queue', icon: ShieldCheck, badge: 'Active' },
     { id: 'developers', label: 'Verified Developers', icon: Building2 },
+    { id: 'verified_users', label: 'Verified Users', icon: UserCheck, badge: 'KYC' },
     { id: 'properties', label: 'Properties & Units', icon: Home },
     { id: 'projects', label: 'Off-Plan & Milestones', icon: HardHat },
     { id: 'payments', label: 'Payments & Revenue', icon: CreditCard },
@@ -33,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, cur
     { id: 'materials', label: 'Material Price Index', icon: HardHat, badge: 'Live' },
     { id: 'legal', label: 'Legal Drafting Queue', icon: FileText },
     { id: 'inspections', label: 'Site Inspections', icon: Calendar },
+    { id: 'tickets', label: 'Support Tickets', icon: MessageSquare, badge: 'Live' },
     { id: 'users', label: 'User Management', icon: Building2 },
     { id: 'audit', label: 'Security & Audit Logs', icon: History },
     { id: 'settings', label: 'Fee & System Settings', icon: Settings },

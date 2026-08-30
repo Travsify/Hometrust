@@ -13,6 +13,8 @@ import { MaterialsPage } from './pages/Materials';
 import { LegalRequestsPage } from './pages/LegalRequests';
 import { InspectionsPage } from './pages/Inspections';
 import { UsersPage } from './pages/Users';
+import { VerifiedUsersPage } from './pages/VerifiedUsers';
+import { SupportTicketsPage } from './pages/SupportTickets';
 import { AuditLogsPage } from './pages/AuditLogs';
 import { SettingsPage } from './pages/Settings';
 import { getDashboardMetrics } from './services/api';
@@ -91,6 +93,10 @@ export const App: React.FC = () => {
         return { title: 'Legal Drafting Console', subtitle: 'Hometrust internal legal team drafting & document delivery' };
       case 'inspections':
         return { title: 'Physical Site Inspections', subtitle: 'Buyer & developer viewing schedule management' };
+      case 'verified_users':
+        return { title: 'Verified Users Registry & Governance', subtitle: 'Audit identity verified buyers & corporate accounts, inspect escrow balances & revoke verification' };
+      case 'tickets':
+        return { title: 'Customer Support Tickets Console', subtitle: 'Respond to queries, resolve escalations and track user support tickets' };
       case 'users':
         return { title: 'User Account & Role Management', subtitle: 'Manage buyers, developers, internal staff and access roles' };
       case 'audit':
@@ -128,6 +134,7 @@ export const App: React.FC = () => {
           {currentTab === 'dashboard' && <DashboardPage data={dashboardData} onNavigate={setCurrentTab} />}
           {currentTab === 'verifications' && <VerificationsPage />}
           {currentTab === 'developers' && <DevelopersPage />}
+          {currentTab === 'verified_users' && <VerifiedUsersPage />}
           {currentTab === 'properties' && <PropertiesPage />}
           {currentTab === 'projects' && <ProjectsPage />}
           {currentTab === 'payments' && <PaymentsPage />}
@@ -135,6 +142,7 @@ export const App: React.FC = () => {
           {currentTab === 'materials' && <MaterialsPage />}
           {currentTab === 'legal' && <LegalRequestsPage />}
           {currentTab === 'inspections' && <InspectionsPage />}
+          {currentTab === 'tickets' && <SupportTicketsPage />}
           {currentTab === 'users' && <UsersPage />}
           {currentTab === 'audit' && <AuditLogsPage />}
           {currentTab === 'settings' && <SettingsPage />}

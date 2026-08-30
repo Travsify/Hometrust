@@ -12,6 +12,8 @@ router.get('/payments', AdminController.getPayments);
 router.get('/users', AdminController.getUsers);
 router.patch('/users/:id/status', requireRoles('SUPER_ADMIN', 'ADMIN'), AdminController.updateUserStatus);
 router.patch('/users/:id/role', requireRoles('SUPER_ADMIN'), AdminController.updateUserRole);
+router.post('/users/:id/revoke-kyc', requireRoles('SUPER_ADMIN', 'ADMIN', 'VERIFICATION_MANAGER'), AdminController.revokeUserKyc);
+router.post('/users/:id/verify-kyc', requireRoles('SUPER_ADMIN', 'ADMIN', 'VERIFICATION_MANAGER'), AdminController.verifyUserKyc);
 router.get('/audit-logs', AdminController.getAuditLogs);
 
 // Fee Configuration

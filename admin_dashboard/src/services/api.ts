@@ -146,11 +146,45 @@ export const testApiKey = async (id: string) => {
   return response.data.data;
 };
 
-export const getUsers = async (search?: string, role?: string) => {
+export const getUsers = async (search?: string, role?: string, isVerified?: string) => {
   let url = '/admin/users?';
-  if (search) url += `search=${search}&`;
-  if (role) url += `role=${role}&`;
+  if (search) url += `search=${encodeURIComponent(search)}&`;
+  if (role) url += `role=${encodeURIComponent(role)}&`;
+  if (isVerified !== undefined && isVerified !== '') url += `isVerified=${encodeURIComponent(isVerified)}&`;
   const response = await api.get(url);
+  return response.data.data;
+};
+
+export const getVerifiedUsers = async (search?: string) => {
+  return getUsers(search, undefined, 'true');
+};
+
+export const revokeUserKyc = async (userId: string, reason?: string) => {
+  const response = await api.post(`/admin/users/${userId}/revoke-kyc`, { reason });
+  return response.data.data;
+};
+
+export const verifyUserKyc = async (userId: string) => {
+  const response = await api.post(`/admin/users/${userId}/verify-kyc`);
+  return response.data.data;
+};
+
+export const getSupportTickets = async (status?: string, category?: string, search?: string) => {
+  let url = '/support/admin/tickets?';
+  if (status) url += `status=${encodeURIComponent(status)}&`;
+  if (category) url += `category=${encodeURIComponent(category)}&`;
+  if (search) url += `search=${encodeURIComponent(search)}&`;
+  const response = await api.get(url);
+  return response.data.data;
+};
+
+export const replySupportTicket = async (ticketId: string, reply: string) => {
+  const response = await api.post(`/support/admin/tickets/${ticketId}/reply`, { reply });
+  return response.data.data;
+};
+
+export const updateTicketStatus = async (ticketId: string, status: string) => {
+  const response = await api.patch(`/support/admin/tickets/${ticketId}/status`, { status });
   return response.data.data;
 };
 

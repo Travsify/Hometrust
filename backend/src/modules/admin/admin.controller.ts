@@ -61,6 +61,32 @@ export class AdminController {
     }
   }
 
+  static async revokeUserKyc(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await AdminService.revokeUserKyc(req.params.id as string, req.user, req.body.reason);
+      sendSuccess(res, result, 'User KYC verification status revoked successfully');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async verifyUserKyc(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await AdminService.verifyUserKyc(req.params.id as string, req.user);
+      sendSuccess(res, result, 'User KYC manually verified successfully');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
   static async getAuditLogs(req: Request, res: Response): Promise<void> {
     try {
       const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
