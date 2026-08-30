@@ -189,3 +189,13 @@ export const getMaterialsIndex = async (category?: string, state?: string) => {
   const response = await api.get(url);
   return response.data.data;
 };
+
+export const getAdminMilestones = async () => {
+  const response = await api.get('/admin/milestones');
+  return response.data.data;
+};
+
+export const adminDisburseMilestone = async (id: string, action: 'DISBURSE' | 'DISPUTE' | 'REMEDIATION_REQUIRED', notes?: string) => {
+  const response = await api.post(`/admin/milestones/${id}/disburse`, { action, notes });
+  return response.data.data;
+};
