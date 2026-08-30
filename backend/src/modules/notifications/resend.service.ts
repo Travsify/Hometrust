@@ -69,13 +69,13 @@ export class ResendService {
             <div class="divider"></div>
 
             <div class="footer-section">
-              <div class="footer-company">Hometrust is a product of Ehomms Global Inclusive Limited (The Ehomms Group)</div>
+              <div class="footer-company">Hometrust is a product of Ehomes Global Inclusive Ltd</div>
               <div class="footer-sub">
                 Official Escrow Banking • Construction Milestone Audits • Verified Land Titles<br>
-                14 Admiralty Way, Lekki Phase 1, Lagos, Nigeria • support@hometrustng.com
+                No 4, Ehomes close, Zartech Area, Oluyole, Ibadan, Oyo state • info@hometrustng.com
               </div>
               <div class="footer-copy">
-                &copy; ${new Date().getFullYear()} Ehomms Global Inclusive Limited. All rights reserved.
+                &copy; ${new Date().getFullYear()} Ehomes Global Inclusive Ltd. All rights reserved.
               </div>
             </div>
           </div>
