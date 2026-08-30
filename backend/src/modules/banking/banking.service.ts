@@ -1063,22 +1063,28 @@ export class BankingService {
           account.accountNumber = txVa;
         }
 
-        const txRef = String(tx.tx_ref || tx.id || tx.flw_ref);
+        // CRITICAL: tx.flw_ref and tx.id are unique per transaction. tx.tx_ref is the STATIC account order reference!
+        const uniqueTxId = String(tx.id || '');
+        const uniqueFlwRef = String(tx.flw_ref || '');
+        const txRef = uniqueFlwRef || uniqueTxId || String(tx.tx_ref || `FLW-${Date.now()}`);
+
         const existingPayment = await prisma.payment.findFirst({
           where: {
             OR: [
               { paymentReference: txRef },
+              { paystackReference: uniqueFlwRef },
+              { receiptNumber: `HT-RCP-${uniqueTxId}` },
               { receiptNumber: txRef },
-              { paystackReference: String(tx.flw_ref || '') },
+              ...(uniqueTxId ? [{ paymentReference: uniqueTxId }] : []),
             ],
           },
         });
 
         if (!existingPayment) {
           const amount = Number(tx.amount);
-          console.log(`[SYNC RECOVERY] Crediting uncredited deposit of ₦${amount} (Ref: ${txRef}) for ${user.email}`);
+          console.log(`[SYNC RECOVERY] Crediting uncredited deposit of ₦${amount} (Ref: ${txRef}, FLW ID: ${uniqueTxId}) for ${user.email}`);
 
-          await prisma.$transaction([
+          const [updatedAccount, newPayment] = await prisma.$transaction([
             prisma.virtualAccount.update({
               where: { id: account.id },
               data: { balance: { increment: amount } },
@@ -1091,7 +1097,8 @@ export class BankingService {
                 purpose: 'ESCROW_WALLET_CREDIT',
                 paystackChannel: 'bank_transfer',
                 paymentReference: txRef,
-                receiptNumber: `HT-RCP-${tx.id || Date.now()}`,
+                paystackReference: uniqueFlwRef,
+                receiptNumber: `HT-RCP-${uniqueTxId || Date.now()}`,
                 status: 'SUCCESS',
                 totalAmount: amount,
                 paidAt: new Date(tx.created_at || Date.now()),
@@ -1099,17 +1106,32 @@ export class BankingService {
             }),
           ]);
 
-          NotificationsService.createAndDispatch({
+          // 1. Dispatch In-App & Push Notification
+          await NotificationsService.createAndDispatch({
             userId: user.id,
             title: '💰 Escrow Wallet Credited',
             message: `Your deposit of ₦${amount.toLocaleString()} via bank transfer has been synced & credited to your escrow wallet.`,
             type: 'PAYMENT',
+            sendEmail: false, // We send full branded email below
             actionDetails: [
               { label: 'Amount Credited', value: `₦${amount.toLocaleString()}` },
               { label: 'Payment Reference', value: txRef },
+              { label: 'Sender', value: tx.meta?.originatorname || 'Direct Bank Transfer' },
               { label: 'Status', value: 'Confirmed & Cleared' },
             ],
-          }).catch(() => {});
+          }).catch((err) => console.warn('[SYNC NOTIFICATION ERR]', err.message));
+
+          // 2. Dispatch Branded Receipt Email to user
+          if (user.email) {
+            const recipientName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Hometrust Customer';
+            await ResendService.sendPaymentReceivedEmail(
+              user.email,
+              recipientName,
+              amount,
+              updatedAccount.balance,
+              txRef
+            ).catch((err) => console.warn('[SYNC EMAIL ERR]', err.message));
+          }
         }
       }
     }
