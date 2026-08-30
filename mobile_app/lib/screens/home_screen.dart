@@ -17,6 +17,7 @@ import 'developers_screen.dart';
 import 'real_estate_dictionary_screen.dart';
 import 'purchases_screen.dart';
 import 'wallet_screen.dart';
+import 'inbox_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -105,6 +106,18 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
+          // MESSAGES & INQUIRIES INBOX
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF334155), size: 22),
+            tooltip: 'Messages & Inquiries',
+            onPressed: () {
+              if (!auth.isAuthenticated) {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+              } else {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const InboxScreen()));
+              }
+            },
+          ),
           // FUNCTIONAL NOTIFICATION BELL
           IconButton(
             icon: Stack(

@@ -14,6 +14,7 @@ import 'real_estate_dictionary_screen.dart';
 import 'legal_request_screen.dart';
 import 'notifications_screen.dart';
 import 'kyc_screen.dart';
+import 'inbox_screen.dart';
 
 class DeveloperHomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -226,7 +227,14 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 4),
+          // ── DEVELOPER INBOX BUTTON ──
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF334155), size: 22),
+            tooltip: 'Buyer Inquiries & Messages',
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const InboxScreen()));
+            },
+          ),
           IconButton(
             icon: Stack(
               children: [

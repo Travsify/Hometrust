@@ -11,6 +11,8 @@ import 'login_screen.dart';
 import 'legal_request_screen.dart';
 import 'kyc_screen.dart';
 import 'wallet_screen.dart';
+import 'chat_screen.dart';
+import 'inbox_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -1087,10 +1089,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const Divider(height: 1, color: AppColors.cardBorder),
                   _buildMenuItem(
-                    icon: Icons.support_agent_outlined,
-                    title: 'Support Tickets',
-                    subtitle: 'Open or view your support requests',
-                    onTap: () => _showSupportTicketSheet(context),
+                    icon: Icons.chat_bubble_outline_rounded,
+                    title: 'Messages & Inquiries',
+                    subtitle: 'Chat directly with verified developers & buyers',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const InboxScreen()),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1, color: AppColors.cardBorder),
+                  _buildMenuItem(
+                    icon: Icons.support_agent_rounded,
+                    title: 'Live Human Support',
+                    subtitle: 'Chat or voice call directly with Hometrust officers',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ChatScreen(
+                            recipientName: 'Hometrust Support Desk',
+                            recipientRole: 'Verified Officer',
+                            isSupport: true,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   const Divider(height: 1, color: AppColors.cardBorder),
                   _buildMenuItem(

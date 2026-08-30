@@ -8,9 +8,11 @@ import 'providers/property_provider.dart';
 import 'providers/verification_provider.dart';
 import 'providers/purchase_provider.dart';
 import 'providers/notification_provider.dart';
+import 'core/network/socket_service.dart';
+import 'screens/incoming_call_screen.dart';
 import 'screens/splash_screen.dart';
 
-// Global navigator key so ApiClient can navigate on 401
+// Global navigator key so ApiClient can navigate on 401 and Socket can push incoming calls
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -22,6 +24,18 @@ void main() async {
     await prefs.remove('auth_token');
     navigatorKey.currentState?.popUntil((route) => route.isFirst);
   };
+
+  // Global In-App Incoming Call Listener
+  SocketService.instance.onIncomingCall.listen((callData) {
+    if (navigatorKey.currentState != null) {
+      navigatorKey.currentState!.push(
+        MaterialPageRoute(
+          builder: (_) => IncomingCallScreen(callData: callData),
+          fullscreenDialog: true,
+        ),
+      );
+    }
+  });
 
   runApp(const HometrustApp());
 }
