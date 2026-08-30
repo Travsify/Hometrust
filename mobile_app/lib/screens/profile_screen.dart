@@ -266,6 +266,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String selectedBankCode = '044'; // Access Bank default
     String selectedBankName = 'Access Bank';
     String? resolvedAccountName;
+    String? modalError;
     bool isResolving = false;
     bool isWithdrawing = false;
 
@@ -479,6 +480,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
 
+                  if (modalError != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              modalError!,
+                              style: const TextStyle(color: Color(0xFFB91C1C), fontSize: 11.5, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 20),
 
                   SizedBox(
@@ -487,31 +513,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: isWithdrawing
                           ? null
                           : () async {
-                              final rawAmount = double.tryParse(amountCtrl.text.replaceAll(',', '').trim()) ?? 0;
+                              final rawText = amountCtrl.text.replaceAll(',', '').replaceAll('₦', '').replaceAll(' ', '').trim();
+                              final rawAmount = double.tryParse(rawText) ?? 0.0;
                               final accNum = accNumCtrl.text.trim();
-                              final accName = accNameCtrl.text.trim();
+                              final accName = accNameCtrl.text.trim().isNotEmpty ? accNameCtrl.text.trim() : (resolvedAccountName ?? 'Account Holder');
 
                               if (rawAmount < 1000) {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Minimum withdrawal is ₦1,000')));
+                                setModalState(() => modalError = 'Minimum withdrawal amount is ₦1,000');
                                 return;
                               }
                               if (rawAmount > balance) {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Insufficient escrow wallet balance')));
+                                setModalState(() => modalError = 'Insufficient escrow wallet balance (Available: ${CurrencyFormatter.format(balance)})');
                                 return;
                               }
                               if (accNum.length != 10) {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid 10-digit account number')));
+                                setModalState(() => modalError = 'Please enter a valid 10-digit NUBAN account number');
                                 return;
                               }
 
-                              setModalState(() => isWithdrawing = true);
+                              setModalState(() {
+                                isWithdrawing = true;
+                                modalError = null;
+                              });
+
                               try {
                                 await ApiClient.post('/banking/withdraw', {
                                   'amount': rawAmount,
                                   'bankCode': selectedBankCode,
                                   'bankName': selectedBankName,
                                   'accountNumber': accNum,
-                                  'accountName': accName.isNotEmpty ? accName : 'Account Holder',
+                                  'accountName': accName,
                                 });
 
                                 if (context.mounted) {
@@ -519,19 +550,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   _fetchAccount();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('💸 Withdrawal of ${CurrencyFormatter.format(rawAmount)} processed successfully!'),
+                                      content: Text('💸 Withdrawal of ${CurrencyFormatter.format(rawAmount)} initiated successfully! Email and Push notifications sent.'),
                                       backgroundColor: const Color(0xFF059669),
+                                      duration: const Duration(seconds: 4),
                                     ),
                                   );
                                 }
                               } catch (e) {
-                                setModalState(() => isWithdrawing = false);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Withdrawal error: $e'),
-                                    backgroundColor: const Color(0xFFDC2626),
-                                  ),
-                                );
+                                setModalState(() {
+                                  isWithdrawing = false;
+                                  modalError = e.toString().replaceFirst('Exception: ', '');
+                                });
                               }
                             },
                       style: ElevatedButton.styleFrom(

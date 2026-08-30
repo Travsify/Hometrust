@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
@@ -314,10 +317,16 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   void _showWithdrawModal() {
-    final double balance = (_virtualAccount?['balance'] as num?)?.toDouble() ?? 0.0;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final double balance = (_virtualAccount?['balance'] as num?)?.toDouble() ?? auth.user?.virtualAccountBalance ?? 0.0;
     _amountController.clear();
     _accountNumberController.clear();
     _accountNameController.clear();
+
+    bool isResolving = false;
+    bool isWithdrawing = false;
+    String? resolvedAccountName;
+    String? modalError;
 
     showModalBottomSheet(
       context: context,
@@ -325,13 +334,13 @@ class _WalletScreenState extends State<WalletScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
-          bool isResolving = false;
-          String? resolvedAccountName;
-
           void resolveAccount() async {
             final accNum = _accountNumberController.text.trim();
             if (accNum.length != 10) return;
-            setModalState(() => isResolving = true);
+            setModalState(() {
+              isResolving = true;
+              modalError = null;
+            });
             try {
               final res = await ApiClient.post('/banking/resolve-account', {
                 'bankCode': _selectedBankCode,
@@ -350,7 +359,10 @@ class _WalletScreenState extends State<WalletScreen> {
               }
               setModalState(() => isResolving = false);
             } catch (e) {
-              setModalState(() => isResolving = false);
+              setModalState(() {
+                isResolving = false;
+                resolvedAccountName = null;
+              });
             }
           }
 
@@ -395,16 +407,19 @@ class _WalletScreenState extends State<WalletScreen> {
                   TextField(
                     controller: _amountController,
                     keyboardType: TextInputType.number,
+                    onChanged: (_) {
+                      if (modalError != null) setModalState(() => modalError = null);
+                    },
                     decoration: InputDecoration(
-                      hintText: 'e.g. 50000',
                       prefixText: '₦ ',
+                      hintText: 'e.g. 50,000',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
                   ),
                   const SizedBox(height: 14),
 
-                  // Bank
+                  // Destination Bank Dropdown
                   const Text('Destination Commercial Bank', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
@@ -412,7 +427,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     items: _nigerianBanks.map((b) {
                       return DropdownMenuItem<String>(
                         value: b['code'],
-                        child: Text(b['name']!, style: const TextStyle(fontSize: 13)),
+                        child: Text(b['name']!, style: const TextStyle(fontSize: 12.5)),
                       );
                     }).toList(),
                     onChanged: (val) {
@@ -421,6 +436,7 @@ class _WalletScreenState extends State<WalletScreen> {
                           _selectedBankCode = val;
                           final matched = _nigerianBanks.firstWhere((b) => b['code'] == val, orElse: () => {'name': 'Bank', 'code': val});
                           _selectedBankName = matched['name']!;
+                          modalError = null;
                         });
                         resolveAccount();
                       }
@@ -440,6 +456,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     keyboardType: TextInputType.number,
                     maxLength: 10,
                     onChanged: (val) {
+                      if (modalError != null) setModalState(() => modalError = null);
                       if (val.trim().length == 10) {
                         resolveAccount();
                       } else if (resolvedAccountName != null) {
@@ -461,7 +478,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   TextField(
                     controller: _accountNameController,
                     decoration: InputDecoration(
-                      hintText: isResolving ? 'Detecting account holder...' : 'Auto-detected via Bank API',
+                      hintText: isResolving ? 'Detecting account holder...' : 'Auto-detected via Flutterwave API',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
@@ -473,7 +490,7 @@ class _WalletScreenState extends State<WalletScreen> {
                       children: [
                         SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF059669))),
                         SizedBox(width: 8),
-                        Text('Auto-detecting account holder name from bank...', style: TextStyle(fontSize: 11, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
+                        Text('Auto-detecting receiver name from Flutterwave...', style: TextStyle(fontSize: 11, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ] else if (resolvedAccountName != null && resolvedAccountName!.isNotEmpty) ...[
@@ -491,8 +508,33 @@ class _WalletScreenState extends State<WalletScreen> {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              'Verified Account Holder: $resolvedAccountName',
+                              'Verified Receiver: $resolvedAccountName',
                               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF065F46)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  if (modalError != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              modalError!,
+                              style: const TextStyle(color: Color(0xFFB91C1C), fontSize: 11.5, fontWeight: FontWeight.w700),
                             ),
                           ),
                         ],
@@ -506,40 +548,41 @@ class _WalletScreenState extends State<WalletScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _isProcessingWithdrawal
+                      onPressed: isWithdrawing
                           ? null
                           : () async {
-                              final rawAmount = double.tryParse(_amountController.text.trim()) ?? 0;
+                              final rawText = _amountController.text.replaceAll(',', '').replaceAll('₦', '').replaceAll(' ', '').trim();
+                              final rawAmount = double.tryParse(rawText) ?? 0.0;
                               final accNum = _accountNumberController.text.trim();
-                              final accName = _accountNameController.text.trim();
+                              final accName = _accountNameController.text.trim().isNotEmpty
+                                  ? _accountNameController.text.trim()
+                                  : (resolvedAccountName ?? 'Account Holder');
 
                               if (rawAmount < 1000) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Minimum withdrawal amount is ₦1,000')),
-                                );
+                                setModalState(() => modalError = 'Minimum withdrawal amount is ₦1,000');
                                 return;
                               }
                               if (rawAmount > balance) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Insufficient escrow wallet balance')),
-                                );
+                                setModalState(() => modalError = 'Insufficient escrow wallet balance (Available: ${CurrencyFormatter.format(balance)})');
                                 return;
                               }
                               if (accNum.length != 10) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Please enter a valid 10-digit NUBAN')),
-                                );
+                                setModalState(() => modalError = 'Please enter a valid 10-digit NUBAN account number');
                                 return;
                               }
 
-                              setModalState(() => _isProcessingWithdrawal = true);
+                              setModalState(() {
+                                isWithdrawing = true;
+                                modalError = null;
+                              });
+
                               try {
                                 await ApiClient.post('/banking/withdraw', {
                                   'amount': rawAmount,
                                   'bankCode': _selectedBankCode,
                                   'bankName': _selectedBankName,
                                   'accountNumber': accNum,
-                                  'accountName': accName.isNotEmpty ? accName : 'Account Holder',
+                                  'accountName': accName,
                                 });
 
                                 if (ctx.mounted) Navigator.pop(ctx);
@@ -548,18 +591,17 @@ class _WalletScreenState extends State<WalletScreen> {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('💸 Withdrawal of ${CurrencyFormatter.format(rawAmount)} processed via API!'),
+                                      content: Text('💸 Withdrawal of ${CurrencyFormatter.format(rawAmount)} initiated successfully! Email and Push notifications sent.'),
                                       backgroundColor: const Color(0xFF059669),
+                                      duration: const Duration(seconds: 4),
                                     ),
                                   );
                                 }
                               } catch (err) {
-                                setModalState(() => _isProcessingWithdrawal = false);
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Withdrawal error: $err'), backgroundColor: const Color(0xFFDC2626)),
-                                  );
-                                }
+                                setModalState(() {
+                                  isWithdrawing = false;
+                                  modalError = err.toString().replaceFirst('Exception: ', '');
+                                });
                               }
                             },
                       style: ElevatedButton.styleFrom(
@@ -568,7 +610,7 @@ class _WalletScreenState extends State<WalletScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: _isProcessingWithdrawal
+                      child: isWithdrawing
                           ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                           : const Text('Confirm Withdrawal', style: TextStyle(fontWeight: FontWeight.w800)),
                     ),
@@ -599,6 +641,44 @@ class _WalletScreenState extends State<WalletScreen> {
     }
   }
 
+  void _shareStatementPdf() async {
+    final token = await ApiClient.getToken();
+    final url = '${ApiConstants.baseUrl}/banking/statement/pdf?type=$_selectedFilter&token=$token';
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+              SizedBox(width: 10),
+              Text('Preparing branded PDF statement for sharing...'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+        final tempDir = await getTemporaryDirectory();
+        final file = File('${tempDir.path}/Hometrust_Statement_${_selectedFilter}_${DateTime.now().millisecondsSinceEpoch}.pdf');
+        await file.writeAsBytes(response.bodyBytes);
+
+        await Share.shareXFiles(
+          [XFile(file.path, mimeType: 'application/pdf')],
+          text: 'Official Hometrust Escrow Account Statement (₦ Nigerian Naira)',
+          subject: 'Hometrust Escrow Statement',
+        );
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error sharing statement PDF: $e');
+    }
+  }
+
   void _downloadReceiptPdf(String ref) async {
     final token = await ApiClient.getToken();
     final url = Uri.parse('${ApiConstants.baseUrl}/banking/receipt/$ref/pdf?token=$token');
@@ -613,11 +693,49 @@ class _WalletScreenState extends State<WalletScreen> {
     }
   }
 
-  void _shareReceipt(Map<String, dynamic> tx) {
+  void _shareReceipt(Map<String, dynamic> tx) async {
+    final String ref = tx['reference'] ?? tx['id'] ?? 'N/A';
+    final token = await ApiClient.getToken();
+    final url = '${ApiConstants.baseUrl}/banking/receipt/$ref/pdf?token=$token';
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+              SizedBox(width: 10),
+              Text('Preparing branded PDF receipt for sharing...'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+        final tempDir = await getTemporaryDirectory();
+        final sanitizedRef = ref.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+        final file = File('${tempDir.path}/Hometrust_Receipt_$sanitizedRef.pdf');
+        await file.writeAsBytes(response.bodyBytes);
+
+        await Share.shareXFiles(
+          [XFile(file.path, mimeType: 'application/pdf')],
+          text: 'Official Hometrust Escrow Receipt for Ref: $ref (₦ Nigerian Naira)',
+          subject: 'Official Hometrust Receipt - $ref',
+        );
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error sharing receipt PDF: $e');
+    }
+
+    // Fallback if network stream fails
     final bool isCredit = tx['type'] == 'CREDIT';
     final double amount = (tx['amount'] as num?)?.toDouble() ?? 0.0;
     final String status = (tx['status'] ?? 'SUCCESS').toString().toUpperCase();
-    final String ref = tx['reference'] ?? tx['id'] ?? 'N/A';
     final String desc = tx['description'] ?? tx['purpose'] ?? 'Escrow Transaction';
     final String date = tx['createdAt'] != null
         ? DateTime.parse(tx['createdAt']).toLocal().toString().substring(0, 16)
@@ -627,7 +745,8 @@ class _WalletScreenState extends State<WalletScreen> {
 ═══════════════════════════════════
 🏛️ HOMETRUST OFFICIAL ESCROW RECEIPT
 ═══════════════════════════════════
-Amount: ₦${CurrencyFormatter.format(amount)}
+Amount: ${CurrencyFormatter.format(amount)} (NGN / ₦)
+Currency: Nigerian Naira (₦)
 Type: ${isCredit ? 'INFLOW / DEPOSIT' : 'OUTFLOW / WITHDRAWAL'}
 Status: $status (VERIFIED)
 Reference: $ref
@@ -1181,24 +1300,48 @@ Official Web Verification: https://hometrustng.com
                     'Transaction History',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
                   ),
-                  InkWell(
-                    onTap: _downloadStatementPdf,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFECFDF5),
+                  Row(
+                    children: [
+                      InkWell(
+                        onTap: _shareStatementPdf,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF6EE7B7)),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.share_rounded, size: 12, color: Color(0xFF334155)),
+                              SizedBox(width: 4),
+                              Text('Share PDF', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF334155))),
+                            ],
+                          ),
+                        ),
                       ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.picture_as_pdf_rounded, size: 13, color: Color(0xFF059669)),
-                          SizedBox(width: 4),
-                          Text('Download Statement (PDF)', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF065F46))),
-                        ],
+                      const SizedBox(width: 6),
+                      InkWell(
+                        onTap: _downloadStatementPdf,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFECFDF5),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF6EE7B7)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.picture_as_pdf_rounded, size: 12, color: Color(0xFF059669)),
+                              SizedBox(width: 4),
+                              Text('Download PDF', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF065F46))),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),

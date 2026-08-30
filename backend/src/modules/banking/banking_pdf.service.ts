@@ -51,9 +51,9 @@ export class BankingPdfService {
       doc.text(`Dedicated Bank: ${data.bankName}`, 52, y + 54);
 
       doc.text(`NUBAN Account: ${data.accountNumber}`, 320, y + 26);
-      doc.text(`Currency: NGN (Nigerian Naira)`, 320, y + 40);
+      doc.text(`Currency: Nigerian Naira (NGN / ₦)`, 320, y + 40);
       doc.font('Helvetica-Bold').fillColor('#059669');
-      doc.text(`Available Balance: ₦${data.balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 320, y + 54);
+      doc.text(`Available Balance: NGN ${data.balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 320, y + 54);
 
       // Transactions Ledger Table Header
       y += 95;
@@ -65,7 +65,7 @@ export class BankingPdfService {
       doc.text('Date', 48, y + 6);
       doc.text('Description / Reference', 120, y + 6);
       doc.text('Type', 340, y + 6);
-      doc.text('Amount (₦)', 410, y + 6);
+      doc.text('Amount (NGN)', 410, y + 6);
       doc.text('Status', 485, y + 6);
       y += 22;
 
@@ -83,7 +83,7 @@ export class BankingPdfService {
 
         const dateStr = tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : 'N/A';
         const isCredit = tx.type === 'CREDIT';
-        const amountStr = `${isCredit ? '+' : '-'}₦${Number(tx.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+        const amountStr = `${isCredit ? '+' : '-'}NGN ${Number(tx.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 
         doc.fillColor('#475569').text(dateStr, 48, y + 5);
         doc.fillColor('#0F172A').text((tx.description || tx.reference || 'Escrow Activity').substring(0, 38), 120, y + 5);
@@ -147,13 +147,14 @@ export class BankingPdfService {
 
       // Amount Banner inside receipt
       doc.rect(60, y + 20, 475, 55).fill('#ECFDF5');
-      doc.fillColor('#065F46').fontSize(10).font('Helvetica-Bold').text('TOTAL TRANSACTION AMOUNT', 75, y + 30);
-      doc.fontSize(18).fillColor('#059669').text(`₦${Number(data.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 75, y + 46);
+      doc.fillColor('#065F46').fontSize(10).font('Helvetica-Bold').text('TOTAL TRANSACTION AMOUNT (NGN / ₦)', 75, y + 30);
+      doc.fontSize(18).fillColor('#059669').text(`NGN ${Number(data.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 75, y + 46);
 
       // Detail Rows
       let rowY = y + 95;
       const details = [
         { label: 'Transaction Status', value: 'SUCCESSFUL & VERIFIED', isGreen: true },
+        { label: 'Currency / Denomination', value: 'Nigerian Naira (NGN / ₦)' },
         { label: 'Transaction Reference', value: data.reference },
         { label: 'Payment Type / Purpose', value: data.purpose || data.type },
         { label: 'Account Holder / Customer', value: `${data.userName} (${data.email})` },
