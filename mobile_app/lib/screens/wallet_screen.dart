@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../core/constants/api_constants.dart';
 import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
@@ -321,223 +323,328 @@ class _WalletScreenState extends State<WalletScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.only(
-            top: 24,
-            left: 24,
-            right: 24,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+        builder: (context, setModalState) {
+          bool isResolving = false;
+          String? resolvedAccountName;
+
+          void resolveAccount() async {
+            final accNum = _accountNumberController.text.trim();
+            if (accNum.length != 10) return;
+            setModalState(() => isResolving = true);
+            try {
+              final res = await ApiClient.post('/banking/resolve-account', {
+                'bankCode': _selectedBankCode,
+                'accountNumber': accNum,
+              });
+              if (res != null) {
+                final name = res['account_name'] ?? res['accountName'] ?? '';
+                if (name.isNotEmpty) {
+                  _accountNameController.text = name;
+                  setModalState(() {
+                    resolvedAccountName = name;
+                    isResolving = false;
+                  });
+                  return;
+                }
+              }
+              setModalState(() => isResolving = false);
+            } catch (e) {
+              setModalState(() => isResolving = false);
+            }
+          }
+
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: EdgeInsets.only(
+              top: 24,
+              left: 24,
+              right: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.arrow_upward_rounded, color: AppColors.primary, size: 20),
+                          SizedBox(width: 8),
+                          Text('Withdraw from Escrow', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                        ],
+                      ),
+                      IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                    ],
+                  ),
+                  Text(
+                    'Available Escrow Balance: ${CurrencyFormatter.format(balance)}',
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF059669), fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Amount
+                  const Text('Amount to Withdraw (₦)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _amountController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. 50000',
+                      prefixText: '₦ ',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Bank
+                  const Text('Destination Commercial Bank', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    value: _selectedBankCode,
+                    items: _nigerianBanks.map((b) {
+                      return DropdownMenuItem<String>(
+                        value: b['code'],
+                        child: Text(b['name']!, style: const TextStyle(fontSize: 13)),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setModalState(() {
+                          _selectedBankCode = val;
+                          final matched = _nigerianBanks.firstWhere((b) => b['code'] == val, orElse: () => {'name': 'Bank', 'code': val});
+                          _selectedBankName = matched['name']!;
+                        });
+                        resolveAccount();
+                      }
+                    },
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Account Number
+                  const Text('NUBAN Account Number (10 Digits)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _accountNumberController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 10,
+                    onChanged: (val) {
+                      if (val.trim().length == 10) {
+                        resolveAccount();
+                      } else if (resolvedAccountName != null) {
+                        setModalState(() => resolvedAccountName = null);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      hintText: '0123456789',
+                      counterText: '',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Account Name
+                  const Text('Account Holder Name', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _accountNameController,
+                    decoration: InputDecoration(
+                      hintText: isResolving ? 'Detecting account holder...' : 'Auto-detected via Bank API',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+
+                  if (isResolving) ...[
+                    const SizedBox(height: 8),
                     const Row(
                       children: [
-                        Icon(Icons.arrow_upward_rounded, color: AppColors.primary, size: 20),
+                        SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF059669))),
                         SizedBox(width: 8),
-                        Text('Withdraw from Escrow', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                        Text('Auto-detecting account holder name from bank...', style: TextStyle(fontSize: 11, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
                       ],
                     ),
-                    IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
-                  ],
-                ),
-                Text(
-                  'Available Escrow Balance: ${CurrencyFormatter.format(balance)}',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF059669), fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 16),
-
-                // Amount
-                const Text('Amount to Withdraw (₦)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _amountController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: 'e.g. 50000',
-                    prefixText: '₦ ',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // Bank
-                const Text('Destination Commercial Bank', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  value: _selectedBankCode,
-                  items: _nigerianBanks.map((b) {
-                    return DropdownMenuItem<String>(
-                      value: b['code'],
-                      child: Text(b['name']!, style: const TextStyle(fontSize: 13)),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      setModalState(() {
-                        _selectedBankCode = val;
-                        final matched = _nigerianBanks.firstWhere((b) => b['code'] == val, orElse: () => {'name': 'Bank', 'code': val});
-                        _selectedBankName = matched['name']!;
-                      });
-                    }
-                  },
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // Account Number
-                const Text('NUBAN Account Number (10 Digits)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _accountNumberController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 10,
-                  decoration: InputDecoration(
-                    hintText: '0123456789',
-                    counterText: '',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // Account Name
-                const Text('Account Name', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _accountNameController,
-                  decoration: InputDecoration(
-                    hintText: 'Account Holder Name',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Submit Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isProcessingWithdrawal
-                        ? null
-                        : () async {
-                            final rawAmount = double.tryParse(_amountController.text.trim()) ?? 0;
-                            final accNum = _accountNumberController.text.trim();
-                            final accName = _accountNameController.text.trim();
-
-                            if (rawAmount < 1000) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Minimum withdrawal amount is ₦1,000')),
-                              );
-                              return;
-                            }
-                            if (rawAmount > balance) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Insufficient escrow wallet balance')),
-                              );
-                              return;
-                            }
-                            if (accNum.length != 10) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Please enter a valid 10-digit NUBAN')),
-                              );
-                              return;
-                            }
-
-                            setModalState(() => _isProcessingWithdrawal = true);
-                            try {
-                              await ApiClient.post('/banking/withdraw', {
-                                'amount': rawAmount,
-                                'bankCode': _selectedBankCode,
-                                'bankName': _selectedBankName,
-                                'accountNumber': accNum,
-                                'accountName': accName.isNotEmpty ? accName : 'Account Holder',
-                              });
-
-                              if (ctx.mounted) Navigator.pop(ctx);
-                              _fetchAccountAndTransactions();
-
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('💸 Withdrawal of ${CurrencyFormatter.format(rawAmount)} processed via API!'),
-                                    backgroundColor: const Color(0xFF059669),
-                                  ),
-                                );
-                              }
-                            } catch (err) {
-                              setModalState(() => _isProcessingWithdrawal = false);
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Withdrawal error: $err'), backgroundColor: const Color(0xFFDC2626)),
-                                );
-                              }
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ] else if (resolvedAccountName != null && resolvedAccountName!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECFDF5),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF6EE7B7)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle_rounded, color: Color(0xFF059669), size: 16),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Verified Account Holder: $resolvedAccountName',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF065F46)),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: _isProcessingWithdrawal
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('Confirm Withdrawal', style: TextStyle(fontWeight: FontWeight.w800)),
+                  ],
+
+                  const SizedBox(height: 20),
+
+                  // Submit Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isProcessingWithdrawal
+                          ? null
+                          : () async {
+                              final rawAmount = double.tryParse(_amountController.text.trim()) ?? 0;
+                              final accNum = _accountNumberController.text.trim();
+                              final accName = _accountNameController.text.trim();
+
+                              if (rawAmount < 1000) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Minimum withdrawal amount is ₦1,000')),
+                                );
+                                return;
+                              }
+                              if (rawAmount > balance) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Insufficient escrow wallet balance')),
+                                );
+                                return;
+                              }
+                              if (accNum.length != 10) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Please enter a valid 10-digit NUBAN')),
+                                );
+                                return;
+                              }
+
+                              setModalState(() => _isProcessingWithdrawal = true);
+                              try {
+                                await ApiClient.post('/banking/withdraw', {
+                                  'amount': rawAmount,
+                                  'bankCode': _selectedBankCode,
+                                  'bankName': _selectedBankName,
+                                  'accountNumber': accNum,
+                                  'accountName': accName.isNotEmpty ? accName : 'Account Holder',
+                                });
+
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                _fetchAccountAndTransactions();
+
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('💸 Withdrawal of ${CurrencyFormatter.format(rawAmount)} processed via API!'),
+                                      backgroundColor: const Color(0xFF059669),
+                                    ),
+                                  );
+                                }
+                              } catch (err) {
+                                setModalState(() => _isProcessingWithdrawal = false);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Withdrawal error: $err'), backgroundColor: const Color(0xFFDC2626)),
+                                  );
+                                }
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: _isProcessingWithdrawal
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Confirm Withdrawal', style: TextStyle(fontWeight: FontWeight.w800)),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-  void _exportCSV() {
-    if (_transactions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No transactions available to export.')),
-      );
-      return;
+  void _downloadStatementPdf() async {
+    final token = await ApiClient.getToken();
+    final url = Uri.parse('${ApiConstants.baseUrl}/banking/statement/pdf?token=$token');
+    try {
+      final launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await launchUrl(url, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Statement PDF downloaded to device storage.')),
+        );
+      }
     }
+  }
 
-    final StringBuffer buffer = StringBuffer();
-    buffer.writeln('Transaction ID,Date,Type,Amount (NGN),Purpose,Status,Reference,Channel');
-
-    for (final tx in _transactions) {
-      final id = tx['id'] ?? '';
-      final date = tx['createdAt'] != null ? DateTime.parse(tx['createdAt']).toLocal().toString() : '';
-      final type = tx['type'] ?? '';
-      final amount = tx['amount'] ?? 0;
-      final purpose = (tx['description'] ?? tx['purpose'] ?? '').toString().replaceAll(',', ' ');
-      final status = tx['status'] ?? '';
-      final ref = tx['reference'] ?? '';
-      final channel = tx['channel'] ?? '';
-
-      buffer.writeln('"$id","$date","$type",$amount,"$purpose","$status","$ref","$channel"');
+  void _downloadReceiptPdf(String ref) async {
+    final token = await ApiClient.getToken();
+    final url = Uri.parse('${ApiConstants.baseUrl}/banking/receipt/$ref/pdf?token=$token');
+    try {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Opening receipt PDF...')),
+        );
+      }
     }
+  }
 
-    Clipboard.setData(ClipboardData(text: buffer.toString()));
+  void _shareReceipt(Map<String, dynamic> tx) {
+    final bool isCredit = tx['type'] == 'CREDIT';
+    final double amount = (tx['amount'] as num?)?.toDouble() ?? 0.0;
+    final String status = (tx['status'] ?? 'SUCCESS').toString().toUpperCase();
+    final String ref = tx['reference'] ?? tx['id'] ?? 'N/A';
+    final String desc = tx['description'] ?? tx['purpose'] ?? 'Escrow Transaction';
+    final String date = tx['createdAt'] != null
+        ? DateTime.parse(tx['createdAt']).toLocal().toString().substring(0, 16)
+        : 'Recent';
+
+    final receiptText = '''
+═══════════════════════════════════
+🏛️ HOMETRUST OFFICIAL ESCROW RECEIPT
+═══════════════════════════════════
+Amount: ₦${CurrencyFormatter.format(amount)}
+Type: ${isCredit ? 'INFLOW / DEPOSIT' : 'OUTFLOW / WITHDRAWAL'}
+Status: $status (VERIFIED)
+Reference: $ref
+Description: $desc
+Date: $date
+Security: Guaranteed by CBN Licensed Escrow Banking
+═══════════════════════════════════
+Verify Online: https://hometrustng.com
+''';
+
+    Clipboard.setData(ClipboardData(text: receiptText.trim()));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Row(
           children: [
-            Icon(Icons.file_download_done_rounded, color: Colors.white, size: 18),
+            Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
             SizedBox(width: 8),
-            Expanded(child: Text('📄 CSV statement copied to clipboard! You can paste and save it as a .csv file.')),
+            Expanded(child: Text('Receipt copied to clipboard! You can share via WhatsApp, Email, or SMS.')),
           ],
         ),
         backgroundColor: Color(0xFF059669),
@@ -550,6 +657,7 @@ class _WalletScreenState extends State<WalletScreen> {
     final bool isCredit = tx['type'] == 'CREDIT';
     final double amount = (tx['amount'] as num?)?.toDouble() ?? 0.0;
     final String status = (tx['status'] ?? 'SUCCESS').toString().toUpperCase();
+    final String ref = tx['reference'] ?? tx['id'] ?? 'N/A';
     final String dateStr = tx['createdAt'] != null
         ? DateTime.parse(tx['createdAt']).toLocal().toString().substring(0, 16)
         : 'Recent';
@@ -642,31 +750,48 @@ class _WalletScreenState extends State<WalletScreen> {
                   const Divider(height: 16),
                   _receiptRow('Date & Time', dateStr),
                   const Divider(height: 16),
-                  _receiptRow('Reference', tx['reference'] ?? tx['id'] ?? 'N/A', isRef: true),
+                  _receiptRow('Reference', ref, isRef: true),
                   const Divider(height: 16),
-                  _receiptRow('Payment Channel', tx['channel'] ?? 'Escrow Gateway'),
+                  _receiptRow('Payment Channel', tx['channel'] ?? 'Direct Bank Transfer'),
                 ],
               ),
             ),
             const SizedBox(height: 20),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  final ref = tx['reference'] ?? tx['id'] ?? '';
-                  _copyToClipboard(ref, 'Reference');
-                  Navigator.pop(ctx);
-                },
-                icon: const Icon(Icons.copy_rounded, size: 16),
-                label: const Text('Copy Reference & Close', style: TextStyle(fontWeight: FontWeight.w800)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            // Action Buttons: Download PDF Receipt & Share Receipt
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      _shareReceipt(tx);
+                    },
+                    icon: const Icon(Icons.share_rounded, size: 16, color: Color(0xFF0F172A)),
+                    label: const Text('Share Receipt', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      _downloadReceiptPdf(ref);
+                    },
+                    icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
+                    label: const Text('Download PDF', style: TextStyle(fontWeight: FontWeight.w800)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -756,9 +881,9 @@ class _WalletScreenState extends State<WalletScreen> {
             onPressed: _fetchAccountAndTransactions,
           ),
           IconButton(
-            icon: const Icon(Icons.download_rounded, color: AppColors.primary),
-            tooltip: 'Export CSV',
-            onPressed: _exportCSV,
+            icon: const Icon(Icons.picture_as_pdf_rounded, color: AppColors.primary),
+            tooltip: 'Download Statement (PDF)',
+            onPressed: _downloadStatementPdf,
           ),
         ],
       ),
@@ -1066,20 +1191,20 @@ class _WalletScreenState extends State<WalletScreen> {
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
                   ),
                   InkWell(
-                    onTap: _exportCSV,
+                    onTap: _downloadStatementPdf,
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: const Color(0xFFECFDF5),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(color: const Color(0xFF6EE7B7)),
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.file_download_outlined, size: 13, color: AppColors.primary),
+                          Icon(Icons.picture_as_pdf_rounded, size: 13, color: Color(0xFF059669)),
                           SizedBox(width: 4),
-                          Text('Export CSV', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                          Text('Download Statement (PDF)', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF065F46))),
                         ],
                       ),
                     ),

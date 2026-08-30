@@ -1,5 +1,6 @@
 import { prisma } from '../../utils/prisma';
 import { SocketService } from './socket.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export class ChatService {
   /**
@@ -359,6 +360,19 @@ export class ChatService {
       ...formattedMsg,
       unread: true,
     });
+
+    // Create DB in-app notification + push toast + send email notification
+    NotificationsService.createAndDispatch({
+      userId: recipientId,
+      title: `💬 New Message from ${senderName}`,
+      message: params.content.length > 120 ? `${params.content.substring(0, 117)}...` : params.content,
+      type: 'CHAT',
+      linkUrl: `/chat/${params.conversationId}`,
+      actionDetails: [
+        { label: 'Sender', value: senderName },
+        { label: 'Message Preview', value: params.content.length > 80 ? `${params.content.substring(0, 77)}...` : params.content },
+      ],
+    }).catch(err => console.warn('[CHAT NOTIFICATION ERROR]', err.message));
 
     return formattedMsg;
   }

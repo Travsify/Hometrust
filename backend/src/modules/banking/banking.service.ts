@@ -632,6 +632,22 @@ export class BankingService {
       }).catch(console.warn);
     }
 
+    if (account.userId) {
+      NotificationsService.createAndDispatch({
+        userId: account.userId,
+        title: '💸 Withdrawal Dispatched',
+        message: `Your withdrawal of ₦${netAmount.toLocaleString()} to ${params.bankName} (${params.accountNumber}) has been dispatched.`,
+        type: 'PAYMENT',
+        actionDetails: [
+          { label: 'Amount', value: `₦${netAmount.toLocaleString()}` },
+          { label: 'Destination Bank', value: params.bankName },
+          { label: 'Account Number', value: params.accountNumber },
+          { label: 'Reference', value: ref },
+          { label: 'Status', value: withdrawalStatus },
+        ],
+      }).catch(() => {});
+    }
+
     return withdrawal;
   }
 
@@ -720,6 +736,20 @@ export class BankingService {
         data: { status: 'CONFIRMED' },
       }).catch(console.warn);
     }
+
+    // Dispatch In-App + Push + Email Notification
+    NotificationsService.createAndDispatch({
+      userId: user.id,
+      title: '💳 Payment Confirmed',
+      message: `Your payment of ₦${params.amount.toLocaleString()} for ${params.description || params.purpose || 'In-App Service'} was successful.`,
+      type: 'PAYMENT',
+      actionDetails: [
+        { label: 'Amount Paid', value: `₦${params.amount.toLocaleString()}` },
+        { label: 'Purpose', value: params.purpose || 'Escrow Payment' },
+        { label: 'Reference', value: paymentRef },
+        { label: 'Remaining Escrow Balance', value: `₦${updatedAccount.balance.toLocaleString()}` },
+      ],
+    }).catch(() => {});
 
     // Dispatch Payment Receipt Email
     ResendService.sendPaymentReceivedEmail(

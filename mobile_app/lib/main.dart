@@ -63,6 +63,40 @@ void main() async {
     }
   });
 
+  // Global In-App Chat Message Toast Banner
+  SocketService.instance.onMessageReceived.listen((msgData) {
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      final senderName = msgData['senderName'] ?? 'New Message';
+      final content = msgData['content'] ?? '';
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.chat_bubble_rounded, color: Color(0xFF10B981), size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('💬 $senderName', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Colors.white)),
+                    if (content.isNotEmpty)
+                      Text(content, style: const TextStyle(fontSize: 11, color: Color(0xFFCBD5E1)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF0F172A),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  });
+
   runApp(const HometrustApp());
 }
 

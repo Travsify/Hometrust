@@ -22,6 +22,10 @@ router.post('/resolve-account', requireAuth, BankingController.resolveBankAccoun
 router.post('/pay-from-wallet', requireAuth, BankingController.payFromWallet);
 router.post('/sync-live-account', requireAuth, BankingController.syncLiveAccount);
 
+// PDF Statement & Receipt Export
+router.get('/statement/pdf', requireAuth, BankingController.downloadStatementPdf);
+router.get('/receipt/:id/pdf', requireAuth, BankingController.downloadReceiptPdf);
+
 // Payout / Withdrawal
 router.post('/withdraw', requireAuth, BankingController.requestWithdrawal);
 

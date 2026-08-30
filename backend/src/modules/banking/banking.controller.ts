@@ -4,6 +4,8 @@ import { FlutterwaveClient } from './flutterwave.client';
 import { PaystackClient } from '../payments/paystack.client';
 import { sendSuccess, sendError } from '../../utils/response';
 import { AuthRequest } from '../../middlewares/auth.middleware';
+import { prisma } from '../../utils/prisma';
+import { BankingPdfService } from './banking_pdf.service';
 
 export class BankingController {
   static async submitBuyerKyc(req: AuthRequest, res: Response): Promise<void> {
@@ -215,6 +217,118 @@ export class BankingController {
       sendSuccess(res, kycList, 'All Prembly KYC verifications retrieved');
     } catch (error: any) {
       sendError(res, error.message, 400);
+    }
+  }
+
+  static async downloadStatementPdf(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: { virtualAccounts: true },
+      });
+      if (!user) {
+        sendError(res, 'User not found', 404);
+        return;
+      }
+      const account = user.virtualAccounts?.[0];
+      const transactions = await BankingService.getMyTransactions(req.user.id);
+
+      const pdf = await BankingPdfService.generateStatementPdf({
+        userName: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        accountNumber: account?.accountNumber || 'N/A',
+        bankName: account?.bankName || 'Hometrust Dedicated Bank',
+        balance: account?.balance || 0,
+        transactions,
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${pdf.fileName}"`);
+      res.download(pdf.filePath, pdf.fileName);
+    } catch (error: any) {
+      sendError(res, error.message, 500);
+    }
+  }
+
+  static async downloadReceiptPdf(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const targetId = String(req.params.id);
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+      });
+      if (!user) {
+        sendError(res, 'User not found', 404);
+        return;
+      }
+
+      const payment = await prisma.payment.findFirst({
+        where: {
+          OR: [{ id: targetId }, { paymentReference: targetId }, { receiptNumber: targetId }],
+          userId: req.user.id,
+        },
+      });
+
+      if (!payment) {
+        // Check withdrawals
+        const withdrawal = await prisma.withdrawal.findFirst({
+          where: {
+            OR: [{ id: targetId }, { reference: targetId }],
+            userId: req.user.id,
+          },
+        });
+
+        if (withdrawal) {
+          const pdf = await BankingPdfService.generateReceiptPdf({
+            userName: `${user.firstName} ${user.lastName}`,
+            email: user.email,
+            txId: withdrawal.id,
+            reference: withdrawal.reference,
+            type: 'WITHDRAWAL / DEBIT',
+            amount: withdrawal.amount,
+            purpose: `Payout to ${withdrawal.bankName} (${withdrawal.accountNumber})`,
+            status: withdrawal.status,
+            channel: withdrawal.bankName || 'Commercial Bank Transfer',
+            createdAt: withdrawal.createdAt,
+            bankName: withdrawal.bankName,
+            accountNumber: withdrawal.accountNumber,
+          });
+
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `attachment; filename="${pdf.fileName}"`);
+          res.download(pdf.filePath, pdf.fileName);
+          return;
+        }
+
+        sendError(res, 'Transaction not found', 404);
+        return;
+      }
+
+      const pdf = await BankingPdfService.generateReceiptPdf({
+        userName: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        txId: payment.id,
+        reference: payment.receiptNumber || payment.paymentReference,
+        type: 'ESCROW DEPOSIT / CREDIT',
+        amount: payment.totalAmount || payment.amount,
+        purpose: payment.purpose || 'Escrow Funding',
+        status: payment.status,
+        channel: payment.paystackChannel || 'Direct Bank Transfer',
+        createdAt: payment.createdAt,
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${pdf.fileName}"`);
+      res.download(pdf.filePath, pdf.fileName);
+    } catch (error: any) {
+      sendError(res, error.message, 500);
     }
   }
 }
