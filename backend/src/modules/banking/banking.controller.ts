@@ -121,6 +121,23 @@ export class BankingController {
     }
   }
 
+  static async simulateDeposit(req: Request, res: Response): Promise<void> {
+    try {
+      const { accountNumber, amount } = req.body;
+      if (!accountNumber || !amount) {
+        sendError(res, 'Account number and amount are required', 400);
+        return;
+      }
+      const result = await BankingService.simulateDeposit({
+        accountNumber: accountNumber.trim(),
+        amount: parseFloat(amount),
+      });
+      sendSuccess(res, result, result.message, 200);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
   static async listAllAccounts(req: Request, res: Response): Promise<void> {
     try {
       const accounts = await BankingService.listAllAccounts();

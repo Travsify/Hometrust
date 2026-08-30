@@ -480,10 +480,9 @@ export class BankingService {
       const rawAmount = data.amount || data.settlement_amount || 0;
       const reference = data.reference || data.id || `MPR-DEP-${Date.now()}`;
 
-      // Convert kobo to Naira if needed
       let amount = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount;
-      if (amount > 100000 && data.currency === 'NGN' && !eventType.includes('fincra')) {
-        // Maplerad amounts are often in kobo (100 kobo = 1 NGN)
+      // If event explicitly came from real Maplerad webhook with currency NGN in kobo:
+      if (data.amount_in_kobo) {
         amount = amount / 100;
       }
 
@@ -570,6 +569,35 @@ export class BankingService {
       }
     }
     return { success: true };
+  }
+
+  /**
+   * Simulate a bank transfer deposit (Useful for Sandbox Testing & Demos)
+   */
+  static async simulateDeposit(params: { accountNumber: string; amount: number; reference?: string }) {
+    const event = {
+      event: 'collection.successful',
+      data: {
+        account_number: params.accountNumber,
+        amount: params.amount,
+        currency: 'NGN',
+        reference: params.reference || `SIM-DEP-${Date.now()}`,
+        status: 'SUCCESSFUL',
+      },
+    };
+
+    await this.handleWebhook(event);
+
+    const updatedAccount = await prisma.virtualAccount.findUnique({
+      where: { accountNumber: params.accountNumber },
+      include: { user: true, developer: true },
+    });
+
+    return {
+      success: true,
+      message: `Successfully credited ₦${params.amount.toLocaleString()} to ${updatedAccount?.accountName || params.accountNumber}`,
+      account: updatedAccount,
+    };
   }
 
   /**

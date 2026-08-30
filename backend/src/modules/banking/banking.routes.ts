@@ -20,8 +20,9 @@ router.post('/resolve-account', requireAuth, BankingController.resolveBankAccoun
 // Payout / Withdrawal
 router.post('/withdraw', requireAuth, BankingController.requestWithdrawal);
 
-// Fincra Webhook Listener
+// Webhook & Simulator
 router.post('/webhook', BankingController.webhook);
+router.post('/simulate-deposit', BankingController.simulateDeposit);
 
 // Admin Audits
 router.get('/admin/accounts', requireAuth, requireRoles('SUPER_ADMIN', 'ADMIN', 'FINANCE_MANAGER'), BankingController.listAllAccounts);
