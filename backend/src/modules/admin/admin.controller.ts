@@ -18,10 +18,11 @@ export class AdminController {
   static async getUsers(req: Request, res: Response): Promise<void> {
     try {
       const filters = {
-        role: req.query.role as string,
-        search: req.query.search as string,
-        page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
-        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 50,
+        role: req.query.role ? String(req.query.role) : undefined,
+        search: req.query.search ? String(req.query.search) : undefined,
+        isVerified: req.query.isVerified ? String(req.query.isVerified) : undefined,
+        page: req.query.page ? parseInt(String(req.query.page), 10) : 1,
+        limit: req.query.limit ? parseInt(String(req.query.limit), 10) : 50,
       };
       const result = await AdminService.getUsers(filters);
       sendSuccess(res, result.users, 'Users retrieved', 200, {

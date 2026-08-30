@@ -581,15 +581,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF0B132B), Color(0xFF1C2541)],
+                      colors: [Color(0xFF0D5C3A), Color(0xFF083C25)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                    border: Border.all(color: const Color(0xFFC9A227).withValues(alpha: 0.3)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
+                        color: const Color(0xFF0D5C3A).withValues(alpha: 0.35),
                         blurRadius: 16,
                         offset: const Offset(0, 6),
                       ),
@@ -975,8 +975,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildMenuItem(
                     icon: Icons.shield_outlined,
                     title: 'KYC & Identity Verification',
-                    subtitle: 'NIN & BVN verification badge',
+                    subtitle: user?.isVerified == true
+                        ? 'Identity Verified ✅'
+                        : 'NIN & BVN verification badge',
+                    trailing: user?.isVerified == true
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFF10B981), width: 0.8),
+                            ),
+                            child: const Text(
+                              'VERIFIED',
+                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF059669)),
+                            ),
+                          )
+                        : null,
                     onTap: () {
+                      if (user?.isVerified == true) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Your identity is already verified ✅'),
+                            backgroundColor: Color(0xFF059669),
+                          ),
+                        );
+                        return;
+                      }
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const KycScreen()),
@@ -988,14 +1013,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.folder_shared_outlined,
                     title: 'Document Vault',
                     subtitle: 'All title deeds, C of O, and payment receipts',
-                    onTap: () {},
+                    onTap: () => _showDocumentVault(context),
                   ),
                   const Divider(height: 1, color: AppColors.cardBorder),
                   _buildMenuItem(
-                    icon: Icons.headset_mic_outlined,
-                    title: 'Contact Hometrust Support',
-                    subtitle: 'support@hometrust.ng',
-                    onTap: () {},
+                    icon: Icons.support_agent_outlined,
+                    title: 'Support Tickets',
+                    subtitle: 'Open or view your support requests',
+                    onTap: () => _showSupportTicketSheet(context),
                   ),
                   const Divider(height: 1, color: AppColors.cardBorder),
                   _buildMenuItem(
@@ -1077,6 +1102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    Widget? trailing,
   }) {
     return ListTile(
       onTap: onTap,
@@ -1090,7 +1116,406 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
+      trailing: trailing ?? const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
+    );
+  }
+
+  // ── Document Vault ──────────────────────────────────────────────────────────
+  void _showDocumentVault(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (_, controller) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.folder_shared_outlined, color: AppColors.primary, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Document Vault', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                          Text('Your title deeds, C of O & payment receipts', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 24),
+              Expanded(
+                child: FutureBuilder<List<dynamic>>(
+                  future: ApiClient.get('/purchases/my').then((r) => r as List? ?? []),
+                  builder: (ctx, snap) {
+                    if (snap.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final purchases = snap.data ?? [];
+                    if (purchases.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.folder_open_outlined, size: 56, color: Colors.grey.shade300),
+                            const SizedBox(height: 12),
+                            const Text('No documents yet', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                            const SizedBox(height: 4),
+                            const Text('Documents from your purchases will appear here.', style: TextStyle(fontSize: 11, color: AppColors.textMuted), textAlign: TextAlign.center),
+                          ],
+                        ),
+                      );
+                    }
+                    return ListView.separated(
+                      controller: controller,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: purchases.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.cardBorder),
+                      itemBuilder: (ctx, i) {
+                        final p = purchases[i] as Map<String, dynamic>;
+                        return ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
+                            child: const Icon(Icons.description_outlined, color: AppColors.primary, size: 20),
+                          ),
+                          title: Text(
+                            p['property']?['title'] ?? p['project']?['name'] ?? 'Purchase Document',
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                          ),
+                          subtitle: Text(
+                            'Ref: ${p['purchaseCode'] ?? p['id']?.toString().substring(0, 8) ?? 'N/A'} • ${p['status'] ?? 'ACTIVE'}',
+                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          ),
+                          trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Support Ticket Sheet ────────────────────────────────────────────────────
+  void _showSupportTicketSheet(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SupportTicketSheet(userId: auth.user?.id ?? ''),
+    );
+  }
+}
+
+// ─── Support Ticket Bottom Sheet Widget ──────────────────────────────────────
+class _SupportTicketSheet extends StatefulWidget {
+  final String userId;
+  const _SupportTicketSheet({required this.userId});
+
+  @override
+  State<_SupportTicketSheet> createState() => _SupportTicketSheetState();
+}
+
+class _SupportTicketSheetState extends State<_SupportTicketSheet> {
+  bool _showNewTicket = false;
+  bool _isSubmitting = false;
+  List<dynamic> _tickets = [];
+  bool _loadingTickets = true;
+
+  final _subjectCtrl = TextEditingController();
+  final _messageCtrl = TextEditingController();
+  String _selectedCategory = 'GENERAL';
+
+  final _categories = {
+    'GENERAL': 'General Enquiry',
+    'PAYMENT': 'Payment Issue',
+    'KYC': 'KYC / Verification',
+    'ACCOUNT': 'Account Access',
+    'TECHNICAL': 'Technical Issue',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTickets();
+  }
+
+  @override
+  void dispose() {
+    _subjectCtrl.dispose();
+    _messageCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadTickets() async {
+    try {
+      final res = await ApiClient.get('/support/tickets');
+      if (mounted) setState(() { _tickets = res as List? ?? []; _loadingTickets = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingTickets = false);
+    }
+  }
+
+  Future<void> _submitTicket() async {
+    final subject = _subjectCtrl.text.trim();
+    final message = _messageCtrl.text.trim();
+    if (subject.isEmpty || message.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in subject and message.')));
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      await ApiClient.post('/support/tickets', {
+        'subject': subject,
+        'category': _selectedCategory,
+        'message': message,
+      });
+      _subjectCtrl.clear();
+      _messageCtrl.clear();
+      setState(() { _showNewTicket = false; _isSubmitting = false; _loadingTickets = true; });
+      await _loadTickets();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Support ticket submitted! We\'ll get back to you shortly.'), backgroundColor: AppColors.primary),
+        );
+      }
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))));
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'OPEN': return const Color(0xFF2563EB);
+      case 'IN_PROGRESS': return const Color(0xFFD97706);
+      case 'RESOLVED': return const Color(0xFF059669);
+      case 'CLOSED': return const Color(0xFF64748B);
+      default: return AppColors.textSecondary;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (ctx, scrollCtrl) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.support_agent_outlined, color: AppColors.primary, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Support Tickets', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                        Text('Get help from Hometrust support team', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => setState(() => _showNewTicket = !_showNewTicket),
+                    icon: Icon(_showNewTicket ? Icons.close : Icons.add, size: 16, color: AppColors.primary),
+                    label: Text(_showNewTicket ? 'Cancel' : 'New Ticket', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 20),
+
+            if (_showNewTicket) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Category', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 36,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: _categories.entries.map((e) => GestureDetector(
+                          onTap: () => setState(() => _selectedCategory = e.key),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _selectedCategory == e.key ? AppColors.primary : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(e.value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _selectedCategory == e.key ? Colors.white : AppColors.textSecondary)),
+                          ),
+                        )).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _subjectCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Subject',
+                        hintText: 'Brief description of your issue',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
+                        filled: true, fillColor: const Color(0xFFF8FAFC),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _messageCtrl,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        labelText: 'Message',
+                        hintText: 'Describe your issue in detail...',
+                        alignLabelWithHint: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
+                        filled: true, fillColor: const Color(0xFFF8FAFC),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: ElevatedButton(
+                        onPressed: _isSubmitting ? null : _submitTicket,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: _isSubmitting
+                            ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Text('Submit Ticket', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                  ],
+                ),
+              ),
+            ],
+
+            Expanded(
+              child: _loadingTickets
+                  ? const Center(child: CircularProgressIndicator())
+                  : _tickets.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.inbox_outlined, size: 56, color: Colors.grey.shade300),
+                              const SizedBox(height: 12),
+                              const Text('No tickets yet', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                              const SizedBox(height: 4),
+                              const Text('Tap "New Ticket" to get support.', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                            ],
+                          ),
+                        )
+                      : ListView.separated(
+                          controller: scrollCtrl,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _tickets.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.cardBorder),
+                          itemBuilder: (ctx, i) {
+                            final t = _tickets[i] as Map<String, dynamic>;
+                            final status = t['status'] ?? 'OPEN';
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: _statusColor(status).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(Icons.confirmation_number_outlined, color: _statusColor(status), size: 18),
+                              ),
+                              title: Text(t['subject'] ?? 'Support Ticket', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 2),
+                                  Text(t['message'] ?? '', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  if (t['adminReply'] != null) ...[
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(color: const Color(0xFFF0FDF4), borderRadius: BorderRadius.circular(6)),
+                                      child: Text('Reply: ${t['adminReply']}', style: const TextStyle(fontSize: 10, color: Color(0xFF059669), fontStyle: FontStyle.italic), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: _statusColor(status).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(status.replaceAll('_', ' '), style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: _statusColor(status))),
+                              ),
+                              isThreeLine: t['adminReply'] != null,
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

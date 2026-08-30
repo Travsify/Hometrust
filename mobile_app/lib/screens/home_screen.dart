@@ -402,16 +402,16 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+          colors: [Color(0xFF0D5C3A), Color(0xFF083C25)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF0D5C3A).withValues(alpha: 0.35),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -424,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Row(
                 children: const [
-                  Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF38BDF8), size: 16),
+                  Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFC9A227), size: 16),
                   SizedBox(width: 6),
                   Text(
                     'HOMETRUST DEDICATED NUBAN',

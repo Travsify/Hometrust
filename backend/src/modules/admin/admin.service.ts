@@ -77,7 +77,7 @@ export class AdminService {
     };
   }
 
-  static async getUsers(filters: { role?: string; search?: string; page?: number; limit?: number }) {
+  static async getUsers(filters: { role?: string; isVerified?: string; search?: string; page?: number; limit?: number }) {
     const page = filters.page || 1;
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
@@ -86,9 +86,22 @@ export class AdminService {
     if (filters.role) where.role = filters.role;
     if (filters.search) {
       where.OR = [
-        { email: { contains: filters.search } },
-        { firstName: { contains: filters.search } },
-        { lastName: { contains: filters.search } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
+        { firstName: { contains: filters.search, mode: 'insensitive' } },
+        { lastName: { contains: filters.search, mode: 'insensitive' } },
+        { phone: { contains: filters.search } },
+      ];
+    }
+
+    if (filters.isVerified === 'true') {
+      where.OR = [
+        { kycVerifications: { some: { status: 'VERIFIED' } } },
+        { developer: { isVerified: true } },
+      ];
+    } else if (filters.isVerified === 'false') {
+      where.AND = [
+        { kycVerifications: { none: { status: 'VERIFIED' } } },
+        { OR: [{ developer: null }, { developer: { isVerified: false } }] },
       ];
     }
 
@@ -109,15 +122,58 @@ export class AdminService {
           isEmailVerified: true,
           createdAt: true,
           developer: {
-            select: { id: true, companyName: true, isVerified: true },
+            select: { id: true, companyName: true, isVerified: true, verificationStatus: true },
+          },
+          virtualAccounts: {
+            select: {
+              id: true,
+              accountNumber: true,
+              accountName: true,
+              bankName: true,
+              balance: true,
+              status: true,
+            },
+          },
+          kycVerifications: {
+            where: { status: 'VERIFIED' },
+            select: { id: true, kycType: true, nin: true, bvn: true, verifiedAt: true },
+            take: 1,
           },
         },
       }),
       prisma.user.count({ where }),
     ]);
 
+    const formattedUsers = users.map((u) => {
+      const isKycVerified = (u.kycVerifications && u.kycVerifications.length > 0) || u.developer?.isVerified || false;
+      const primaryVa = u.virtualAccounts?.[0];
+      return {
+        id: u.id,
+        email: u.email,
+        name: `${u.firstName} ${u.lastName}`.trim(),
+        firstName: u.firstName,
+        lastName: u.lastName,
+        phone: u.phone || 'N/A',
+        role: u.role,
+        isActive: u.isActive,
+        isEmailVerified: u.isEmailVerified,
+        isKycVerified,
+        developer: u.developer,
+        virtualAccount: primaryVa
+          ? {
+              accountNumber: primaryVa.accountNumber,
+              accountName: primaryVa.accountName,
+              bankName: primaryVa.bankName,
+              balance: primaryVa.balance,
+              status: primaryVa.status,
+            }
+          : null,
+        createdAt: u.createdAt,
+      };
+    });
+
     return {
-      users,
+      users: formattedUsers,
       total,
       page,
       totalPages: Math.ceil(total / limit),

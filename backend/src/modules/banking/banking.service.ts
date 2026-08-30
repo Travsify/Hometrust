@@ -907,9 +907,24 @@ export class BankingService {
     }
     if (!account && customerCode) {
       account = await prisma.virtualAccount.findFirst({
-        where: { fincraAccountId: customerCode },
+        where: { fincraAccountId: String(customerCode) },
         include: { user: true, developer: true },
       });
+    }
+    // Fallback: search by customer email if account number / customer code didn't match directly
+    if (!account) {
+      const email = data.customer?.email || data.email || data.meta?.email || data.payer?.email;
+      if (email) {
+        account = await prisma.virtualAccount.findFirst({
+          where: {
+            OR: [
+              { user: { email: { equals: email, mode: 'insensitive' } } },
+              { developer: { email: { equals: email, mode: 'insensitive' } } },
+            ],
+          },
+          include: { user: true, developer: true },
+        });
+      }
     }
 
     if (!account) {
@@ -1017,9 +1032,10 @@ export class BankingService {
 
     console.log(`[ESCROW] ✅ Credited ₦${amount.toLocaleString()} to ${account.accountName} (${account.accountNumber})`);
 
-    // ── Auto-apply to active purchase instalment ────────────────────────────
+    // ── Auto-apply to active purchase instalment OR record as Wallet Deposit ─
+    let activePurchase: any = null;
     if (account.userId) {
-      const activePurchase = await prisma.purchase.findFirst({
+      activePurchase = await prisma.purchase.findFirst({
         where: { userId: account.userId, status: 'ACTIVE' },
         include: { property: true, projectUnit: true },
       });
@@ -1038,24 +1054,31 @@ export class BankingService {
           },
         });
 
-        await prisma.payment.create({
-          data: {
-            paymentReference: reference,
-            userId: account.userId,
-            purchaseId: activePurchase.id,
-            developerId: activePurchase.property?.developerId || account.developerId,
-            amount,
-            platformFee: 0,
-            processingFee: 0,
-            totalAmount: amount,
-            purpose: 'INSTALMENT',
-            status: 'SUCCESS',
-            paidAt: new Date(),
-          },
-        });
-
         console.log(`[ESCROW] Applied ₦${amount.toLocaleString()} to Purchase ${activePurchase.id}. Remaining: ₦${newBalance.toLocaleString()}`);
       }
+    }
+
+    // ── ALWAYS create a Payment record so Admin & User see the transaction ──
+    const paymentUserId = account.userId || account.developer?.userId;
+    if (paymentUserId) {
+      await prisma.payment.create({
+        data: {
+          paymentReference: reference,
+          userId: paymentUserId,
+          purchaseId: activePurchase?.id || null,
+          developerId: activePurchase?.property?.developerId || account.developerId || null,
+          amount,
+          platformFee: 0,
+          processingFee: 0,
+          totalAmount: amount,
+          purpose: activePurchase ? 'INSTALMENT' : 'INITIAL_DEPOSIT',
+          status: 'SUCCESS',
+          paystackReference: reference,
+          paystackChannel: 'bank_transfer',
+          paidAt: new Date(),
+          receiptNumber: `HT-DEP-${Date.now().toString().slice(-8)}`,
+        },
+      }).catch(err => console.warn('[PAYMENT LOG WARNING]', err.message));
     }
 
     // ── Send payment received email ─────────────────────────────────────────
