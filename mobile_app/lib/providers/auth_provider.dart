@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:local_auth/local_auth.dart';
 import '../core/network/api_client.dart';
 import '../models/user_model.dart';
 
@@ -9,6 +10,7 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   bool _isDeveloperMode = true;
+  final LocalAuthentication _localAuth = LocalAuthentication();
 
   UserModel? get user => _user;
   String? get token => _token;
@@ -19,7 +21,6 @@ class AuthProvider with ChangeNotifier {
 
   void toggleDeveloperMode() {
     _isDeveloperMode = !_isDeveloperMode;
-    // Persist the preference so switching back survives app restarts
     SharedPreferences.getInstance().then((prefs) {
       prefs.setBool('developer_mode_active', _isDeveloperMode);
     });
@@ -29,7 +30,6 @@ class AuthProvider with ChangeNotifier {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
-    // Restore the last-used mode preference (defaults to true for developer accounts)
     _isDeveloperMode = prefs.getBool('developer_mode_active') ?? true;
     if (_token != null) {
       try {
@@ -42,7 +42,6 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Clears the mode preference on logout so the next login starts fresh
   Future<void> logout() async {
     _user = null;
     _token = null;
@@ -53,7 +52,98 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> login(String email, String password) async {
+  /// 1. Send OTP to Email (via Resend)
+  Future<bool> sendEmailOtp(String email, {String purpose = 'REGISTRATION_EMAIL'}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await ApiClient.post('/auth/otp/send-email', {
+        'email': email.trim(),
+        'purpose': purpose,
+      });
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// 2. Verify Email OTP
+  Future<String?> verifyEmailOtp(String email, String code, {String purpose = 'REGISTRATION_EMAIL'}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final res = await ApiClient.post('/auth/otp/verify-email', {
+        'email': email.trim(),
+        'code': code.trim(),
+        'purpose': purpose,
+      });
+      _isLoading = false;
+      notifyListeners();
+      return res['verificationToken'] as String? ?? 'verified';
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// 3. Send OTP to Phone (via Twilio)
+  Future<bool> sendPhoneOtp(String phone, {String purpose = 'REGISTRATION_PHONE'}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await ApiClient.post('/auth/otp/send-phone', {
+        'phone': phone.trim(),
+        'purpose': purpose,
+      });
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// 4. Verify Phone OTP
+  Future<String?> verifyPhoneOtp(String phone, String code, {String purpose = 'REGISTRATION_PHONE'}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final res = await ApiClient.post('/auth/otp/verify-phone', {
+        'phone': phone.trim(),
+        'code': code.trim(),
+        'purpose': purpose,
+      });
+      _isLoading = false;
+      notifyListeners();
+      return res['verificationToken'] as String? ?? 'verified';
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// 5. Initial Login Request (Dispatches 2FA OTP)
+  Future<Map<String, dynamic>> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -64,11 +154,66 @@ class AuthProvider with ChangeNotifier {
         'password': password,
       });
 
+      _isLoading = false;
+      notifyListeners();
+
+      // Check if 2FA Challenge returned
+      if (res != null && res['requires2FA'] == true) {
+        return {
+          'success': true,
+          'requires2FA': true,
+          'twoFactorToken': res['twoFactorToken'],
+          'email': res['email'],
+          'maskedDestination': res['maskedDestination'],
+          'message': res['message'],
+        };
+      }
+
+      // If direct login token returned
+      if (res != null && res['token'] != null) {
+        _token = res['token'];
+        _user = UserModel.fromJson(res['user']);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', _token!);
+        await prefs.setString('saved_email', email.trim());
+        notifyListeners();
+        return {'success': true, 'requires2FA': false};
+      }
+
+      return {'success': false, 'message': 'Unknown login response'};
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return {'success': false, 'message': _errorMessage};
+    }
+  }
+
+  /// 6. Verify 2FA OTP to complete login
+  Future<bool> verifyLogin2FA({
+    required String twoFactorToken,
+    required String code,
+    String? emailForBiometrics,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final res = await ApiClient.post('/auth/login-2fa/verify', {
+        'twoFactorToken': twoFactorToken,
+        'code': code.trim(),
+      });
+
       _token = res['token'];
       _user = UserModel.fromJson(res['user']);
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', _token!);
+      if (emailForBiometrics != null) {
+        await prefs.setString('saved_email', emailForBiometrics);
+      }
+      await prefs.setString('biometric_auth_token', _token!);
 
       _isLoading = false;
       notifyListeners();
@@ -81,6 +226,61 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// 7. Biometrics Support (Fingerprint & Face ID)
+  Future<bool> isBiometricsAvailable() async {
+    try {
+      final bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
+      final bool isDeviceSupported = await _localAuth.isDeviceSupported();
+      return canCheckBiometrics && isDeviceSupported;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> isBiometricsEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('biometrics_enabled') ?? false;
+  }
+
+  Future<void> setBiometricsEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('biometrics_enabled', enabled);
+    notifyListeners();
+  }
+
+  Future<bool> biometricLogin() async {
+    try {
+      final available = await isBiometricsAvailable();
+      if (!available) return false;
+
+      final prefs = await SharedPreferences.getInstance();
+      final savedToken = prefs.getString('biometric_auth_token');
+      if (savedToken == null || savedToken.isEmpty) return false;
+
+      final bool didAuthenticate = await _localAuth.authenticate(
+        localizedReason: 'Authenticate with Fingerprint or Face ID to access your Hometrust account',
+        options: const AuthenticationOptions(
+          biometricOnly: false,
+          stickyAuth: true,
+        ),
+      );
+
+      if (didAuthenticate) {
+        _token = savedToken;
+        await prefs.setString('auth_token', _token!);
+        final userData = await ApiClient.get('/auth/me');
+        _user = UserModel.fromJson(userData);
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('[BIOMETRIC AUTH ERROR] $e');
+      return false;
+    }
+  }
+
+  /// 8. Final Registration
   Future<bool> register({
     required String email,
     required String password,
@@ -112,6 +312,8 @@ class AuthProvider with ChangeNotifier {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', _token!);
+      await prefs.setString('biometric_auth_token', _token!);
+      await prefs.setString('saved_email', email.trim());
 
       _isLoading = false;
       notifyListeners();
@@ -133,5 +335,4 @@ class AuthProvider with ChangeNotifier {
       } catch (_) {}
     }
   }
-
 }

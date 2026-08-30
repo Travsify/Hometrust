@@ -115,11 +115,10 @@ export class InspectionsService {
     });
 
     await AuditService.log({
-      userId: user.id,
-      userEmail: user.email,
-      userRole: user.role,
+      adminId: user?.id,
+      adminEmail: user?.email || 'admin@hometrust.ng',
       action: 'ASSIGN_COREN_ENGINEER',
-      entity: 'Inspection',
+      entityType: 'INSPECTION',
       entityId: id,
       details: { engineerName, licenseNumber },
     });
@@ -157,11 +156,10 @@ export class InspectionsService {
     }
 
     await AuditService.log({
-      userId: user.id,
-      userEmail: user.email,
-      userRole: user.role,
+      adminId: user?.id,
+      adminEmail: user?.email || 'admin@hometrust.ng',
       action: 'SUBMIT_COREN_REPORT',
-      entity: 'Inspection',
+      entityType: 'INSPECTION',
       entityId: id,
       details: data,
     });

@@ -28,12 +28,19 @@ class ApiClient {
     return headers;
   }
 
-  static dynamic _handleResponse(http.Response response) {
+  static dynamic _handleResponse(http.Response response, {String? endpoint}) {
+    final Map<String, dynamic> data = (response.body.isNotEmpty)
+        ? jsonDecode(response.body)
+        : {'message': 'Unknown error'};
+
     if (response.statusCode == 401) {
-      onUnauthorized?.call();
-      throw Exception('Session expired. Please sign in again.');
+      final isAuthEndpoint = endpoint != null && endpoint.startsWith('/auth/');
+      if (!isAuthEndpoint) {
+        onUnauthorized?.call();
+      }
+      throw Exception(data['message'] ?? 'Invalid credentials or session expired.');
     }
-    final data = jsonDecode(response.body);
+
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return data['data'];
     } else {
@@ -45,7 +52,7 @@ class ApiClient {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     final headers = await _headers();
     final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 20));
-    return _handleResponse(response);
+    return _handleResponse(response, endpoint: endpoint);
   }
 
   static Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
@@ -54,7 +61,7 @@ class ApiClient {
     final response = await http
         .post(url, headers: headers, body: jsonEncode(body))
         .timeout(const Duration(seconds: 20));
-    return _handleResponse(response);
+    return _handleResponse(response, endpoint: endpoint);
   }
 
   static Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
@@ -63,7 +70,7 @@ class ApiClient {
     final response = await http
         .put(url, headers: headers, body: jsonEncode(body))
         .timeout(const Duration(seconds: 20));
-    return _handleResponse(response);
+    return _handleResponse(response, endpoint: endpoint);
   }
 
   static Future<dynamic> patch(String endpoint, Map<String, dynamic> body) async {

@@ -4,6 +4,56 @@ import { sendSuccess, sendError } from '../../utils/response';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 
 export class AuthController {
+  static async sendEmailOtp(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, purpose } = req.body;
+      const result = await AuthService.sendEmailOtp(email, purpose);
+      sendSuccess(res, result, result.message);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async verifyEmailOtp(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, code, purpose } = req.body;
+      const result = await AuthService.verifyEmailOtp(email, code, purpose);
+      sendSuccess(res, result, result.message);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async sendPhoneOtp(req: Request, res: Response): Promise<void> {
+    try {
+      const { phone, purpose } = req.body;
+      const result = await AuthService.sendPhoneOtp(phone, purpose);
+      sendSuccess(res, result, result.message);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async verifyPhoneOtp(req: Request, res: Response): Promise<void> {
+    try {
+      const { phone, code, purpose } = req.body;
+      const result = await AuthService.verifyPhoneOtp(phone, code, purpose);
+      sendSuccess(res, result, result.message);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async verifyLogin2FA(req: Request, res: Response): Promise<void> {
+    try {
+      const { twoFactorToken, code } = req.body;
+      const result = await AuthService.verifyLogin2FA({ twoFactorToken, code });
+      sendSuccess(res, result, 'Two-factor login successful');
+    } catch (error: any) {
+      sendError(res, error.message, 401);
+    }
+  }
+
   static async register(req: Request, res: Response): Promise<void> {
     try {
       const result = await AuthService.register(req.body);

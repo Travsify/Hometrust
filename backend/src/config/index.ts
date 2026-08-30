@@ -39,4 +39,17 @@ export const config = {
     tagline: 'Verify. Buy. Pay. Track.',
     supportEmail: process.env.SUPPORT_EMAIL || 'support@hometrust.ng',
   },
+
+  resend: {
+    apiKey: process.env.RESEND_API_KEY || '',
+    fromEmail: process.env.RESEND_FROM_EMAIL || 'Hometrust Security <info@hometrustng.com>',
+    fallbackFrom: process.env.RESEND_FALLBACK_FROM || 'onboarding@resend.dev',
+  },
+
+  twilio: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID || '',
+    authToken: process.env.TWILIO_AUTH_TOKEN || '',
+    phoneNumber: process.env.TWILIO_PHONE_NUMBER || '',
+    verifyServiceSid: process.env.TWILIO_VERIFY_SERVICE_SID || '',
+  },
 };

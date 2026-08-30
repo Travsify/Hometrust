@@ -3,11 +3,159 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../../utils/prisma';
 import { config } from '../../config';
 import { AuditService } from '../audit/audit.service';
+import { ResendService } from '../notifications/resend.service';
+import { TwilioService } from '../notifications/twilio.service';
 
 export class AuthService {
+  // Generate random 6-digit OTP
+  private static generateOtpCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  static async sendEmailOtp(email: string, purpose: string = 'REGISTRATION_EMAIL') {
+    const cleanEmail = email.toLowerCase().trim();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      throw new Error('Valid email address is required');
+    }
+
+    if (purpose === 'REGISTRATION_EMAIL') {
+      const existing = await prisma.user.findUnique({ where: { email: cleanEmail } });
+      if (existing) {
+        throw new Error('An account with this email address already exists');
+      }
+    }
+
+    const code = this.generateOtpCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+    // Invalidate previous active OTPs for this identifier
+    await prisma.otpVerification.deleteMany({
+      where: { identifier: cleanEmail, purpose },
+    });
+
+    await prisma.otpVerification.create({
+      data: {
+        identifier: cleanEmail,
+        code,
+        channel: 'EMAIL_RESEND',
+        purpose,
+        expiresAt,
+      },
+    });
+
+    await ResendService.sendOtpEmail(cleanEmail, code, purpose);
+
+    return {
+      message: 'Verification code sent to your email address.',
+      expiresInSeconds: 600,
+    };
+  }
+
+  static async verifyEmailOtp(email: string, code: string, purpose: string = 'REGISTRATION_EMAIL') {
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanCode = code.trim();
+
+    const otpRecord = await prisma.otpVerification.findFirst({
+      where: {
+        identifier: cleanEmail,
+        purpose,
+        isVerified: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!otpRecord || otpRecord.code !== cleanCode) {
+      throw new Error('Invalid or expired verification code');
+    }
+
+    const verificationToken = jwt.sign(
+      { identifier: cleanEmail, purpose, type: 'OTP_VERIFIED' },
+      config.jwtSecret,
+      { expiresIn: '30m' }
+    );
+
+    await prisma.otpVerification.update({
+      where: { id: otpRecord.id },
+      data: { isVerified: true, verificationToken },
+    });
+
+    return {
+      message: 'Email address verified successfully.',
+      verificationToken,
+    };
+  }
+
+  static async sendPhoneOtp(phone: string, purpose: string = 'REGISTRATION_PHONE') {
+    const cleanPhone = phone.trim();
+    if (!cleanPhone || cleanPhone.length < 10) {
+      throw new Error('Valid phone number is required');
+    }
+
+    const code = this.generateOtpCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+    await prisma.otpVerification.deleteMany({
+      where: { identifier: cleanPhone, purpose },
+    });
+
+    await prisma.otpVerification.create({
+      data: {
+        identifier: cleanPhone,
+        code,
+        channel: 'SMS_TWILIO',
+        purpose,
+        expiresAt,
+      },
+    });
+
+    await TwilioService.sendOtpSms(cleanPhone, code, purpose);
+
+    return {
+      message: 'Verification code sent via SMS to your phone number.',
+      expiresInSeconds: 600,
+    };
+  }
+
+  static async verifyPhoneOtp(phone: string, code: string, purpose: string = 'REGISTRATION_PHONE') {
+    const cleanPhone = phone.trim();
+    const cleanCode = code.trim();
+
+    const otpRecord = await prisma.otpVerification.findFirst({
+      where: {
+        identifier: cleanPhone,
+        purpose,
+        isVerified: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!otpRecord || otpRecord.code !== cleanCode) {
+      throw new Error('Invalid or expired SMS verification code');
+    }
+
+    const verificationToken = jwt.sign(
+      { identifier: cleanPhone, purpose, type: 'OTP_VERIFIED' },
+      config.jwtSecret,
+      { expiresIn: '30m' }
+    );
+
+    await prisma.otpVerification.update({
+      where: { id: otpRecord.id },
+      data: { isVerified: true, verificationToken },
+    });
+
+    return {
+      message: 'Phone number verified successfully.',
+      verificationToken,
+    };
+  }
+
   static async register(data: any) {
+    const cleanEmail = data.email.toLowerCase().trim();
     const existingUser = await prisma.user.findUnique({
-      where: { email: data.email.toLowerCase() },
+      where: { email: cleanEmail },
     });
 
     if (existingUser) {
@@ -18,11 +166,12 @@ export class AuthService {
 
     const user = await prisma.user.create({
       data: {
-        email: data.email.toLowerCase(),
+        email: cleanEmail,
         passwordHash,
         firstName: data.firstName,
         lastName: data.lastName,
         phone: data.phone,
+        isEmailVerified: true,
         role: data.role || 'BUYER',
         profile: {
           create: {},
@@ -77,8 +226,9 @@ export class AuthService {
   }
 
   static async login(data: { email: string; password: string }) {
+    const cleanEmail = data.email.toLowerCase().trim();
     const user = await prisma.user.findUnique({
-      where: { email: data.email.toLowerCase() },
+      where: { email: cleanEmail },
       include: {
         profile: true,
         developer: true,
@@ -98,12 +248,101 @@ export class AuthService {
       throw new Error('Account suspended. Please contact support.');
     }
 
+    // Generate Login 2FA OTP
+    const code = this.generateOtpCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+    await prisma.otpVerification.deleteMany({
+      where: { identifier: cleanEmail, purpose: 'LOGIN_2FA' },
+    });
+
+    await prisma.otpVerification.create({
+      data: {
+        identifier: cleanEmail,
+        code,
+        channel: 'EMAIL_RESEND',
+        purpose: 'LOGIN_2FA',
+        expiresAt,
+      },
+    });
+
+    // Dispatch via Resend Email
+    await ResendService.sendOtpEmail(cleanEmail, code, 'LOGIN_2FA');
+
+    // Also dispatch via Twilio SMS if phone is present
+    if (user.phone) {
+      await TwilioService.sendOtpSms(user.phone, code, 'LOGIN_2FA');
+    }
+
+    const twoFactorToken = jwt.sign(
+      { userId: user.id, email: user.email, type: '2FA_CHALLENGE' },
+      config.jwtSecret,
+      { expiresIn: '10m' }
+    );
+
+    // Mask destination email (e.g. in***@travsify.com)
+    const emailParts = user.email.split('@');
+    const maskedName = emailParts[0].length > 2 
+      ? emailParts[0].substring(0, 2) + '***' 
+      : emailParts[0] + '***';
+    const maskedDestination = `${maskedName}@${emailParts[1]}`;
+
+    return {
+      requires2FA: true,
+      twoFactorToken,
+      email: user.email,
+      maskedDestination,
+      message: `Security code dispatched to ${maskedDestination}`,
+    };
+  }
+
+  static async verifyLogin2FA(data: { twoFactorToken: string; code: string }) {
+    let decoded: any;
+    try {
+      decoded = jwt.verify(data.twoFactorToken, config.jwtSecret);
+      if (decoded.type !== '2FA_CHALLENGE') {
+        throw new Error('Invalid 2FA challenge session');
+      }
+    } catch (e: any) {
+      throw new Error('Invalid or expired 2FA session. Please log in again.');
+    }
+
+    const otpRecord = await prisma.otpVerification.findFirst({
+      where: {
+        identifier: decoded.email.toLowerCase(),
+        purpose: 'LOGIN_2FA',
+        isVerified: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!otpRecord || otpRecord.code !== data.code.trim()) {
+      throw new Error('Invalid or expired 2FA security code');
+    }
+
+    // Mark OTP verified
+    await prisma.otpVerification.update({
+      where: { id: otpRecord.id },
+      data: { isVerified: true },
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      include: {
+        profile: true,
+        developer: true,
+      },
+    });
+
+    if (!user) throw new Error('User not found');
+
     const token = this.generateToken(user);
 
     await AuditService.log({
       adminId: user.id,
       adminEmail: user.email,
-      action: 'USER_LOGIN',
+      action: 'USER_LOGIN_2FA_SUCCESS',
       entityType: 'AUTH',
       entityId: user.id,
       details: {
