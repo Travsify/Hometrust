@@ -1,5 +1,6 @@
 import { prisma } from '../../utils/prisma';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface CreatePurchaseParams {
   userId: string;
@@ -106,6 +107,18 @@ export class PurchasesService {
         },
       });
     }
+
+    await NotificationsService.createAndDispatch({
+      userId: params.userId,
+      title: '🏡 Property Purchase Plan Initiated',
+      message: `Your purchase plan for ${purchase.property?.title || purchase.projectUnit?.name || 'Property'} (${purchase.purchaseCode}) has been initiated. Total: ₦${totalPrice.toLocaleString()}.`,
+      type: 'PAYMENT',
+      actionDetails: [
+        { label: 'Purchase Code', value: purchase.purchaseCode },
+        { label: 'Total Agreed Price', value: `₦${totalPrice.toLocaleString()}` },
+        { label: 'Initial Deposit Required', value: `₦${initialDeposit.toLocaleString()}` },
+      ],
+    });
 
     return purchase;
   }

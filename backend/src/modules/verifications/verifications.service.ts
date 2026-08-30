@@ -2,6 +2,7 @@ import { prisma } from '../../utils/prisma';
 import { AiDocumentAnalyzer } from './ai_analyzer.service';
 import { PdfReportService } from './pdf_report.service';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface CreateVerificationRequestParams {
   userId: string;
@@ -250,14 +251,17 @@ export class VerificationsService {
       },
     });
 
-    await prisma.notification.create({
-      data: {
-        userId: request.userId,
-        title: `Verification Update: ${request.propertyName}`,
-        message: `Your verification request (${request.verificationCode}) status has been updated to ${data.status}.`,
-        type: 'VERIFICATION',
-        linkUrl: reportUrl || undefined,
-      },
+    await NotificationsService.createAndDispatch({
+      userId: request.userId,
+      title: `Verification Update: ${request.propertyName}`,
+      message: `Your verification request (${request.verificationCode}) status has been updated to ${data.status}.`,
+      type: 'VERIFICATION',
+      linkUrl: reportUrl || undefined,
+      actionDetails: [
+        { label: 'Verification Code', value: request.verificationCode },
+        { label: 'Status', value: data.status },
+        { label: 'Property', value: request.propertyName },
+      ],
     });
 
     return updated;

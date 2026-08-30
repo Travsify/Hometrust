@@ -21,6 +21,7 @@ class SocketService {
   final _callEndedStreamController = StreamController<Map<String, dynamic>>.broadcast();
   final _typingStreamController = StreamController<Map<String, dynamic>>.broadcast();
   final _messagesReadStreamController = StreamController<Map<String, dynamic>>.broadcast();
+  final _notificationPushStreamController = StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<Map<String, dynamic>> get onMessageReceived => _messageStreamController.stream;
   Stream<Map<String, dynamic>> get onIncomingCall => _incomingCallStreamController.stream;
@@ -30,6 +31,7 @@ class SocketService {
   Stream<Map<String, dynamic>> get onCallEnded => _callEndedStreamController.stream;
   Stream<Map<String, dynamic>> get onUserTyping => _typingStreamController.stream;
   Stream<Map<String, dynamic>> get onMessagesRead => _messagesReadStreamController.stream;
+  Stream<Map<String, dynamic>> get onNotificationPush => _notificationPushStreamController.stream;
 
   SocketService._();
 
@@ -105,6 +107,13 @@ class SocketService {
       _socket!.on('messages_read', (data) {
         if (data is Map) {
           _messagesReadStreamController.add(Map<String, dynamic>.from(data));
+        }
+      });
+
+      _socket!.on('notification_push', (data) {
+        if (data is Map) {
+          if (kDebugMode) print('🔔 [PUSH] In-app notification received: $data');
+          _notificationPushStreamController.add(Map<String, dynamic>.from(data));
         }
       });
 

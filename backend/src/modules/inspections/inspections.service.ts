@@ -1,5 +1,6 @@
 import { prisma } from '../../utils/prisma';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface CreateInspectionParams {
   userId: string;
@@ -55,22 +56,30 @@ export class InspectionsService {
       },
     });
 
-    // Create In-App Notification
-    await prisma.notification.create({
-      data: {
-        userId: params.userId,
-        title: type === 'COREN_ENGINEER' 
-          ? '🏛️ COREN Engineer Inspection Booked'
-          : type === 'GEOFENCED_VIDEO'
-            ? '📹 Geofenced Video Inspection Requested'
-            : '🎟️ Site Inspection Pass Generated',
-        message: type === 'COREN_ENGINEER'
-          ? `An accredited COREN structural engineer has been scheduled for inspection on ${params.preferredDate} (${params.preferredTime}).`
-          : type === 'GEOFENCED_VIDEO'
-            ? `Your request for a live geofenced site walkthrough video has been dispatched to the project developer.`
-            : `Your site access pass (${gatePassCode}) is ready for ${params.attendeeName || params.representativeName} on ${params.preferredDate}.`,
-        type: 'INSPECTION',
-      },
+    // Dispatch Push & Activity Audit Email with Device + IP
+    const title = type === 'COREN_ENGINEER' 
+      ? '🏛️ COREN Engineer Inspection Booked'
+      : type === 'GEOFENCED_VIDEO'
+        ? '📹 Geofenced Video Inspection Requested'
+        : '🎟️ Site Inspection Pass Generated';
+
+    const message = type === 'COREN_ENGINEER'
+      ? `An accredited COREN structural engineer has been scheduled for inspection on ${params.preferredDate} (${params.preferredTime}).`
+      : type === 'GEOFENCED_VIDEO'
+        ? `Your request for a live geofenced site walkthrough video has been dispatched to the project developer.`
+        : `Your site access pass (${gatePassCode}) is ready for ${params.attendeeName || params.representativeName} on ${params.preferredDate}.`;
+
+    await NotificationsService.createAndDispatch({
+      userId: params.userId,
+      title,
+      message,
+      type: 'INSPECTION',
+      actionDetails: [
+        { label: 'Inspection Type', value: type },
+        { label: 'Date & Time', value: `${params.preferredDate} (${params.preferredTime})` },
+        { label: 'Gate Pass Code', value: gatePassCode },
+        { label: 'Attendee', value: params.attendeeName || params.representativeName || 'Buyer' },
+      ],
     });
 
     return inspection;

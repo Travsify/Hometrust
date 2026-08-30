@@ -37,6 +37,32 @@ void main() async {
     }
   });
 
+  // Global In-App Push Notification Toast Banner
+  SocketService.instance.onNotificationPush.listen((data) {
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      final title = data['title'] ?? 'Notification';
+      final msg = data['message'] ?? '';
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Colors.white)),
+              if (msg.isNotEmpty)
+                Text(msg, style: const TextStyle(fontSize: 11, color: Color(0xFFCBD5E1)), maxLines: 2, overflow: TextOverflow.ellipsis),
+            ],
+          ),
+          backgroundColor: const Color(0xFF0F172A),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  });
+
   runApp(const HometrustApp());
 }
 

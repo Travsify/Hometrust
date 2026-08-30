@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { sendSuccess, sendError } from '../../utils/response';
 import { AuthRequest } from '../../middlewares/auth.middleware';
+import { extractClientContext } from '../../utils/client-context';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export class AuthController {
   static async sendEmailOtp(req: Request, res: Response): Promise<void> {
@@ -48,6 +50,23 @@ export class AuthController {
     try {
       const { twoFactorToken, code } = req.body;
       const result = await AuthService.verifyLogin2FA({ twoFactorToken, code });
+
+      const client = extractClientContext(req);
+      if (result.user?.email) {
+        NotificationsService.dispatchActivityEmail({
+          email: result.user.email,
+          userName: `${result.user.firstName || ''} ${result.user.lastName || ''}`.trim() || 'User',
+          activityTitle: 'Successful 2FA Sign-In',
+          activitySummary: 'A new session was authenticated for your Hometrust account via 2FA.',
+          deviceName: client.deviceName,
+          ipAddress: client.ipAddress,
+          actionDetails: [
+            { label: 'Authentication Type', value: 'Two-Factor OTP' },
+            { label: 'Role', value: result.user.role || 'BUYER' },
+          ],
+        }).catch(() => {});
+      }
+
       sendSuccess(res, result, 'Two-factor login successful');
     } catch (error: any) {
       sendError(res, error.message, 401);
@@ -57,6 +76,23 @@ export class AuthController {
   static async register(req: Request, res: Response): Promise<void> {
     try {
       const result = await AuthService.register(req.body);
+
+      const client = extractClientContext(req);
+      if (result.user?.email) {
+        NotificationsService.dispatchActivityEmail({
+          email: result.user.email,
+          userName: `${result.user.firstName || ''} ${result.user.lastName || ''}`.trim() || 'User',
+          activityTitle: 'New Account Registration',
+          activitySummary: 'Your new Hometrust account was registered and activated successfully.',
+          deviceName: client.deviceName,
+          ipAddress: client.ipAddress,
+          actionDetails: [
+            { label: 'Role', value: result.user.role || 'BUYER' },
+            { label: 'Email Verified', value: 'Yes ✅' },
+          ],
+        }).catch(() => {});
+      }
+
       sendSuccess(res, result, 'Account registered successfully', 201);
     } catch (error: any) {
       sendError(res, error.message, 400);
@@ -66,6 +102,23 @@ export class AuthController {
   static async login(req: Request, res: Response): Promise<void> {
     try {
       const result = await AuthService.login(req.body);
+
+      const client = extractClientContext(req);
+      if (result.user?.email && !result.requireTwoFactor) {
+        NotificationsService.dispatchActivityEmail({
+          email: result.user.email,
+          userName: `${result.user.firstName || ''} ${result.user.lastName || ''}`.trim() || 'User',
+          activityTitle: 'Successful Sign-In Detected',
+          activitySummary: 'A new sign-in to your Hometrust account was recorded.',
+          deviceName: client.deviceName,
+          ipAddress: client.ipAddress,
+          actionDetails: [
+            { label: 'Session Type', value: 'Standard Authentication' },
+            { label: 'Role', value: result.user.role || 'BUYER' },
+          ],
+        }).catch(() => {});
+      }
+
       sendSuccess(res, result, 'Login successful');
     } catch (error: any) {
       sendError(res, error.message, 401);
@@ -94,6 +147,20 @@ export class AuthController {
         return;
       }
       const result = await AuthService.resetPassword(token, newPassword);
+
+      const client = extractClientContext(req);
+      if (result.email) {
+        NotificationsService.dispatchActivityEmail({
+          email: result.email,
+          userName: 'Hometrust User',
+          activityTitle: 'Password Reset Successful',
+          activitySummary: 'Your Hometrust account password was updated successfully.',
+          deviceName: client.deviceName,
+          ipAddress: client.ipAddress,
+          actionDetails: [{ label: 'Action', value: 'Password Reset via Reset Link' }],
+        }).catch(() => {});
+      }
+
       sendSuccess(res, result, result.message);
     } catch (error: any) {
       sendError(res, error.message, 400);
@@ -120,6 +187,23 @@ export class AuthController {
         return;
       }
       const result = await AuthService.upgradeToDeveloper(req.user.id, req.body);
+
+      const client = extractClientContext(req);
+      if (req.user.email) {
+        NotificationsService.dispatchActivityEmail({
+          email: req.user.email,
+          userName: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'Developer',
+          activityTitle: 'Developer Portal Upgrade',
+          activitySummary: `Your account was upgraded to Developer profile for ${req.body.companyName || 'Corporate Developments'}.`,
+          deviceName: client.deviceName,
+          ipAddress: client.ipAddress,
+          actionDetails: [
+            { label: 'Company Name', value: req.body.companyName || 'Corporate' },
+            { label: 'CAC Registration', value: req.body.cacNumber || 'Submitted' },
+          ],
+        }).catch(() => {});
+      }
+
       sendSuccess(res, result, 'Account upgraded to Developer successfully');
     } catch (error: any) {
       sendError(res, error.message, 400);
@@ -138,10 +222,23 @@ export class AuthController {
         return;
       }
       const result = await AuthService.changePassword(req.user.id, currentPassword, newPassword);
+
+      const client = extractClientContext(req);
+      if (req.user.email) {
+        NotificationsService.dispatchActivityEmail({
+          email: req.user.email,
+          userName: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'User',
+          activityTitle: 'Security Alert: Password Changed',
+          activitySummary: 'Your account password was updated from the profile settings.',
+          deviceName: client.deviceName,
+          ipAddress: client.ipAddress,
+          actionDetails: [{ label: 'Status', value: 'Password Updated' }],
+        }).catch(() => {});
+      }
+
       sendSuccess(res, result, 'Password changed successfully');
     } catch (error: any) {
       sendError(res, error.message, 400);
     }
   }
 }
-

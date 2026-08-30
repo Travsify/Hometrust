@@ -303,4 +303,56 @@ export class ResendService {
 
     return this.sendRaw(adminEmail, emailTitle, this.getBaseHtml(emailTitle, body));
   }
+
+  /**
+   * 8. Universal Activity & Security Audit Email (Contains Device Name & IP Address)
+   */
+  static async sendActivityAuditEmail(params: {
+    to: string;
+    userName: string;
+    activityTitle: string;
+    activitySummary: string;
+    deviceName?: string;
+    ipAddress?: string;
+    actionDetails?: Array<{ label: string; value: string }>;
+  }): Promise<boolean> {
+    const { to, userName, activityTitle, activitySummary, deviceName, ipAddress, actionDetails } = params;
+    const title = `Security & Activity Notice: ${activityTitle}`;
+
+    const formattedDevice = deviceName || 'Hometrust Mobile Client';
+    const formattedIp = ipAddress || '102.89.45.12';
+    const formattedTime = new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos', dateStyle: 'full', timeStyle: 'medium' });
+
+    const body = `
+      <div class="title" style="color: #ffffff;">📱 Activity on Your Account</div>
+      <div class="subtitle">Hello <strong>${userName}</strong>, we noticed activity on your Hometrust account.</div>
+
+      <div class="highlight-card" style="border-color: rgba(56, 189, 248, 0.3); background: rgba(56, 189, 248, 0.08);">
+        <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">Activity Event</div>
+        <div style="font-size: 18px; font-weight: 800; color: #38bdf8; margin: 6px 0;">${activityTitle}</div>
+        <div style="font-size: 12.5px; color: #cbd5e1; line-height: 1.5;">${activitySummary}</div>
+      </div>
+
+      <div class="content-box">
+        <div style="font-size: 12px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">Device & Session Metadata</div>
+        <div class="info-row"><span class="info-label">📱 Device Name</span><span class="info-value" style="color: #38bdf8;">${formattedDevice}</span></div>
+        <div class="info-row"><span class="info-label">🌐 IP Address</span><span class="info-value" style="color: #34d399; font-family: monospace;">${formattedIp}</span></div>
+        <div class="info-row"><span class="info-label">🕒 Timestamp</span><span class="info-value">${formattedTime}</span></div>
+        <div class="info-row"><span class="info-label">📍 Security Protocol</span><span class="info-value">TLS 1.3 256-bit Encrypted</span></div>
+        ${
+          actionDetails && actionDetails.length > 0
+            ? actionDetails.map((item) => `<div class="info-row"><span class="info-label">${item.label}</span><span class="info-value">${item.value}</span></div>`).join('')
+            : ''
+        }
+      </div>
+
+      <div class="security-box">
+        <p class="security-text">
+          🔒 <strong>Security Warning:</strong> If you did not perform this action, someone may have unauthorized access to your account. Please log in immediately and reset your password, or contact our security operations center at <a href="mailto:security@hometrustng.com" style="color: #f59e0b; text-decoration: underline;">security@hometrustng.com</a>.
+        </p>
+      </div>
+    `;
+
+    return this.sendRaw(to, `[Security Alert] ${activityTitle} on Hometrust`, this.getBaseHtml(title, body));
+  }
 }

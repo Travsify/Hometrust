@@ -1,5 +1,6 @@
 import { prisma } from '../../utils/prisma';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface CreateLegalRequestParams {
   userId: string;
@@ -186,13 +187,17 @@ export class LegalService {
       },
     });
 
-    await prisma.notification.create({
-      data: {
-        userId,
-        title: `Legal Fee Paid: ${request.title}`,
-        message: `Your payment of ₦${requiredAmount.toLocaleString()} (3% drafting fee) for ${request.requestCode} was successful. Our legal team is now drafting your document.`,
-        type: 'LEGAL',
-      },
+    await NotificationsService.createAndDispatch({
+      userId,
+      title: `Legal Fee Paid: ${request.title}`,
+      message: `Your payment of ₦${requiredAmount.toLocaleString()} (3% drafting fee) for ${request.requestCode} was successful. Our legal team is now drafting your document.`,
+      type: 'LEGAL',
+      actionDetails: [
+        { label: 'Request Code', value: request.requestCode },
+        { label: 'Document Title', value: request.title },
+        { label: 'Fee Amount Paid', value: `₦${requiredAmount.toLocaleString()}` },
+        { label: 'Payment Reference', value: payment.paymentReference || 'Wallet' },
+      ],
     });
 
     return {

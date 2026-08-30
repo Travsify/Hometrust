@@ -18,6 +18,8 @@ class ApiClient {
     final token = await getToken();
     final headers = <String, String>{
       'Accept': 'application/json',
+      'x-client-platform': 'Flutter Mobile App',
+      'x-device-name': 'Hometrust Mobile App',
     };
     if (includeContentType) {
       headers['Content-Type'] = 'application/json';
