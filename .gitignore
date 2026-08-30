@@ -1,7 +1,9 @@
 # Node.js dependencies & builds
 node_modules/
 dist/
-build/
+/build/
+mobile_app/build/
+!backend/src/modules/build/
 .npm
 *.log
 
