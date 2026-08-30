@@ -2,6 +2,7 @@ import { prisma } from '../../utils/prisma';
 import { MapleradClient } from './maplerad.client';
 import { PremblyClient } from './prembly.client';
 import { AuditService } from '../audit/audit.service';
+import { ResendService } from '../notifications/resend.service';
 
 export class BankingService {
   /**
@@ -104,6 +105,19 @@ export class BankingService {
       },
     });
 
+    // Send KYC Approved Email & Virtual Account Email
+    ResendService.sendKycApprovedEmail(user.email, `${user.firstName} ${user.lastName}`, 'INDIVIDUAL_KYC', {
+      idNumber: data.nin || data.bvn,
+      accountNumber: account.accountNumber,
+      bankName: account.bankName,
+    }).catch(console.warn);
+
+    ResendService.sendVirtualAccountIssuedEmail(user.email, `${user.firstName} ${user.lastName}`, {
+      accountNumber: account.accountNumber,
+      bankName: account.bankName,
+      accountName: account.accountName,
+    }).catch(console.warn);
+
     return {
       kycStatus: kyc.status,
       virtualAccount: account,
@@ -198,6 +212,20 @@ export class BankingService {
         provider: 'MAPLERAD',
       },
     });
+
+    // Send Developer KYB Approved Email & Virtual Account Email
+    ResendService.sendKycApprovedEmail(developer.email, developer.companyName, 'CORPORATE_KYB', {
+      companyName: data.companyName,
+      cacNumber: data.cacNumber,
+      accountNumber: account.accountNumber,
+      bankName: account.bankName,
+    }).catch(console.warn);
+
+    ResendService.sendVirtualAccountIssuedEmail(developer.email, developer.companyName, {
+      accountNumber: account.accountNumber,
+      bankName: account.bankName,
+      accountName: account.accountName,
+    }).catch(console.warn);
 
     return {
       kybStatus: kyb.status,
@@ -457,6 +485,17 @@ export class BankingService {
       },
     });
 
+    // Send Withdrawal Dispatched Email
+    const devEmail = account.developer?.email || account.user?.email || '';
+    const devName = account.developer?.companyName || `${account.user?.firstName || ''} ${account.user?.lastName || ''}`;
+    if (devEmail) {
+      ResendService.sendWithdrawalDispatchedEmail(devEmail, devName, netAmount, {
+        bankName: params.bankName,
+        accountNumber: params.accountNumber,
+        reference: ref,
+      }).catch(console.warn);
+    }
+
     return withdrawal;
   }
 
@@ -503,7 +542,7 @@ export class BankingService {
 
       if (account) {
         // 1. Credit virtual account balance
-        await prisma.virtualAccount.update({
+        const updatedVa = await prisma.virtualAccount.update({
           where: { id: account.id },
           data: { balance: { increment: amount } },
         });
@@ -553,9 +592,22 @@ export class BankingService {
           }
         }
 
-        // 3. Audit Log
+        // 3. Send Payment Received Email to User
+        const recipientEmail = account.user?.email || account.developer?.email;
+        const recipientName = account.user ? `${account.user.firstName} ${account.user.lastName}` : (account.developer?.companyName || 'Valued Partner');
+        if (recipientEmail) {
+          ResendService.sendPaymentReceivedEmail(
+            recipientEmail,
+            recipientName,
+            amount,
+            updatedVa.balance,
+            reference
+          ).catch(console.warn);
+        }
+
+        // 4. Audit Log
         await AuditService.log({
-          adminEmail: account.user?.email || account.developer?.email || 'system@hometrustng.com',
+          adminEmail: recipientEmail || 'system@hometrustng.com',
           action: 'PAYMENT_AUTO_CAPTURED',
           entityType: 'VIRTUAL_ACCOUNT',
           entityId: account.id,
@@ -633,6 +685,7 @@ export class BankingService {
     return prisma.kycVerification.findMany({
       include: {
         user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, role: true } },
+        developer: { select: { id: true, companyName: true, cacNumber: true, email: true, phone: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

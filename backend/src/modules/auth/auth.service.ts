@@ -210,6 +210,11 @@ export class AuthService {
       details: { role: user.role, name: `${user.firstName} ${user.lastName}`, phone: user.phone },
     });
 
+    // Send Welcome Email to User & Alert Admin
+    ResendService.sendWelcomeEmail(user.email, `${user.firstName} ${user.lastName}`, user.role).catch(err => {
+      console.warn('[WELCOME EMAIL WARNING]', err.message);
+    });
+
     const token = this.generateToken(user);
 
     return {

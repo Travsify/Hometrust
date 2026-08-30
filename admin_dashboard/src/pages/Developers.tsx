@@ -22,7 +22,8 @@ export const DevelopersPage: React.FC = () => {
     setLoading(true);
     try {
       const data = await getDevelopers();
-      setDevelopers(data.developers || []);
+      const devs = Array.isArray(data) ? data : (data?.developers || []);
+      setDevelopers(devs);
     } catch (err) {
       console.error(err);
     } finally {
@@ -52,8 +53,9 @@ export const DevelopersPage: React.FC = () => {
   const filteredDevs = developers.filter(
     (d) =>
       !searchTerm ||
-      d.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      d.cacNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      (d.companyName && d.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (d.cacNumber && d.cacNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (d.email && d.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (

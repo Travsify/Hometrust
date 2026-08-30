@@ -51,6 +51,9 @@ export const BankingPage: React.FC = () => {
       (k.user?.firstName && k.user.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (k.user?.lastName && k.user.lastName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (k.user?.email && k.user.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (k.developer?.companyName && k.developer.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (k.companyName && k.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (k.cacNumber && k.cacNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (k.nin && k.nin.includes(searchTerm)) ||
       (k.bvn && k.bvn.includes(searchTerm))
   );
@@ -88,11 +91,11 @@ export const BankingPage: React.FC = () => {
 
   const handleExportKyc = () => {
     const formatted = kycRecords.map((k) => ({
-      User: `${k.user?.firstName || ''} ${k.user?.lastName || ''}`,
-      Email: k.user?.email || 'N/A',
-      Role: k.user?.role || 'BUYER',
+      EntityName: k.developer?.companyName || (k.user ? `${k.user.firstName} ${k.user.lastName}` : (k.companyName || 'N/A')),
+      Email: k.developer?.email || k.user?.email || 'N/A',
+      Role: k.kycType === 'CORPORATE_KYB' ? 'DEVELOPER' : (k.user?.role || 'BUYER'),
       KYC_Type: k.kycType,
-      NIN: k.nin || 'N/A',
+      CAC_or_NIN: k.cacNumber || k.nin || 'N/A',
       BVN: k.bvn || 'N/A',
       Status: k.status,
       VerifiedAt: k.verifiedAt ? new Date(k.verifiedAt).toLocaleString() : 'N/A',
@@ -305,36 +308,42 @@ export const BankingPage: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredKyc.map((k) => (
-                    <tr key={k.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-white text-sm">
-                          {k.user?.firstName} {k.user?.lastName}
-                        </div>
-                        <div className="text-[11px] text-slate-400">{k.user?.email} • {k.user?.phone || 'No Phone'}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
-                          {k.kycType}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 font-mono font-bold text-slate-200">
-                        {k.nin ? `${k.nin.substring(0, 3)}•••••${k.nin.substring(k.nin.length - 3)}` : 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 font-mono font-bold text-slate-200">
-                        {k.bvn ? `${k.bvn.substring(0, 3)}•••••${k.bvn.substring(k.bvn.length - 3)}` : 'N/A'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
-                          <ShieldCheck className="w-3 h-3" />
-                          {k.status} (Prembly Verified)
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-slate-400">
-                        {k.verifiedAt ? new Date(k.verifiedAt).toLocaleString() : new Date(k.createdAt).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))
+                  filteredKyc.map((k) => {
+                    const isCorporate = k.kycType === 'CORPORATE_KYB';
+                    const entityName = k.developer?.companyName || (k.user ? `${k.user.firstName} ${k.user.lastName}` : (k.companyName || 'Corporate Entity'));
+                    const email = k.developer?.email || k.user?.email || 'N/A';
+                    const phone = k.developer?.phone || k.user?.phone || 'N/A';
+                    return (
+                      <tr key={k.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-white text-sm">
+                            {entityName}
+                          </div>
+                          <div className="text-[11px] text-slate-400">{email} • {phone}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${isCorporate ? 'bg-amber-950 text-amber-300 border border-amber-800' : 'bg-slate-800 text-slate-300'}`}>
+                            {isCorporate ? '🏢 CORPORATE KYB' : '👤 INDIVIDUAL KYC'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 font-mono font-bold text-slate-200">
+                          {isCorporate ? (k.cacNumber || k.developer?.cacNumber || 'RC Verified') : (k.nin ? `${k.nin.substring(0, 3)}•••••${k.nin.substring(k.nin.length - 3)}` : 'N/A')}
+                        </td>
+                        <td className="px-6 py-4 font-mono font-bold text-slate-200">
+                          {isCorporate ? (k.tinNumber || 'TIN Verified') : (k.bvn ? `${k.bvn.substring(0, 3)}•••••${k.bvn.substring(k.bvn.length - 3)}` : 'N/A')}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
+                            <ShieldCheck className="w-3 h-3" />
+                            {k.status} (Prembly Verified)
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-slate-400">
+                          {k.verifiedAt ? new Date(k.verifiedAt).toLocaleString() : new Date(k.createdAt).toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
