@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'land_radar_screen.dart';
 import 'material_index_screen.dart';
 import 'legal_request_screen.dart';
@@ -132,6 +133,7 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(activeIndex: 3),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,

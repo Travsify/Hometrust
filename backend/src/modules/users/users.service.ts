@@ -6,6 +6,8 @@ export class UsersService {
       firstName,
       lastName,
       phone,
+      avatarUrl,
+      logoUrl,
       companyName,
       officeAddress,
       businessAddress,
@@ -25,9 +27,10 @@ export class UsersService {
     const user = await prisma.user.update({
       where: { id: userId },
       data: {
-        firstName,
-        lastName,
-        phone,
+        ...(firstName ? { firstName } : {}),
+        ...(lastName ? { lastName } : {}),
+        ...(phone ? { phone } : {}),
+        ...(avatarUrl ? { avatarUrl } : {}),
         profile: {
           upsert: {
             create: profileData,
@@ -52,6 +55,7 @@ export class UsersService {
           cacNumber: cacNumber || existingUser.developer.cacNumber,
           contactPerson: contactPerson || existingUser.developer.contactPerson,
           phone: phone || existingUser.developer.phone,
+          logoUrl: logoUrl || avatarUrl || existingUser.developer.logoUrl,
         },
       });
     }

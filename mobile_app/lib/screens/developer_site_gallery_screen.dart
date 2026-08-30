@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/persistent_bottom_nav.dart';
 
 class DeveloperSiteGalleryScreen extends StatefulWidget {
   const DeveloperSiteGalleryScreen({super.key});
@@ -45,6 +46,7 @@ class _DeveloperSiteGalleryScreenState extends State<DeveloperSiteGalleryScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,

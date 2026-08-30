@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
+import '../widgets/persistent_bottom_nav.dart';
 
 class DeveloperBoqValidatorScreen extends StatefulWidget {
   const DeveloperBoqValidatorScreen({super.key});
@@ -372,6 +373,7 @@ class _DeveloperBoqValidatorScreenState extends State<DeveloperBoqValidatorScree
     final inflatedCount = summary['inflatedItemsCount'] ?? 0;
 
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,

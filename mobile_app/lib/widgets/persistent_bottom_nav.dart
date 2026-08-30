@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
+import '../providers/auth_provider.dart';
 import '../screens/navigation_wrapper.dart';
 
 /// A persistent bottom navigation bar that can be added to any screen.
+/// Dynamically renders the correct developer vs buyer footer navigation items.
 /// When tapped, it navigates to the NavigationWrapper and switches to the
 /// selected tab index.
 class PersistentBottomNav extends StatelessWidget {
@@ -13,6 +16,9 @@ class PersistentBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isDeveloper = authProvider.isDeveloperMode;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -30,16 +36,27 @@ class PersistentBottomNav extends StatelessWidget {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(context, 0, Icons.home_rounded, Icons.home_outlined, 'Home'),
-              _buildNavItem(context, 1, Icons.explore_rounded, Icons.explore_outlined, 'Explore'),
-              _buildVerifyNavItem(context, 2),
-              _buildNavItem(context, 3, Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, 'Purchases'),
-              _buildNavItem(context, 4, Icons.person_rounded, Icons.person_outline_rounded, 'Profile'),
-            ],
-          ),
+          child: isDeveloper
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildNavItem(context, 0, Icons.dashboard_rounded, Icons.dashboard_outlined, 'Dashboard'),
+                    _buildNavItem(context, 1, Icons.apartment_rounded, Icons.apartment_outlined, 'Projects'),
+                    _buildNavItem(context, 2, Icons.people_alt_rounded, Icons.people_alt_outlined, 'Subscribers'),
+                    _buildNavItem(context, 3, Icons.handyman_rounded, Icons.handyman_outlined, 'Tools'),
+                    _buildNavItem(context, 4, Icons.business_rounded, Icons.business_outlined, 'Corporate'),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildNavItem(context, 0, Icons.home_rounded, Icons.home_outlined, 'Home'),
+                    _buildNavItem(context, 1, Icons.explore_rounded, Icons.explore_outlined, 'Explore'),
+                    _buildVerifyNavItem(context, 2),
+                    _buildNavItem(context, 3, Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, 'Purchases'),
+                    _buildNavItem(context, 4, Icons.person_rounded, Icons.person_outline_rounded, 'Profile'),
+                  ],
+                ),
         ),
       ),
     );

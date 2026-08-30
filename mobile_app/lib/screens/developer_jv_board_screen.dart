@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
+import '../widgets/persistent_bottom_nav.dart';
 
 class DeveloperJvBoardScreen extends StatefulWidget {
   const DeveloperJvBoardScreen({super.key});
@@ -120,6 +121,7 @@ class _DeveloperJvBoardScreenState extends State<DeveloperJvBoardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,

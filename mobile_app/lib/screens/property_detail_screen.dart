@@ -11,6 +11,7 @@ import 'chat_screen.dart';
 import 'kyc_screen.dart';
 import 'inspection_booking_modal.dart';
 import '../widgets/in_app_call_modal.dart';
+import '../widgets/persistent_bottom_nav.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final PropertyModel property;
@@ -38,6 +39,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     final prop = widget.property;
 
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [

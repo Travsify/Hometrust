@@ -73,4 +73,20 @@ class NotificationProvider with ChangeNotifier {
       notifyListeners();
     } catch (_) {}
   }
+
+  Future<void> dismissNotification(String id) async {
+    _notifications.removeWhere((n) => n.id == id);
+    notifyListeners();
+    try {
+      await ApiClient.delete('/notifications/$id');
+    } catch (_) {}
+  }
+
+  Future<void> clearAll() async {
+    _notifications.clear();
+    notifyListeners();
+    try {
+      await ApiClient.delete('/notifications/clear-all');
+    } catch (_) {}
+  }
 }

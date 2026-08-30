@@ -124,4 +124,16 @@ export class NotificationsService {
       data: { isRead: true },
     });
   }
+
+  static async deleteNotification(id: string, userId: string) {
+    return prisma.notification.deleteMany({
+      where: { id, userId },
+    });
+  }
+
+  static async clearAllNotifications(userId: string) {
+    return prisma.notification.deleteMany({
+      where: { userId },
+    });
+  }
 }

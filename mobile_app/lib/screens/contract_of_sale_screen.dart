@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
+import '../widgets/persistent_bottom_nav.dart';
 
 class ContractOfSaleScreen extends StatefulWidget {
   final String purchaseId;
@@ -42,10 +43,10 @@ class _ContractOfSaleScreenState extends State<ContractOfSaleScreen> {
     });
 
     try {
-      final data = await ApiClient.get('/purchases/${widget.purchaseId}/contract-of-sale');
+      final res = await ApiClient.get('/purchases/${widget.purchaseId}/contract');
       if (mounted) {
         setState(() {
-          _contractData = data;
+          _contractData = res;
           _isLoading = false;
         });
       }
@@ -62,7 +63,7 @@ class _ContractOfSaleScreenState extends State<ContractOfSaleScreen> {
   Future<void> _signContract() async {
     if (_signatureCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please type your full legal name as your electronic signature')),
+        const SnackBar(content: Text('Please type your legal full name to sign.')),
       );
       return;
     }
@@ -70,30 +71,32 @@ class _ContractOfSaleScreenState extends State<ContractOfSaleScreen> {
     setState(() => _isSigning = true);
 
     try {
-      await ApiClient.post('/purchases/${widget.purchaseId}/sign-contract', {
-        'signatureText': _signatureCtrl.text.trim(),
+      final res = await ApiClient.post('/purchases/${widget.purchaseId}/sign-contract', {
+        'legalFullName': _signatureCtrl.text.trim(),
       });
 
       if (mounted) {
+        setState(() {
+          _isSigning = false;
+          _contractData = res['contract'];
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Tri-Partite Contract of Sale digitally executed and sealed!'),
-            backgroundColor: Color(0xFF059669),
+            content: Text('🎉 Contract successfully signed and verified with cryptographic timestamp!'),
+            backgroundColor: AppColors.emeraldText,
           ),
         );
-        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _isSigning = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: const Color(0xFFDC2626),
+            backgroundColor: AppColors.roseText,
           ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isSigning = false);
     }
   }
 
@@ -106,6 +109,7 @@ class _ContractOfSaleScreenState extends State<ContractOfSaleScreen> {
     final clauses = (contract?['clauses'] as List?) ?? [];
 
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,

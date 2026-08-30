@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/network/api_client.dart';
 import '../models/project_model.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'create_project_screen.dart';
 import 'developer_milestone_submission_modal.dart';
 import 'project_detail_screen.dart';
@@ -61,6 +62,7 @@ class _DeveloperProjectsScreenState extends State<DeveloperProjectsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(activeIndex: 1),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,

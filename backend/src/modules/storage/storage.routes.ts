@@ -45,20 +45,21 @@ const upload = multer({
 const router = Router();
 
 // Upload endpoint
-router.post('/upload', authenticate as any, upload.single('file'), (req: Request, res: Response): void => {
-  if (!req.file) {
+router.post('/upload', authenticate as any, upload.any(), (req: Request, res: Response): void => {
+  const file = req.file || (req.files && Array.isArray(req.files) && req.files.length > 0 ? req.files[0] : null);
+  if (!file) {
     sendError(res, 'No file uploaded', 400);
     return;
   }
 
-  const fileUrl = `${config.storage.baseUrl}/files/${req.file.filename}`;
+  const fileUrl = `${config.storage.baseUrl}/files/${file.filename}`;
 
   sendSuccess(res, {
-    fileName: req.file.originalname,
-    storedName: req.file.filename,
+    fileName: file.originalname,
+    storedName: file.filename,
     fileUrl,
-    fileSize: req.file.size,
-    mimeType: req.file.mimetype,
+    fileSize: file.size,
+    mimeType: file.mimetype,
   }, 'File uploaded securely');
 });
 

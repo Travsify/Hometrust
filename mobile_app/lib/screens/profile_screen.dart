@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -26,11 +28,346 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _virtualAccount;
   bool _loadingAccount = false;
   bool _hideBalance = false;
+  bool _isUploadingAvatar = false;
 
   @override
   void initState() {
     super.initState();
     _fetchAccount();
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty || result.files.first.bytes == null) return;
+
+      final file = result.files.first;
+      setState(() => _isUploadingAvatar = true);
+
+      final uploadRes = await ApiClient.uploadFile(
+        '/storage/upload',
+        fileBytes: file.bytes!,
+        fileName: file.name,
+        fieldName: 'file',
+      );
+
+      final String? uploadedUrl = uploadRes['fileUrl'];
+      if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+        await ApiClient.put('/users/profile', {
+          'avatarUrl': uploadedUrl,
+        });
+
+        await auth.refreshUser();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🎉 Profile photo updated successfully!'),
+              backgroundColor: Color(0xFF059669),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload profile photo: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
+    }
+  }
+
+  void _showEditBuyerProfileModal(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final user = auth.user;
+    if (user == null) return;
+
+    final firstCtrl = TextEditingController(text: user.firstName);
+    final lastCtrl = TextEditingController(text: user.lastName);
+    final phoneCtrl = TextEditingController(text: user.phone ?? '');
+    final streetCtrl = TextEditingController();
+    final cityCtrl = TextEditingController();
+    final stateCtrl = TextEditingController();
+    final bioCtrl = TextEditingController();
+    String? currentAvatarUrl = user.avatarUrl;
+    bool isModalUploading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Edit Profile & Identity', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                        IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                      ],
+                    ),
+                    const Text('Update your personal details, residential address, contact number, and bio.', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                    const SizedBox(height: 16),
+
+                    // Avatar Picker
+                    Center(
+                      child: Column(
+                        children: [
+                          Stack(
+                            children: [
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF0F172A),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: ClipOval(
+                                  child: isModalUploading
+                                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF059669), strokeWidth: 2))
+                                      : (currentAvatarUrl != null && currentAvatarUrl!.isNotEmpty)
+                                          ? Image.network(currentAvatarUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Center(child: Text(user.firstName[0], style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800))))
+                                          : Center(child: Text(user.firstName[0], style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800))),
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: InkWell(
+                                  onTap: () async {
+                                    setModalState(() => isModalUploading = true);
+                                    try {
+                                      final res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'], withData: true);
+                                      if (res != null && res.files.isNotEmpty && res.files.first.bytes != null) {
+                                        final upload = await ApiClient.uploadFile('/storage/upload', fileBytes: res.files.first.bytes!, fileName: res.files.first.name, fieldName: 'file');
+                                        if (upload['fileUrl'] != null) {
+                                          setModalState(() => currentAvatarUrl = upload['fileUrl']);
+                                        }
+                                      }
+                                    } catch (_) {}
+                                    setModalState(() => isModalUploading = false);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF059669),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 14),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          TextButton.icon(
+                            onPressed: () async {
+                              setModalState(() => isModalUploading = true);
+                              try {
+                                final res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'], withData: true);
+                                if (res != null && res.files.isNotEmpty && res.files.first.bytes != null) {
+                                  final upload = await ApiClient.uploadFile('/storage/upload', fileBytes: res.files.first.bytes!, fileName: res.files.first.name, fieldName: 'file');
+                                  if (upload['fileUrl'] != null) {
+                                    setModalState(() => currentAvatarUrl = upload['fileUrl']);
+                                  }
+                                }
+                              } catch (_) {}
+                              setModalState(() => isModalUploading = false);
+                            },
+                            icon: const Icon(Icons.upload_file_rounded, size: 14, color: Color(0xFF059669)),
+                            label: const Text('Change Photo', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF059669))),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Name Fields
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: firstCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'First Name',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: lastCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Last Name',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Phone Number
+                    TextField(
+                      controller: phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Phone Number',
+                        hintText: '+234 801 234 5678',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Address Fields
+                    TextField(
+                      controller: streetCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Street Address',
+                        hintText: 'e.g. 15 Admiralty Way, Lekki',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: cityCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'City',
+                              hintText: 'e.g. Lekki / Ikeja',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: stateCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'State',
+                              hintText: 'e.g. Lagos',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Bio / Occupation
+                    TextField(
+                      controller: bioCtrl,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Personal Bio / Background',
+                        hintText: 'Tell property managers and verified partners a little about yourself...',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.all(14),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Save Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final street = streetCtrl.text.trim();
+                          final city = cityCtrl.text.trim();
+                          final state = stateCtrl.text.trim();
+                          final addressList = [if (street.isNotEmpty) street, if (city.isNotEmpty) city, if (state.isNotEmpty) state];
+
+                          try {
+                            await ApiClient.put('/users/profile', {
+                              'firstName': firstCtrl.text.trim(),
+                              'lastName': lastCtrl.text.trim(),
+                              'phone': phoneCtrl.text.trim(),
+                              if (addressList.isNotEmpty) 'address': addressList.join(', '),
+                              if (city.isNotEmpty) 'city': city,
+                              if (state.isNotEmpty) 'state': state,
+                              if (bioCtrl.text.trim().isNotEmpty) 'about': bioCtrl.text.trim(),
+                              if (currentAvatarUrl != null && currentAvatarUrl!.isNotEmpty) 'avatarUrl': currentAvatarUrl,
+                            });
+
+                            if (context.mounted) {
+                              await auth.refreshUser();
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('🎉 Profile updated successfully!'),
+                                  backgroundColor: Color(0xFF059669),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(e.toString().replaceAll('Exception: ', '')),
+                                  backgroundColor: const Color(0xFFDC2626),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0F172A),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Save Profile Changes', style: TextStyle(fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _fetchAccount() async {
@@ -609,94 +946,149 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppColors.cardBorder),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        auth.isAuthenticated ? user?.firstName[0] ?? 'U' : '?',
-                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          auth.isAuthenticated ? user?.fullName ?? 'Valued Customer' : 'Guest User',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          auth.isAuthenticated ? user?.email ?? '' : 'Sign in to access your vault',
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                        if (auth.isAuthenticated) ...[
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.emeraldBg,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  'ROLE: ${user?.role}',
-                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.emeraldText),
+                  Row(
+                    children: [
+                      InkWell(
+                        onTap: _pickAndUploadAvatar,
+                        borderRadius: BorderRadius.circular(30),
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: ClipOval(
+                                child: (auth.isAuthenticated && user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
+                                    ? Image.network(
+                                        user.avatarUrl!,
+                                        width: 60,
+                                        height: 60,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Center(
+                                          child: Text(
+                                            auth.isAuthenticated ? (user.firstName.isNotEmpty ? user.firstName[0] : 'U') : '?',
+                                            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
+                                          ),
+                                        ),
+                                      )
+                                    : Center(
+                                        child: Text(
+                                          auth.isAuthenticated ? (user != null && user.firstName.isNotEmpty ? user.firstName[0] : 'U') : '?',
+                                          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            if (auth.isAuthenticated)
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF059669),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 12),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () {
-                                  if (!auth.isAuthenticated) {
-                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-                                  } else if (user?.isVerified != true) {
-                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
-                                  }
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: (user?.isVerified == true)
-                                        ? const Color(0xFF10B981).withValues(alpha: 0.12)
-                                        : const Color(0xFFEF4444).withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
-                                      color: (user?.isVerified == true)
-                                          ? const Color(0xFF10B981)
-                                          : const Color(0xFFEF4444),
-                                      width: 0.8,
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              auth.isAuthenticated ? user?.fullName ?? 'Valued Customer' : 'Guest User',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              auth.isAuthenticated ? user?.email ?? '' : 'Sign in to access your vault',
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                            if (auth.isAuthenticated) ...[
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.emeraldBg,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'ROLE: ${user?.role}',
+                                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.emeraldText),
                                     ),
                                   ),
-                                  child: Text(
-                                    (user?.isVerified == true)
-                                        ? 'VERIFIED 🛡️'
-                                        : 'UNVERIFIED ⚠️',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w900,
-                                      color: (user?.isVerified == true)
-                                          ? const Color(0xFF059669)
-                                          : const Color(0xFFDC2626),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () {
+                                      if (!auth.isAuthenticated) {
+                                        Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                                      } else if (user?.isVerified != true) {
+                                        Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: (user?.isVerified == true)
+                                            ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                                            : const Color(0xFFEF4444).withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: (user?.isVerified == true)
+                                              ? const Color(0xFF10B981)
+                                              : const Color(0xFFEF4444),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        (user?.isVerified == true)
+                                            ? 'VERIFIED 🛡️'
+                                            : 'UNVERIFIED ⚠️',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w900,
+                                          color: (user?.isVerified == true)
+                                              ? const Color(0xFF059669)
+                                              : const Color(0xFFDC2626),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
                             ],
-                          ),
-                        ],
-                      ],
-                    ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
+                  if (auth.isAuthenticated) ...[
+                    const Divider(height: 24, color: AppColors.cardBorder),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showEditBuyerProfileModal(context),
+                        icon: const Icon(Icons.edit_note_rounded, size: 18),
+                        label: const Text('Edit Profile, Address & Bio', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

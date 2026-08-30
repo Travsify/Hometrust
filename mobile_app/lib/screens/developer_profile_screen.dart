@@ -1,8 +1,11 @@
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/network/api_client.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'kyc_screen.dart';
 import 'login_screen.dart';
 
@@ -15,6 +18,7 @@ class DeveloperProfileScreen extends StatefulWidget {
 
 class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
   bool _isLoading = true;
+  bool _isUploadingLogo = false;
   Map<String, dynamic>? _stats;
 
   @override
@@ -37,141 +41,361 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
     }
   }
 
+  Future<String?> _pickAndUploadImage({required String title}) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty || result.files.first.bytes == null) return null;
+
+      final file = result.files.first;
+      setState(() => _isUploadingLogo = true);
+
+      final uploadRes = await ApiClient.uploadFile(
+        '/storage/upload',
+        fileBytes: file.bytes!,
+        fileName: file.name,
+        fieldName: 'file',
+      );
+
+      final String? uploadedUrl = uploadRes['fileUrl'];
+      return uploadedUrl;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload image: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+      }
+      return null;
+    } finally {
+      if (mounted) setState(() => _isUploadingLogo = false);
+    }
+  }
+
+  Future<void> _handleDirectLogoUpload() async {
+    final uploadedUrl = await _pickAndUploadImage(title: 'Upload Company Logo');
+    if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+      try {
+        await ApiClient.put('/users/profile', {
+          'logoUrl': uploadedUrl,
+          'avatarUrl': uploadedUrl,
+        });
+
+        if (mounted) {
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          await authProvider.refreshUser();
+          await _fetchProfileStats();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🎉 Corporate Logo updated successfully!'),
+              backgroundColor: Color(0xFF059669),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
+              backgroundColor: const Color(0xFFDC2626),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   void _showEditProfileModal(BuildContext context, Map<String, dynamic>? dev, String currentPhone) {
-    final companyCtrl = TextEditingController(text: dev?['companyName'] ?? '');
-    final addressCtrl = TextEditingController(text: dev?['officeAddress'] ?? '');
-    final websiteCtrl = TextEditingController(text: dev?['website'] ?? '');
-    final aboutCtrl = TextEditingController(text: dev?['about'] ?? '');
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user;
+
+    final companyCtrl = TextEditingController(text: dev?['companyName'] ?? user?.developerCompanyName ?? '');
+    
+    // Parse existing address parts if available
+    final rawAddress = dev?['officeAddress'] ?? '';
+    final addressParts = rawAddress.split(',').map((s) => s.trim()).toList();
+    final streetText = addressParts.isNotEmpty ? addressParts[0] : '';
+    final cityText = addressParts.length > 1 ? addressParts[1] : '';
+    final stateText = addressParts.length > 2 ? addressParts[2] : (addressParts.length == 2 ? 'Lagos' : '');
+
+    final streetCtrl = TextEditingController(text: streetText);
+    final cityCtrl = TextEditingController(text: cityText);
+    final stateCtrl = TextEditingController(text: stateText);
     final phoneCtrl = TextEditingController(text: currentPhone);
+    final websiteCtrl = TextEditingController(text: dev?['website'] ?? '');
+    final bioCtrl = TextEditingController(text: dev?['about'] ?? '');
+    String? currentLogoUrl = dev?['logoUrl'] ?? user?.avatarUrl;
+    bool isModalUploading = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 24,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Edit Corporate Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-                    IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Edit Corporate Profile', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                        IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                      ],
+                    ),
+                    const Text('Update company identity, logo, structured business addresses, and bio for buyers to learn more about you.', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                    const SizedBox(height: 16),
+
+                    // Logo / Profile Image Picker Box
+                    Center(
+                      child: Column(
+                        children: [
+                          Stack(
+                            children: [
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F172A),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(18),
+                                  child: isModalUploading
+                                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF059669), strokeWidth: 2))
+                                      : (currentLogoUrl != null && currentLogoUrl!.isNotEmpty)
+                                          ? Image.network(currentLogoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.apartment_rounded, color: Colors.white, size: 36))
+                                          : const Icon(Icons.apartment_rounded, color: Colors.white, size: 36),
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: InkWell(
+                                  onTap: () async {
+                                    setModalState(() => isModalUploading = true);
+                                    final uploaded = await _pickAndUploadImage(title: 'Upload Company Logo');
+                                    setModalState(() {
+                                      if (uploaded != null) currentLogoUrl = uploaded;
+                                      isModalUploading = false;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF059669),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 14),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          TextButton.icon(
+                            onPressed: () async {
+                              setModalState(() => isModalUploading = true);
+                              final uploaded = await _pickAndUploadImage(title: 'Upload Company Logo');
+                              setModalState(() {
+                                if (uploaded != null) currentLogoUrl = uploaded;
+                                isModalUploading = false;
+                              });
+                            },
+                            icon: const Icon(Icons.upload_file_rounded, size: 14, color: Color(0xFF059669)),
+                            label: const Text('Change Company Logo / Image', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF059669))),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 1. Company Name
+                    const Text('Company / Business Name', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                    const SizedBox(height: 5),
+                    TextField(
+                      controller: companyCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Patrick & Partners Real Estate Ltd',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 2. Structured Head Office Address Breakdown
+                    const Text('Head Office / Business Address', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                    const SizedBox(height: 5),
+                    TextField(
+                      controller: streetCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Street Address',
+                        hintText: 'e.g. Plot 14, Admiralty Way, Lekki Phase 1',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 5,
+                          child: TextField(
+                            controller: cityCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'City / District',
+                              hintText: 'e.g. Lekki / Ikeja',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 5,
+                          child: TextField(
+                            controller: stateCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'State',
+                              hintText: 'e.g. Lagos / Abuja',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 3. Corporate Contact Phone
+                    const Text('Corporate Contact Phone Number', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                    const SizedBox(height: 5),
+                    TextField(
+                      controller: phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. +234 801 234 5678',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 4. Official Website
+                    const Text('Official Website URL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                    const SizedBox(height: 5),
+                    TextField(
+                      controller: websiteCtrl,
+                      keyboardType: TextInputType.url,
+                      decoration: InputDecoration(
+                        hintText: 'https://yourcompany.ng',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 5. Bio (Tell buyers and users about yourselves)
+                    const Text('About & Organization Bio', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                    const SizedBox(height: 2),
+                    const Text('Provide a bio about yourself and your company so users can learn more about your organization, mission, and projects.', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
+                    const SizedBox(height: 5),
+                    TextField(
+                      controller: bioCtrl,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        hintText: 'Write a bio about your leadership team, corporate philosophy, development experience, and notable residential projects...',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.all(14),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Save Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final street = streetCtrl.text.trim();
+                          final city = cityCtrl.text.trim();
+                          final state = stateCtrl.text.trim();
+
+                          final List<String> addressList = [];
+                          if (street.isNotEmpty) addressList.add(street);
+                          if (city.isNotEmpty) addressList.add(city);
+                          if (state.isNotEmpty) addressList.add(state);
+                          final fullAddress = addressList.join(', ');
+
+                          try {
+                            await ApiClient.put('/users/profile', {
+                              'companyName': companyCtrl.text.trim(),
+                              'businessAddress': fullAddress,
+                              'officeAddress': fullAddress,
+                              'phone': phoneCtrl.text.trim(),
+                              'website': websiteCtrl.text.trim(),
+                              'about': bioCtrl.text.trim(),
+                              if (currentLogoUrl != null && currentLogoUrl!.isNotEmpty) 'logoUrl': currentLogoUrl,
+                              if (currentLogoUrl != null && currentLogoUrl!.isNotEmpty) 'avatarUrl': currentLogoUrl,
+                            });
+                            if (context.mounted) {
+                              final auth = Provider.of<AuthProvider>(context, listen: false);
+                              await auth.refreshUser();
+                              Navigator.pop(ctx);
+                              _fetchProfileStats();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('🎉 Corporate profile & bio updated successfully!'),
+                                  backgroundColor: Color(0xFF059669),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(e.toString().replaceAll('Exception: ', '')),
+                                  backgroundColor: const Color(0xFFDC2626),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0F172A),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Save Corporate Changes', style: TextStyle(fontWeight: FontWeight.w800)),
+                      ),
+                    ),
                   ],
                 ),
-                const Text('Update your registered corporate details and official contact addresses.', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
-                const SizedBox(height: 16),
-
-                TextField(
-                  controller: companyCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Company / Developer Name',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                TextField(
-                  controller: addressCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Head Office / Business Address',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                TextField(
-                  controller: phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: 'Corporate Contact Phone',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                TextField(
-                  controller: websiteCtrl,
-                  keyboardType: TextInputType.url,
-                  decoration: InputDecoration(
-                    labelText: 'Official Website',
-                    hintText: 'https://...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                TextField(
-                  controller: aboutCtrl,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    labelText: 'Company Overview / Track Record',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      try {
-                        await ApiClient.put('/users/profile', {
-                          'companyName': companyCtrl.text.trim(),
-                          'businessAddress': addressCtrl.text.trim(),
-                          'officeAddress': addressCtrl.text.trim(),
-                          'phone': phoneCtrl.text.trim(),
-                          'website': websiteCtrl.text.trim(),
-                          'about': aboutCtrl.text.trim(),
-                        });
-                        if (context.mounted) {
-                          final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                          await authProvider.refreshUser();
-                          Navigator.pop(ctx);
-                          _fetchProfileStats();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('🎉 Corporate profile updated successfully!'),
-                              backgroundColor: Color(0xFF059669),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(e.toString().replaceAll('Exception: ', '')),
-                              backgroundColor: const Color(0xFFDC2626),
-                            ),
-                          );
-                        }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0F172A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Save Corporate Changes', style: TextStyle(fontWeight: FontWeight.w800)),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -444,9 +668,13 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
     final contactPerson = dev?['contactPerson'] ?? user?.fullName ?? 'Lead Director';
     final officeAddress = dev?['officeAddress'] ?? 'Corporate Head Office';
     final phone = user?.phone ?? dev?['phone'] ?? 'Not provided';
+    final website = dev?['website'] ?? 'https://hometrustng.com';
+    final about = dev?['about'] ?? '';
+    final logoUrl = dev?['logoUrl'] ?? user?.avatarUrl;
     final isVerified = dev?['isVerified'] ?? user?.isVerified ?? false;
 
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(activeIndex: 4),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -472,15 +700,49 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0F172A),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.apartment_rounded, color: Colors.white, size: 28),
+                      InkWell(
+                        onTap: _handleDirectLogoUpload,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0F172A),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(15),
+                                child: (logoUrl != null && logoUrl.isNotEmpty)
+                                    ? Image.network(
+                                        logoUrl,
+                                        width: 60,
+                                        height: 60,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => const Center(
+                                          child: Icon(Icons.apartment_rounded, color: Colors.white, size: 30),
+                                        ),
+                                      )
+                                    : const Center(
+                                        child: Icon(Icons.apartment_rounded, color: Colors.white, size: 30),
+                                      ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF059669),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 12),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -536,9 +798,39 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                   const SizedBox(height: 8),
                   _buildInfoRow('Official Email', user?.email ?? 'developer@company.ng'),
                   const SizedBox(height: 8),
-                  _buildInfoRow('Phone', phone),
+                  _buildInfoRow('Corporate Phone', phone),
                   const SizedBox(height: 8),
                   _buildInfoRow('Head Office', officeAddress),
+                  if (website.isNotEmpty && website != 'https://hometrustng.com') ...[
+                    const SizedBox(height: 8),
+                    _buildInfoRow('Website', website),
+                  ],
+                  if (about.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFF059669)),
+                              SizedBox(width: 6),
+                              Text('Corporate Bio & Mission', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(about, style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569), height: 1.45)),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   SizedBox(

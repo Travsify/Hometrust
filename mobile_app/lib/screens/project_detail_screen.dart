@@ -8,6 +8,7 @@ import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'chat_screen.dart';
 import '../widgets/in_app_call_modal.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'purchases_screen.dart';
 import 'inspection_booking_modal.dart';
 
@@ -191,6 +192,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     final subscribedCount = _matrixData?['subscribedUnits'] ?? (totalCount - availableCount);
 
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,

@@ -16,6 +16,8 @@ import 'notifications_screen.dart';
 import 'kyc_screen.dart';
 import 'inbox_screen.dart';
 import 'wallet_screen.dart';
+import 'verify_screen.dart';
+import 'build_for_me_screen.dart';
 
 class DeveloperHomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -395,103 +397,128 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
         'badge': 'AUTOMATED DISBURSEMENT',
         'gradient': [const Color(0xFF064E3B), const Color(0xFF047857)],
         'icon': Icons.shield_outlined,
+        'action': 'View Milestones →',
+        'onTap': () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperProjectsScreen()));
+        },
       },
       {
-        'title': 'Contractor BOQ Price Validator',
-        'subtitle': 'Cross-check supplier quotes against the 36 States Material Index to eliminate markup.',
-        'badge': 'COST SAVINGS',
+        'title': 'Legal Drafting & Document Prep',
+        'subtitle': 'Draft joint venture agreements, deed of assignments & bespoke development contracts.',
+        'badge': 'BAR-CERTIFIED SOLICITORS',
         'gradient': [const Color(0xFF0F172A), const Color(0xFF1E293B)],
-        'icon': Icons.calculate_outlined,
+        'icon': Icons.description_rounded,
+        'action': 'Draft Contracts →',
+        'onTap': () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalRequestScreen()));
+        },
       },
       {
-        'title': '36 States Material Price Index',
-        'subtitle': 'Wholesale benchmarks for Dangote cement, TMT rebar, sharp sand, and granite.',
-        'badge': 'LIVE WHOLESALE BENCHMARKS',
+        'title': 'Lands Registry Title Search & Vetting',
+        'subtitle': 'Verify Governor\'s Consent, C of O, Gazette & gazetted acquisition records at lands bureau.',
+        'badge': 'REGISTRY DUE DILIGENCE',
         'gradient': [const Color(0xFF075985), const Color(0xFF0284C7)],
-        'icon': Icons.insights_rounded,
+        'icon': Icons.verified_user_rounded,
+        'action': 'Start Title Search →',
+        'onTap': () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const VerifyScreen()));
+        },
       },
       {
-        'title': 'Cadastral Land Radar Scan',
-        'subtitle': 'GPS satellite verification of boundary beacons against gazette acquisition records.',
-        'badge': 'SATELLITE CADASTRAL AUDIT',
+        'title': 'On-Site Structural Inspection & Testing',
+        'subtitle': 'Book COREN engineers for concrete cube testing, foundation audit & soil analysis.',
+        'badge': 'COREN ENGINEERING AUDITS',
         'gradient': [const Color(0xFF581C87), const Color(0xFF7E22CE)],
-        'icon': Icons.radar_rounded,
+        'icon': Icons.engineering_rounded,
+        'action': 'Book Inspection →',
+        'onTap': () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const BuildForMeScreen()));
+        },
       },
     ];
 
     return Column(
       children: [
         SizedBox(
-          height: 125,
+          height: 132,
           child: PageView.builder(
             controller: _spotlightController,
             onPageChanged: (idx) => setState(() => _currentSpotlightIndex = idx),
             itemCount: slides.length,
             itemBuilder: (context, index) {
               final slide = slides[index];
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: slide['gradient'] as List<Color>,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              return GestureDetector(
+                onTap: slide['onTap'] as VoidCallback,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: slide['gradient'] as List<Color>,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    slide['badge'] as String,
+                                    style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900, letterSpacing: 0.6),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.touch_app_rounded, color: Colors.white70, size: 12),
+                              ],
                             ),
-                            child: Text(
-                              slide['badge'] as String,
-                              style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900, letterSpacing: 0.6),
+                            const SizedBox(height: 6),
+                            Text(
+                              slide['title'] as String,
+                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            slide['title'] as String,
-                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            slide['subtitle'] as String,
-                            style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 10.5, height: 1.3),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              slide['subtitle'] as String,
+                              style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 10.5, height: 1.3),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(slide['icon'] as IconData, color: Colors.white, size: 24),
                       ),
-                      child: Icon(slide['icon'] as IconData, color: Colors.white, size: 24),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },

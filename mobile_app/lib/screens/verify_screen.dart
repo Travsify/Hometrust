@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import '../core/constants/colors.dart';
 import '../providers/verification_provider.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'login_screen.dart';
 
 class VerifyScreen extends StatefulWidget {
@@ -85,6 +86,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
     final verifProvider = Provider.of<VerificationProvider>(context);
 
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(activeIndex: 2),
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,

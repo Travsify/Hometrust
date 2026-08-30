@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'chat_screen.dart';
 import '../widgets/in_app_call_modal.dart';
 
@@ -77,6 +78,7 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const PersistentBottomNav(activeIndex: 2),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,

@@ -38,4 +38,30 @@ export class NotificationsController {
       sendError(res, error.message, 400);
     }
   }
+
+  static async deleteNotification(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      await NotificationsService.deleteNotification(req.params.id as string, req.user.id);
+      sendSuccess(res, { success: true }, 'Notification dismissed');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async clearAll(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      await NotificationsService.clearAllNotifications(req.user.id);
+      sendSuccess(res, { success: true }, 'All notifications cleared');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }

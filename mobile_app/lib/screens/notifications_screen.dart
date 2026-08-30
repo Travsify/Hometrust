@@ -40,14 +40,57 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          if (notifications.isNotEmpty)
+          if (notifications.isNotEmpty) ...[
             TextButton(
-              onPressed: () => notifProvider.markAllAsRead(),
+              onPressed: () async {
+                await notifProvider.markAllAsRead();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✅ All notifications marked as read!'),
+                      backgroundColor: Color(0xFF059669),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
               child: const Text(
                 'Mark All Read',
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.primary),
               ),
             ),
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_rounded, color: Color(0xFF64748B), size: 22),
+              tooltip: 'Clear All Notifications',
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    title: const Text('Clear All Notifications', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                    content: const Text('Are you sure you want to clear and dismiss all notifications?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
+                        child: const Text('Clear All'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirm == true) {
+                  await notifProvider.clearAll();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('All notifications cleared'), backgroundColor: Color(0xFF334155)),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
         ],
       ),
       body: notifProvider.isLoading
@@ -60,77 +103,135 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final notif = notifications[index];
-                    return Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: notif.isRead ? const Color(0xFFE2E8F0) : const Color(0xFF10B981).withValues(alpha: 0.4),
-                          width: notif.isRead ? 1 : 1.5,
+                    return Dismissible(
+                      key: ValueKey(notif.id),
+                      direction: DismissDirection.horizontal,
+                      background: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        alignment: Alignment.centerLeft,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        child: const Row(
+                          children: [
+                            Icon(Icons.delete_outline_rounded, color: Colors.white, size: 24),
+                            SizedBox(width: 8),
+                            Text('Dismiss', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: _getIconBg(notif.type),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(_getIconData(notif.type), color: _getIconColor(notif.type), size: 20),
+                      secondaryBackground: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        alignment: Alignment.centerRight,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text('Dismiss', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+                            SizedBox(width: 8),
+                            Icon(Icons.delete_outline_rounded, color: Colors.white, size: 24),
+                          ],
+                        ),
+                      ),
+                      onDismissed: (direction) {
+                        final dismissedId = notif.id;
+                        notifProvider.dismissNotification(dismissedId);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Removed "${notif.title}"'),
+                            duration: const Duration(seconds: 2),
+                            backgroundColor: const Color(0xFF334155),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        notif.title,
-                                        style: TextStyle(
-                                          fontWeight: notif.isRead ? FontWeight.w700 : FontWeight.w900,
-                                          fontSize: 14,
-                                          color: const Color(0xFF0F172A),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: notif.isRead ? const Color(0xFFE2E8F0) : const Color(0xFF10B981).withValues(alpha: 0.4),
+                            width: notif.isRead ? 1 : 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.02),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: _getIconBg(notif.type),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(_getIconData(notif.type), color: _getIconColor(notif.type), size: 20),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          notif.title,
+                                          style: TextStyle(
+                                            fontWeight: notif.isRead ? FontWeight.w700 : FontWeight.w900,
+                                            fontSize: 14,
+                                            color: const Color(0xFF0F172A),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    if (!notif.isRead)
-                                      Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFF10B981),
-                                          shape: BoxShape.circle,
+                                      if (!notif.isRead)
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF10B981),
+                                            shape: BoxShape.circle,
+                                          ),
                                         ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    notif.message,
+                                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.35),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        _formatTime(notif.createdAt),
+                                        style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
                                       ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  notif.message,
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.35),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  _formatTime(notif.createdAt),
-                                  style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
-                                ),
-                              ],
+                                      const Row(
+                                        children: [
+                                          Icon(Icons.swipe_rounded, size: 12, color: Color(0xFF94A3B8)),
+                                          SizedBox(width: 3),
+                                          Text('Slide to dismiss', style: TextStyle(fontSize: 9.5, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },
