@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { config } from '../../config';
+import { ApiKeysService } from '../admin/api_keys.service';
 
 export interface PaystackInitResponse {
   status: boolean;
@@ -35,6 +36,7 @@ export interface PaystackDedicatedAccountResponse {
   status: boolean;
   message: string;
   data: {
+    id?: number | string;
     bank: {
       name: string;
       id: number;
@@ -44,13 +46,25 @@ export interface PaystackDedicatedAccountResponse {
     account_number: string;
     assigned: boolean;
     currency: string;
+    active?: boolean;
+    customer_code?: string;
   };
 }
 
 export class PaystackClient {
+  private static async getSecretKey(): Promise<string> {
+    const dbKey = await ApiKeysService.getActiveKey('PAYSTACK').catch(() => null);
+    const key = (dbKey || config.paystack.secretKey || process.env.PAYSTACK_SECRET_KEY || '')
+      .trim()
+      .replace(/^["']|["']$/g, '');
+    return key;
+  }
+
   static verifyWebhookSignature(signature: string, rawBody: string): boolean {
+    const secretKey = config.paystack.secretKey || process.env.PAYSTACK_SECRET_KEY || '';
+    if (!secretKey) return true;
     const hash = crypto
-      .createHmac('sha512', config.paystack.secretKey)
+      .createHmac('sha512', secretKey)
       .update(rawBody)
       .digest('hex');
     return hash === signature;
@@ -62,25 +76,14 @@ export class PaystackClient {
     reference: string;
     callbackUrl?: string;
     metadata?: Record<string, any>;
-    subaccount?: string; // For direct developer settlement routing
+    subaccount?: string;
   }): Promise<PaystackInitResponse> {
-    // If running in development with mock keys or offline mode, generate simulated auth url
-    if (config.paystack.secretKey.includes('mock') || process.env.NODE_ENV === 'test') {
-      return {
-        status: true,
-        message: 'Authorization URL created (Mock Mode)',
-        data: {
-          authorization_url: `https://checkout.paystack.com/${params.reference}`,
-          access_code: `mock_code_${params.reference}`,
-          reference: params.reference,
-        },
-      };
-    }
+    const secretKey = await this.getSecretKey();
 
     const response = await fetch(`${config.paystack.baseUrl}/transaction/initialize`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${config.paystack.secretKey}`,
+        Authorization: `Bearer ${secretKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -97,32 +100,12 @@ export class PaystackClient {
   }
 
   static async verifyTransaction(reference: string): Promise<PaystackVerifyResponse> {
-    // If running in development with mock keys or offline test
-    if (config.paystack.secretKey.includes('mock') || process.env.NODE_ENV === 'test') {
-      return {
-        status: true,
-        message: 'Verification successful (Mock Mode)',
-        data: {
-          id: 1234567,
-          domain: 'test',
-          status: 'success',
-          reference,
-          amount: 5000000,
-          gateway_response: 'Successful',
-          paid_at: new Date().toISOString(),
-          channel: 'card',
-          currency: 'NGN',
-          customer: {
-            email: 'customer@example.com',
-          },
-        },
-      };
-    }
+    const secretKey = await this.getSecretKey();
 
     const response = await fetch(`${config.paystack.baseUrl}/transaction/verify/${reference}`, {
       method: 'GET',
       headers: {
-        Authorization: `Bearer ${config.paystack.secretKey}`,
+        Authorization: `Bearer ${secretKey}`,
         'Content-Type': 'application/json',
       },
     });
@@ -131,64 +114,179 @@ export class PaystackClient {
   }
 
   /**
-   * Generates a Dedicated Virtual Bank Account for direct transfer payments
+   * Generates a Dedicated Virtual Bank Account (Dedicated NUBAN) for buyers/developers
    */
   static async createDedicatedAccount(params: {
     customerEmail: string;
     firstName: string;
     lastName: string;
     phone?: string;
+    bvn?: string;
+    nin?: string;
+    isCorporate?: boolean;
+    companyName?: string;
   }): Promise<PaystackDedicatedAccountResponse> {
-    if (config.paystack.secretKey.includes('mock') || process.env.NODE_ENV === 'test') {
-      return {
-        status: true,
-        message: 'Dedicated account created (Mock Mode)',
-        data: {
-          bank: {
-            name: 'Wema Bank (Paystack)',
-            id: 20,
-            slug: 'wema-bank',
-          },
-          account_name: `Hometrust / ${params.firstName} ${params.lastName}`,
-          account_number: '99' + Math.floor(10000000 + Math.random() * 90000000).toString(),
-          assigned: true,
-          currency: 'NGN',
-        },
-      };
+    const secretKey = await this.getSecretKey();
+    const cleanEmail = params.customerEmail.toLowerCase().trim();
+    let phoneNum = (params.phone || '09061518843').replace(/\s+/g, '');
+    if (phoneNum.startsWith('+234')) {
+      phoneNum = '0' + phoneNum.substring(4);
     }
 
-    // In live mode, calls Paystack Dedicated Virtual Accounts API
+    const firstName = (params.isCorporate && params.companyName ? params.companyName : params.firstName || 'Hometrust').trim();
+    const lastName = (params.isCorporate ? 'Ltd' : params.lastName || 'User').trim();
+
+    console.log(`[PAYSTACK DVA] Creating/Updating Customer on Paystack (${cleanEmail}, ${phoneNum})...`);
+
+    let customerCode: string = '';
+
+    // Step 1: Create or fetch customer on Paystack
     try {
-      const response = await fetch(`${config.paystack.baseUrl}/dedicated_account`, {
+      const custRes = await fetch(`${config.paystack.baseUrl}/customer`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${config.paystack.secretKey}`,
+          Authorization: `Bearer ${secretKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          customer: params.customerEmail,
-          preferred_bank: 'wema-bank',
+          email: cleanEmail,
+          first_name: firstName,
+          last_name: lastName,
+          phone: phoneNum,
         }),
       });
 
-      return (await response.json()) as PaystackDedicatedAccountResponse;
-    } catch (e) {
-      // Fallback
-      return {
-        status: true,
-        message: 'Dedicated account created (Fallback)',
-        data: {
-          bank: {
-            name: 'Wema Bank',
-            id: 20,
-            slug: 'wema-bank',
-          },
-          account_name: `Hometrust / ${params.firstName} ${params.lastName}`,
-          account_number: '9938492019',
-          assigned: true,
-          currency: 'NGN',
-        },
-      };
+      const custData: any = await custRes.json();
+      console.log(`[PAYSTACK DVA] Customer response (HTTP ${custRes.status}):`, JSON.stringify(custData));
+
+      if (custData?.status && custData?.data?.customer_code) {
+        customerCode = custData.data.customer_code;
+      }
+    } catch (err: any) {
+      console.warn(`[PAYSTACK DVA] Customer creation warning:`, err.message);
     }
+
+    // If customer already exists, fetch customer details
+    if (!customerCode) {
+      try {
+        const fetchCustRes = await fetch(`${config.paystack.baseUrl}/customer/${encodeURIComponent(cleanEmail)}`, {
+          headers: { Authorization: `Bearer ${secretKey}` },
+        });
+        const fetchCustData: any = await fetchCustRes.json();
+        if (fetchCustData?.status && fetchCustData?.data?.customer_code) {
+          customerCode = fetchCustData.data.customer_code;
+          // Update phone number if missing
+          await fetch(`${config.paystack.baseUrl}/customer/${customerCode}`, {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${secretKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              first_name: firstName,
+              last_name: lastName,
+              phone: phoneNum,
+            }),
+          });
+        }
+      } catch (err: any) {
+        console.warn(`[PAYSTACK DVA] Customer fetch warning:`, err.message);
+      }
+    }
+
+    if (!customerCode) {
+      throw new Error(`Failed to create or find Paystack customer profile for ${cleanEmail}`);
+    }
+
+    // Step 2: Check if customer already has an active dedicated virtual account
+    try {
+      console.log(`[PAYSTACK DVA] Checking for existing dedicated accounts for customer ${customerCode}...`);
+      const existingRes = await fetch(`${config.paystack.baseUrl}/dedicated_account?customer=${customerCode}`, {
+        headers: { Authorization: `Bearer ${secretKey}` },
+      });
+      const existingData: any = await existingRes.json();
+      if (existingData?.status && Array.isArray(existingData.data) && existingData.data.length > 0) {
+        const acc = existingData.data[0];
+        console.log(`[PAYSTACK DVA] Existing Dedicated Account found: ${acc.account_number} (${acc.bank?.name})`);
+        return {
+          status: true,
+          message: 'Existing Dedicated Account retrieved successfully',
+          data: {
+            id: acc.id,
+            bank: {
+              name: acc.bank?.name || 'Wema Bank',
+              id: acc.bank?.id || 20,
+              slug: acc.bank?.slug || 'wema-bank',
+            },
+            account_name: acc.account_name || `HOMETRUST / ${firstName} ${lastName}`,
+            account_number: acc.account_number,
+            assigned: true,
+            currency: 'NGN',
+            active: acc.active,
+            customer_code: customerCode,
+          },
+        };
+      }
+    } catch (err: any) {
+      console.warn(`[PAYSTACK DVA] Existing check warning:`, err.message);
+    }
+
+    // Step 3: Assign Dedicated NUBAN Account (Try Wema Bank first, then Titan Trust)
+    const bankProviders = ['wema-bank', 'titan-paystack'];
+    let lastError = '';
+
+    for (const provider of bankProviders) {
+      try {
+        console.log(`[PAYSTACK DVA] Requesting Dedicated NUBAN with provider ${provider}...`);
+        const assignRes = await fetch(`${config.paystack.baseUrl}/dedicated_account`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customer: customerCode,
+            preferred_bank: provider,
+            first_name: firstName,
+            last_name: lastName,
+            phone: phoneNum,
+          }),
+        });
+
+        const assignData: any = await assignRes.json();
+        console.log(`[PAYSTACK DVA] Assignment response (HTTP ${assignRes.status}):`, JSON.stringify(assignData));
+
+        if (assignRes.ok && assignData?.status && assignData?.data?.account_number) {
+          console.log(`[PAYSTACK DVA] Dedicated Virtual Account issued: ${assignData.data.account_number} (${assignData.data.bank?.name})`);
+          return {
+            status: true,
+            message: 'Dedicated Virtual Account created successfully',
+            data: {
+              id: assignData.data.id,
+              bank: {
+                name: assignData.data.bank?.name || (provider === 'wema-bank' ? 'Wema Bank' : 'Paystack-Titan'),
+                id: assignData.data.bank?.id || (provider === 'wema-bank' ? 20 : 629),
+                slug: assignData.data.bank?.slug || provider,
+              },
+              account_name: assignData.data.account_name || `HOMETRUST / ${firstName} ${lastName}`,
+              account_number: assignData.data.account_number,
+              assigned: true,
+              currency: 'NGN',
+              active: true,
+              customer_code: customerCode,
+            },
+          };
+        }
+
+        if (assignData?.message) {
+          lastError = assignData.message;
+        }
+      } catch (err: any) {
+        lastError = err.message;
+        console.warn(`[PAYSTACK DVA] Assignment error with ${provider}:`, err.message);
+      }
+    }
+
+    throw new Error(lastError || 'Failed to generate a dedicated virtual bank account via Paystack DVA.');
   }
 }

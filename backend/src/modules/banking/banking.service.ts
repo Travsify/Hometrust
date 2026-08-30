@@ -1,10 +1,86 @@
 import { prisma } from '../../utils/prisma';
 import { MapleradClient } from './maplerad.client';
 import { PremblyClient } from './prembly.client';
+import { PaystackClient } from '../payments/paystack.client';
 import { AuditService } from '../audit/audit.service';
 import { ResendService } from '../notifications/resend.service';
 
 export class BankingService {
+  /**
+   * Internal Helper: Issues Dedicated Virtual Account (Paystack DVA Live -> Maplerad Fallback)
+   */
+  private static async issueDedicatedVirtualAccount(params: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    bvn?: string;
+    nin?: string;
+    dob?: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    address?: string;
+    isCorporate?: boolean;
+    companyName?: string;
+    rcNumber?: string;
+  }): Promise<{
+    accountNumber: string;
+    accountName: string;
+    bankName: string;
+    accountId: string;
+    provider: string;
+  }> {
+    let lastError: string = '';
+
+    // Primary: Paystack Live Dedicated Virtual Accounts (Wema Bank & Titan Trust Bank)
+    try {
+      console.log(`[BANKING] Provisioning Dedicated Virtual Account via Paystack for ${params.email}...`);
+      const paystackRes = await PaystackClient.createDedicatedAccount({
+        customerEmail: params.email,
+        firstName: params.firstName,
+        lastName: params.lastName,
+        phone: params.phone,
+        bvn: params.bvn,
+        nin: params.nin,
+        isCorporate: params.isCorporate,
+        companyName: params.companyName,
+      });
+
+      if (paystackRes?.data?.account_number) {
+        return {
+          accountNumber: paystackRes.data.account_number,
+          accountName: paystackRes.data.account_name || (params.isCorporate && params.companyName ? `HOMETRUST / ${params.companyName}` : `HOMETRUST / ${params.firstName} ${params.lastName}`),
+          bankName: paystackRes.data.bank?.name || 'Wema Bank',
+          accountId: String(paystackRes.data.id || `pst_${Date.now()}`),
+          provider: 'PAYSTACK',
+        };
+      }
+    } catch (err: any) {
+      console.warn(`[BANKING] Paystack DVA notice:`, err.message);
+      lastError = err.message;
+    }
+
+    // Secondary Fallback: Maplerad
+    try {
+      console.log(`[BANKING] Falling back to Maplerad for ${params.email}...`);
+      const mapleradRes = await MapleradClient.createVirtualAccount(params);
+      if (mapleradRes?.data?.account_number) {
+        return {
+          accountNumber: mapleradRes.data.account_number,
+          accountName: mapleradRes.data.account_name,
+          bankName: mapleradRes.data.bank_name,
+          accountId: mapleradRes.data.id,
+          provider: 'MAPLERAD',
+        };
+      }
+    } catch (err: any) {
+      console.warn(`[BANKING] Maplerad notice:`, err.message);
+      lastError = err.message;
+    }
+
+    throw new Error(lastError || 'Failed to generate a dedicated virtual bank account.');
+  }
   /**
    * Complete Buyer KYC & Auto-Generate Dedicated Virtual Bank Account via Maplerad
    */
@@ -63,27 +139,28 @@ export class BankingService {
       },
     });
 
-    // 2. Auto-Generate Dedicated Virtual Account via Maplerad if not existing
+    // 2. Auto-Generate Dedicated Virtual Account via Paystack Live (or Maplerad fallback) if not existing
     let account = user.virtualAccounts?.[0];
     if (!account) {
-      const mapleradRes = await MapleradClient.createVirtualAccount({
+      const vbaRes = await this.issueDedicatedVirtualAccount({
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        phone: user.phone || '08012345678',
+        phone: user.phone || '09061518843',
         bvn: data.bvn,
         nin: data.nin,
+        address: data.residentialAddress,
       });
 
       account = await prisma.virtualAccount.create({
         data: {
           userId: user.id,
-          accountName: mapleradRes.data.account_name,
-          accountNumber: mapleradRes.data.account_number,
-          bankName: mapleradRes.data.bank_name,
+          accountName: vbaRes.accountName,
+          accountNumber: vbaRes.accountNumber,
+          bankName: vbaRes.bankName,
           accountType: 'INDIVIDUAL',
           currency: 'NGN',
-          fincraAccountId: mapleradRes.data.id,
+          fincraAccountId: vbaRes.accountId,
           status: 'ACTIVE',
           balance: 0,
         },
@@ -101,7 +178,6 @@ export class BankingService {
         bankName: account.bankName,
         accountName: account.accountName,
         kycStatus: kyc.status,
-        provider: 'MAPLERAD',
       },
     });
 
@@ -171,14 +247,14 @@ export class BankingService {
       },
     });
 
-    // 2. Provision Corporate Dedicated Virtual Account via Maplerad
+    // 2. Provision Corporate Dedicated Virtual Account
     let account = developer.virtualAccounts?.[0];
     if (!account) {
-      const mapleradRes = await MapleradClient.createVirtualAccount({
+      const vbaRes = await this.issueDedicatedVirtualAccount({
         firstName: developer.companyName,
         lastName: 'Corporate',
         email: developer.email,
-        phone: developer.phone || '08012345678',
+        phone: developer.phone || '09061518843',
         isCorporate: true,
         companyName: data.companyName,
         rcNumber: data.cacNumber,
@@ -187,12 +263,12 @@ export class BankingService {
       account = await prisma.virtualAccount.create({
         data: {
           developerId: developer.id,
-          accountName: mapleradRes.data.account_name,
-          accountNumber: mapleradRes.data.account_number,
-          bankName: mapleradRes.data.bank_name,
+          accountName: vbaRes.accountName,
+          accountNumber: vbaRes.accountNumber,
+          bankName: vbaRes.bankName,
           accountType: 'CORPORATE',
           currency: 'NGN',
-          fincraAccountId: mapleradRes.data.id,
+          fincraAccountId: vbaRes.accountId,
           status: 'ACTIVE',
           balance: 0,
         },
@@ -209,7 +285,6 @@ export class BankingService {
         cacNumber: data.cacNumber,
         accountNumber: account.accountNumber,
         bankName: account.bankName,
-        provider: 'MAPLERAD',
       },
     });
 
@@ -302,11 +377,11 @@ export class BankingService {
 
       let account = user.virtualAccounts?.[0];
       if (!account) {
-        const mapleradRes = await MapleradClient.createVirtualAccount({
+        const vbaRes = await this.issueDedicatedVirtualAccount({
           firstName: company,
           lastName: 'Corporate',
           email: user.email,
-          phone: user.phone || '08012345678',
+          phone: user.phone || '09061518843',
           isCorporate: true,
           companyName: company,
           rcNumber: cac,
@@ -316,13 +391,13 @@ export class BankingService {
           data: {
             developerId: user.developer.id,
             userId: user.id,
-            accountNumber: mapleradRes.data.account_number,
-            accountName: mapleradRes.data.account_name,
-            bankName: mapleradRes.data.bank_name,
+            accountNumber: vbaRes.accountNumber,
+            accountName: vbaRes.accountName,
+            bankName: vbaRes.bankName,
             currency: 'NGN',
             accountType: 'CORPORATE',
             status: 'ACTIVE',
-            fincraAccountId: mapleradRes.data.id,
+            fincraAccountId: vbaRes.accountId,
           },
         });
       }
@@ -388,11 +463,11 @@ export class BankingService {
 
       let account = user.virtualAccounts?.[0];
       if (!account) {
-        const mapleradRes = await MapleradClient.createVirtualAccount({
+        const vbaRes = await this.issueDedicatedVirtualAccount({
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
-          phone: user.phone || '08012345678',
+          phone: user.phone || '09061518843',
           bvn: bvn || undefined,
           nin: nin || undefined,
           dob: params?.dob,
@@ -405,13 +480,13 @@ export class BankingService {
         account = await prisma.virtualAccount.create({
           data: {
             userId: user.id,
-            accountNumber: mapleradRes.data.account_number,
-            accountName: mapleradRes.data.account_name,
-            bankName: mapleradRes.data.bank_name,
+            accountNumber: vbaRes.accountNumber,
+            accountName: vbaRes.accountName,
+            bankName: vbaRes.bankName,
             currency: 'NGN',
             accountType: 'INDIVIDUAL',
             status: 'ACTIVE',
-            fincraAccountId: mapleradRes.data.id,
+            fincraAccountId: vbaRes.accountId,
           },
         });
       }
