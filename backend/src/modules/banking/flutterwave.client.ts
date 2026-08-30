@@ -242,18 +242,33 @@ export class FlutterwaveClient {
   /**
    * 4. Fetch recent transactions for a customer directly from Flutterwave API
    */
-  static async fetchCustomerTransactions(customerEmail: string): Promise<any[]> {
+  static async fetchCustomerTransactions(customerEmail?: string): Promise<any[]> {
     const { secretKey, baseUrl } = await this.getCredentials();
     if (!secretKey) return [];
 
     try {
-      const cleanEmail = encodeURIComponent(customerEmail.toLowerCase().trim());
-      const response = await fetch(`${baseUrl}/transactions?customer_email=${cleanEmail}&status=successful`, {
+      let url = `${baseUrl}/transactions?status=successful`;
+      if (customerEmail) {
+        const cleanEmail = encodeURIComponent(customerEmail.toLowerCase().trim());
+        url += `&customer_email=${cleanEmail}`;
+      }
+      const response = await fetch(url, {
         headers: { Authorization: `Bearer ${secretKey}` },
       });
       const resData: any = await response.json();
       if (response.ok && resData?.status === 'success' && Array.isArray(resData.data)) {
         return resData.data;
+      }
+
+      // Fallback: fetch without email filter if specific email query returned empty
+      if (customerEmail) {
+        const fallbackRes = await fetch(`${baseUrl}/transactions?status=successful`, {
+          headers: { Authorization: `Bearer ${secretKey}` },
+        });
+        const fallbackData: any = await fallbackRes.json();
+        if (fallbackRes.ok && fallbackData?.status === 'success' && Array.isArray(fallbackData.data)) {
+          return fallbackData.data;
+        }
       }
     } catch (e: any) {
       console.warn('[FLUTTERWAVE] fetchCustomerTransactions notice:', e.message);

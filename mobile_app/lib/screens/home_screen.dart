@@ -107,10 +107,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          // MESSAGES & INQUIRIES INBOX
+          // DIRECT MESSAGES INBOX
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF334155), size: 22),
-            tooltip: 'Messages & Inquiries',
+            tooltip: 'Direct Messages',
             onPressed: () {
               if (!auth.isAuthenticated) {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));

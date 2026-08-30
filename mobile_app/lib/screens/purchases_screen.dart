@@ -6,6 +6,7 @@ import '../core/utils/currency_formatter.dart';
 import '../core/network/api_client.dart';
 import '../providers/purchase_provider.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/persistent_bottom_nav.dart';
 import 'login_screen.dart';
 import 'provisional_allocation_screen.dart';
 import 'contract_of_sale_screen.dart';
@@ -185,6 +186,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
             ),
           ),
         ),
+        bottomNavigationBar: const PersistentBottomNav(activeIndex: 3),
       );
     }
 
@@ -455,6 +457,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: const PersistentBottomNav(activeIndex: 3),
     );
   }
 

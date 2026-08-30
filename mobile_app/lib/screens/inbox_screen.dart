@@ -67,7 +67,7 @@ class _InboxScreenState extends State<InboxScreen> {
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text(
-          'Messages & Inquiries',
+          'Messages & Chats',
           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF0F172A)),
         ),
         backgroundColor: Colors.white,
@@ -112,7 +112,7 @@ class _InboxScreenState extends State<InboxScreen> {
                           ),
                           const SizedBox(height: 6),
                           const Text(
-                            'When you inquiry about properties, projects, or contact human support, your direct chats will appear here.',
+                            'When you chat with verified developers or project team experts regarding properties or building requests, all your conversations appear here.',
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.4),
                           ),

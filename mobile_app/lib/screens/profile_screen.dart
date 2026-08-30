@@ -1168,8 +1168,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const Divider(height: 1, color: AppColors.cardBorder),
                   _buildMenuItem(
                     icon: Icons.chat_bubble_outline_rounded,
-                    title: 'Messages & Inquiries',
-                    subtitle: 'Chat directly with verified developers & buyers',
+                    title: 'Direct Messages',
+                    subtitle: 'Chat directly with verified developers & project team experts',
                     onTap: () {
                       Navigator.push(
                         context,
@@ -1179,27 +1179,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const Divider(height: 1, color: AppColors.cardBorder),
                   _buildMenuItem(
-                    icon: Icons.support_agent_rounded,
-                    title: 'Live Human Support',
-                    subtitle: 'Chat or voice call directly with Hometrust officers',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ChatScreen(
-                            recipientName: 'Hometrust Support Desk',
-                            recipientRole: 'Verified Officer',
-                            isSupport: true,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(height: 1, color: AppColors.cardBorder),
-                  _buildMenuItem(
                     icon: Icons.confirmation_number_outlined,
                     title: 'Support Tickets',
-                    subtitle: 'Open urgent, high, or medium priority tickets & track replies',
+                    subtitle: 'Open urgent, high, or medium priority tickets & track resolution',
                     onTap: () {
                       Navigator.push(
                         context,
@@ -1210,28 +1192,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const Divider(height: 1, color: AppColors.cardBorder),
                   _buildMenuItem(
                     icon: Icons.privacy_tip_outlined,
-                    title: 'Privacy Policy & Terms',
-                    subtitle: 'How we handle your data',
+                    title: 'Privacy Policy & Terms of Service',
+                    subtitle: 'Legal framework, escrow terms & data security',
                     onTap: () {
                       showDialog(
                         context: context,
                         builder: (_) => AlertDialog(
-                          title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w800)),
-                          content: const SingleChildScrollView(
-                            child: Text(
-                              'Hometrust collects your personal information (name, email, NIN, BVN) solely to provide property document verification, escrow payments, and dedicated virtual account services under Nigerian law (NDPR compliance).\n\n'
-                              'We do not share your data with third parties without consent, except where required by law or to fulfil our secure banking and verification service agreements.\n\n'
-                              'Your documents are stored in an encrypted vault and are only accessible to our licensed legal verification team.\n\n'
-                              'For data requests or deletion: support@hometrust.ng\n\n'
-                              'Full policy: https://hometrust.ng/privacy',
-                              style: TextStyle(fontSize: 12, height: 1.6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          title: const Row(
+                            children: [
+                              Icon(Icons.privacy_tip_rounded, color: AppColors.primary, size: 22),
+                              SizedBox(width: 8),
+                              Text('Privacy & Terms', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                            ],
+                          ),
+                          content: SizedBox(
+                            width: double.maxFinite,
+                            child: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: const [
+                                  Text(
+                                    '1. ESCROW PROTOCOL & PROTECTION',
+                                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11.5, color: Color(0xFF0F172A)),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'All financial transactions are secured through CBN-licensed banking partners in dedicated Escrow Accounts. Funds are disbursed strictly upon milestone completion verified by certified surveyors.',
+                                    style: TextStyle(fontSize: 11, color: Color(0xFF475569), height: 1.45),
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    '2. NDPR DATA PRIVACY COMPLIANCE',
+                                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11.5, color: Color(0xFF0F172A)),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Hometrust processes personal identity data (NIN, BVN, Phone, Email) solely for KYC verification, anti-money laundering (AML) checks, and virtual bank account generation in accordance with the Nigeria Data Protection Act.',
+                                    style: TextStyle(fontSize: 11, color: Color(0xFF475569), height: 1.45),
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    '3. TITLE DEED VERIFICATION & LEGAL PROTOCOLS',
+                                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11.5, color: Color(0xFF0F172A)),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Property verifications and legal contracts are conducted with official state land registries (e.g. Lands Bureau, Alausa) by licensed solicitors under the Nigerian Bar Association.',
+                                    style: TextStyle(fontSize: 11, color: Color(0xFF475569), height: 1.45),
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    '4. FULL LEGAL POLICY ON WEBSITE',
+                                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11.5, color: Color(0xFF0F172A)),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'You can access our comprehensive Privacy Policy, Terms of Service, and Escrow Warranty agreements directly on our official website at https://hometrustng.com/privacy',
+                                    style: TextStyle(fontSize: 11, color: Color(0xFF059669), height: 1.45, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           actions: [
-                            ElevatedButton(
+                            TextButton(
                               onPressed: () => Navigator.pop(context),
-                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                              child: const Text('Close', style: TextStyle(color: Colors.white)),
+                              child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
                             ),
                           ],
                         ),

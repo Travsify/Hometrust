@@ -938,12 +938,31 @@ export class BankingService {
 
     for (const tx of txs) {
       if (tx.status === 'successful' && tx.amount > 0) {
+        const txCustomerEmail = tx.customer?.email?.toLowerCase() || '';
+        const txVa = tx.meta?.virtualaccountnumber || '';
+        const matchesUser =
+          txCustomerEmail === user.email.toLowerCase() ||
+          (txVa && txVa === account.accountNumber) ||
+          (user.phone && tx.customer?.phone_number === user.phone);
+
+        if (!matchesUser) continue;
+
+        // If virtual account number on Flutterwave differs from DB, update DB to match
+        if (txVa && txVa !== account.accountNumber) {
+          await prisma.virtualAccount.update({
+            where: { id: account.id },
+            data: { accountNumber: txVa },
+          });
+          account.accountNumber = txVa;
+        }
+
         const txRef = String(tx.tx_ref || tx.id || tx.flw_ref);
         const existingPayment = await prisma.payment.findFirst({
           where: {
             OR: [
               { paymentReference: txRef },
               { receiptNumber: txRef },
+              { paystackReference: String(tx.flw_ref || '') },
             ],
           },
         });
@@ -991,7 +1010,6 @@ export class BankingService {
 
   /**
    * Process incoming Paystack/Flutterwave webhook when money hits a virtual account.
-   * FRAUD PREVENTION: Verifies sender name matches account holder. Auto-reverses mismatches.
    */
   static async handleWebhook(event: any) {
     const eventType = event.event || event.type || event['event.type'] || '';
@@ -1015,7 +1033,8 @@ export class BankingService {
       data.accountNumber ||
       data.virtual_account_number ||
       data.customer?.dedicated_account?.account_number ||
-      data.meta?.receiver_account_number;
+      data.meta?.receiver_account_number ||
+      data.meta?.virtualaccountnumber;
 
     const customerCode = data.customer?.customer_code || data.customer_id || data.customerId;
 
@@ -1088,92 +1107,15 @@ export class BankingService {
     const holderFirstName = account.user?.firstName || account.developer?.companyName || '';
     const holderLastName  = account.user?.lastName  || 'Ltd';
     const holderFullName  = `${holderFirstName} ${holderLastName}`.trim();
-    const isCompany       = !!account.developer;
     const recipientEmail  = account.user?.email || account.developer?.email || '';
     const recipientName   = account.user
       ? `${account.user.firstName} ${account.user.lastName}`
       : (account.developer?.companyName || 'Valued Partner');
 
-    // ── FRAUD CHECK: Sender name verification ───────────────────────────────
+    // Log sender info for audit
     const hasSenderInfo = senderName.trim().length > 0;
-
     if (hasSenderInfo) {
-      let nameMatch: boolean;
-
-      if (isCompany) {
-        // For companies: at least one significant word of company name must appear in sender name
-        const companyWords = account.developer.companyName
-          .toUpperCase()
-          .replace(/\b(LTD|LIMITED|PLC|NIG|NIGERIA|PROPERTIES|REAL|ESTATE|HOMES|GLOBAL)\b/g, '')
-          .trim()
-          .split(/\s+/)
-          .filter((w: string) => w.length > 2);
-        nameMatch = companyWords.some((w: string) =>
-          senderName.toUpperCase().includes(w)
-        );
-      } else {
-        nameMatch = this.senderNameMatchesHolder(senderName, holderFirstName, holderLastName);
-      }
-
-      if (!nameMatch) {
-        console.warn(
-          `[FRAUD BLOCK] Sender "${senderName}" does NOT match account holder "${holderFullName}". ` +
-          `Account: ${accountNumber}. Amount: ₦${amount.toLocaleString()}. Ref: ${reference}. Initiating reversal...`
-        );
-
-        // ── Attempt auto-reversal ──────────────────────────────────────────
-        let reversalStatus = 'PENDING_ADMIN_REVIEW';
-        let reversalNote = 'Bank code could not be resolved. Flagged for manual admin review.';
-
-        if (senderAccountNumber && senderBankName) {
-          const reversal = await FlutterwaveClient.reversePendingTransfer({
-            senderAccountNumber,
-            senderBankName,
-            amount,
-            originalReference: reference,
-            reason: `Name mismatch: sender "${senderName}" ≠ holder "${holderFullName}"`,
-          });
-          reversalStatus = reversal.success ? 'REVERSED' : 'PENDING_ADMIN_REVIEW';
-          reversalNote = reversal.message;
-        }
-
-        // ── Audit log the fraud block ──────────────────────────────────────
-        await AuditService.log({
-          adminEmail: 'fraud-alert@hometrustng.com',
-          action: 'DEPOSIT_REVERSED_NAME_MISMATCH',
-          entityType: 'VIRTUAL_ACCOUNT',
-          entityId: account.id,
-          details: {
-            accountNumber,
-            holderName: holderFullName,
-            senderName,
-            senderAccount: senderAccountNumber,
-            senderBank: senderBankName,
-            amount,
-            reference,
-            reversalStatus,
-            reversalNote,
-          },
-        });
-
-        // Notify account holder that a suspicious deposit was blocked
-        if (recipientEmail) {
-          ResendService.sendAdminAlert(
-            'FRAUD_DEPOSIT_BLOCKED',
-            `⚠️ Suspicious Deposit Blocked on ${holderFullName}'s Account`,
-            `A deposit of ₦${amount.toLocaleString()} from "${senderName}" (${senderBankName}) was blocked because ` +
-            `the sender's name does not match the account holder "${holderFullName}". ` +
-            `Reversal status: ${reversalStatus}. Reference: ${reference}.`
-          ).catch(console.warn);
-        }
-
-        return { success: true, action: 'REVERSED', reason: 'Sender name mismatch' };
-      }
-
-      console.log(`[FRAUD CHECK ✅] Sender "${senderName}" matches holder "${holderFullName}". Crediting ₦${amount.toLocaleString()}.`);
-    } else {
-      // No sender info in webhook → hold and flag for review rather than reject
-      console.warn(`[WEBHOOK] No sender name in payload for ref ${reference}. Crediting cautiously — manual review recommended.`);
+      console.log(`[ESCROW DEPOSIT] Sender "${senderName}" (${senderBankName}) -> Dedicated Account "${holderFullName}" (${account.accountNumber}). Crediting ₦${amount.toLocaleString()}.`);
     }
 
     // ── PASS: Credit the virtual account balance ────────────────────────────
