@@ -223,25 +223,36 @@ export class ApiKeysService {
   }
 
   /**
-   * Retrieves active live key for a service from database (with fallback to .env)
+   * Retrieves active live key for a service (Prioritizes non-mock env vars, then valid DB keys)
    */
   static async getActiveKey(service: string): Promise<string | null> {
+    const s = service.toUpperCase();
+
+    // 1. Check environment variables first
+    let envKey: string | undefined;
+    if (s === 'PAYSTACK') envKey = process.env.PAYSTACK_SECRET_KEY;
+    else if (s === 'FLUTTERWAVE') envKey = process.env.FLUTTERWAVE_SECRET_KEY;
+    else if (s === 'OPENROUTER') envKey = process.env.OPENROUTER_API_KEY;
+    else if (s === 'PREMBLY' || s === 'IDENTITYPASS') envKey = process.env.PREMBLY_API_KEY;
+    else if (s === 'MAPLERAD') envKey = process.env.MAPLERAD_SECRET_KEY;
+    else if (s === 'FINCRA') envKey = process.env.FINCRA_SECRET_KEY;
+
+    if (envKey && envKey.trim() !== '' && !envKey.includes('mock')) {
+      return envKey.trim().replace(/^["']|["']$/g, '');
+    }
+
+    // 2. Check Database ApiKeyConfig
     const key = await prisma.apiKeyConfig.findFirst({
-      where: { service: service.toUpperCase(), isActive: true },
+      where: { service: s, isActive: true },
       orderBy: { updatedAt: 'desc' },
     });
 
-    if (key && key.keyValue) {
-      return key.keyValue;
+    if (key && key.keyValue && key.keyValue.trim() !== '' && !key.keyValue.includes('mock')) {
+      return key.keyValue.trim().replace(/^["']|["']$/g, '');
     }
 
-    // Fallbacks from environment variables
-    if (service === 'PAYSTACK') return process.env.PAYSTACK_SECRET_KEY || null;
-    if (service === 'FLUTTERWAVE') return process.env.FLUTTERWAVE_SECRET_KEY || null;
-    if (service === 'OPENROUTER') return process.env.OPENROUTER_API_KEY || null;
-    if (service === 'PREMBLY' || service === 'IDENTITYPASS') return process.env.PREMBLY_API_KEY || null;
-    if (service === 'FINCRA') return process.env.FINCRA_SECRET_KEY || null;
-    return null;
+    // 3. Fallback to raw envKey if available
+    return envKey ? envKey.trim().replace(/^["']|["']$/g, '') : null;
   }
 
   private static maskKey(val: string): string {
