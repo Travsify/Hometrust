@@ -473,17 +473,49 @@ export class BankingService {
    * Retrieve active dedicated virtual bank account for user or developer
    */
   static async getVirtualAccount(userId?: string, developerId?: string) {
+    let account: any = null;
+
     if (developerId) {
-      return prisma.virtualAccount.findFirst({
+      account = await prisma.virtualAccount.findFirst({
         where: { developerId, status: 'ACTIVE' },
         include: { developer: true, user: true },
       });
+    } else {
+      account = await prisma.virtualAccount.findFirst({
+        where: { userId, status: 'ACTIVE' },
+        include: { user: true, developer: true },
+      });
     }
 
-    return prisma.virtualAccount.findFirst({
-      where: { userId, status: 'ACTIVE' },
-      include: { user: true, developer: true },
-    });
+    if (!account) return null;
+
+    // Check if user is a developer or developerId provided
+    const dev = developerId
+      ? await prisma.developer.findUnique({ where: { id: developerId } })
+      : (userId ? await prisma.developer.findUnique({ where: { userId } }) : null);
+
+    let lockedEscrowBalance = 0;
+    if (dev) {
+      const purchases = await prisma.purchase.findMany({
+        where: {
+          OR: [
+            { property: { developerId: dev.id } },
+            { projectUnit: { project: { developerId: dev.id } } },
+          ],
+          status: { notIn: ['COMPLETED', 'CANCELLED'] },
+        },
+        select: { amountPaid: true },
+      });
+      lockedEscrowBalance = purchases.reduce((sum, p) => sum + (p.amountPaid || 0), 0);
+    }
+
+    return {
+      ...account,
+      availableBalance: account.balance,
+      lockedEscrowBalance,
+      totalEscrowBalance: account.balance + lockedEscrowBalance,
+      isDeveloper: dev !== null,
+    };
   }
 
   /**

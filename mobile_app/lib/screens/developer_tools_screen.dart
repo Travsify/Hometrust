@@ -133,7 +133,6 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: const PersistentBottomNav(activeIndex: 3),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,

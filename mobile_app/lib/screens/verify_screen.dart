@@ -86,7 +86,6 @@ class _VerifyScreenState extends State<VerifyScreen> {
     final verifProvider = Provider.of<VerificationProvider>(context);
 
     return Scaffold(
-      bottomNavigationBar: const PersistentBottomNav(activeIndex: 2),
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,

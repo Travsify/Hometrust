@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/network/api_client.dart';
+import '../core/utils/image_helper.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/persistent_bottom_nav.dart';
 import 'kyc_screen.dart';
@@ -19,6 +20,7 @@ class DeveloperProfileScreen extends StatefulWidget {
 class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
   bool _isLoading = true;
   bool _isUploadingLogo = false;
+  Uint8List? _localLogoBytes;
   Map<String, dynamic>? _stats;
 
   @override
@@ -52,7 +54,10 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
       if (result == null || result.files.isEmpty || result.files.first.bytes == null) return null;
 
       final file = result.files.first;
-      setState(() => _isUploadingLogo = true);
+      setState(() {
+        _localLogoBytes = file.bytes;
+        _isUploadingLogo = true;
+      });
 
       final uploadRes = await ApiClient.uploadFile(
         '/storage/upload',
@@ -132,6 +137,7 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
     final websiteCtrl = TextEditingController(text: dev?['website'] ?? '');
     final bioCtrl = TextEditingController(text: dev?['about'] ?? '');
     String? currentLogoUrl = dev?['logoUrl'] ?? user?.avatarUrl;
+    Uint8List? modalPreviewBytes;
     bool isModalUploading = false;
 
     showModalBottomSheet(
@@ -141,6 +147,35 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
+            Future<void> pickModalLogo() async {
+              try {
+                final result = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+                  withData: true,
+                );
+                if (result != null && result.files.isNotEmpty && result.files.first.bytes != null) {
+                  final file = result.files.first;
+                  setModalState(() {
+                    modalPreviewBytes = file.bytes;
+                    isModalUploading = true;
+                  });
+                  final uploadRes = await ApiClient.uploadFile(
+                    '/storage/upload',
+                    fileBytes: file.bytes!,
+                    fileName: file.name,
+                    fieldName: 'file',
+                  );
+                  if (uploadRes != null && uploadRes['fileUrl'] != null) {
+                    setModalState(() {
+                      currentLogoUrl = uploadRes['fileUrl'];
+                    });
+                  }
+                }
+              } catch (_) {}
+              setModalState(() => isModalUploading = false);
+            }
+
             return Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -177,31 +212,24 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                                 width: 80,
                                 height: 80,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF0F172A),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
                                 ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(18),
-                                  child: isModalUploading
-                                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF059669), strokeWidth: 2))
-                                      : (currentLogoUrl != null && currentLogoUrl!.isNotEmpty)
-                                          ? Image.network(currentLogoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.apartment_rounded, color: Colors.white, size: 36))
-                                          : const Icon(Icons.apartment_rounded, color: Colors.white, size: 36),
-                                ),
+                                child: isModalUploading
+                                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF059669), strokeWidth: 2))
+                                    : ImageHelper.buildAvatar(
+                                        imageUrl: currentLogoUrl,
+                                        previewBytes: modalPreviewBytes,
+                                        size: 80,
+                                        fallbackName: companyCtrl.text.isNotEmpty ? companyCtrl.text : 'Company',
+                                        borderRadius: BorderRadius.circular(18),
+                                      ),
                               ),
                               Positioned(
                                 bottom: 0,
                                 right: 0,
                                 child: InkWell(
-                                  onTap: () async {
-                                    setModalState(() => isModalUploading = true);
-                                    final uploaded = await _pickAndUploadImage(title: 'Upload Company Logo');
-                                    setModalState(() {
-                                      if (uploaded != null) currentLogoUrl = uploaded;
-                                      isModalUploading = false;
-                                    });
-                                  },
+                                  onTap: pickModalLogo,
                                   child: Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: const BoxDecoration(
@@ -216,14 +244,7 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                           ),
                           const SizedBox(height: 6),
                           TextButton.icon(
-                            onPressed: () async {
-                              setModalState(() => isModalUploading = true);
-                              final uploaded = await _pickAndUploadImage(title: 'Upload Company Logo');
-                              setModalState(() {
-                                if (uploaded != null) currentLogoUrl = uploaded;
-                                isModalUploading = false;
-                              });
-                            },
+                            onPressed: pickModalLogo,
                             icon: const Icon(Icons.upload_file_rounded, size: 14, color: Color(0xFF059669)),
                             label: const Text('Change Company Logo / Image', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF059669))),
                           ),
@@ -362,6 +383,11 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                             if (context.mounted) {
                               final auth = Provider.of<AuthProvider>(context, listen: false);
                               await auth.refreshUser();
+                              if (modalPreviewBytes != null) {
+                                setState(() {
+                                  _localLogoBytes = modalPreviewBytes;
+                                });
+                              }
                               Navigator.pop(ctx);
                               _fetchProfileStats();
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -674,7 +700,6 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
     final isVerified = dev?['isVerified'] ?? user?.isVerified ?? false;
 
     return Scaffold(
-      bottomNavigationBar: const PersistentBottomNav(activeIndex: 4),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -706,29 +731,33 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                         child: Stack(
                           children: [
                             Container(
-                              width: 60,
-                              height: 60,
                               decoration: BoxDecoration(
-                                color: const Color(0xFF0F172A),
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                                border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(15),
-                                child: (logoUrl != null && logoUrl.isNotEmpty)
-                                    ? Image.network(
-                                        logoUrl,
-                                        width: 60,
-                                        height: 60,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => const Center(
-                                          child: Icon(Icons.apartment_rounded, color: Colors.white, size: 30),
-                                        ),
-                                      )
-                                    : const Center(
-                                        child: Icon(Icons.apartment_rounded, color: Colors.white, size: 30),
+                              child: _isUploadingLogo
+                                  ? Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0F172A),
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
-                              ),
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(color: Color(0xFF059669), strokeWidth: 2),
+                                        ),
+                                      ),
+                                    )
+                                  : ImageHelper.buildAvatar(
+                                      imageUrl: logoUrl,
+                                      previewBytes: _localLogoBytes,
+                                      size: 60,
+                                      fallbackName: companyName,
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
                             ),
                             Positioned(
                               bottom: 0,

@@ -6,13 +6,13 @@ import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
+import '../core/utils/image_helper.dart';
 import '../providers/auth_provider.dart';
 import '../providers/purchase_provider.dart';
 import 'login_screen.dart';
 import 'legal_request_screen.dart';
 import 'kyc_screen.dart';
 import 'wallet_screen.dart';
-import 'chat_screen.dart';
 import 'inbox_screen.dart';
 import 'build_for_me_screen.dart';
 import 'support_tickets_screen.dart';
@@ -29,6 +29,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loadingAccount = false;
   bool _hideBalance = false;
   bool _isUploadingAvatar = false;
+  Uint8List? _localAvatarBytes;
 
   @override
   void initState() {
@@ -53,7 +54,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (result == null || result.files.isEmpty || result.files.first.bytes == null) return;
 
       final file = result.files.first;
-      setState(() => _isUploadingAvatar = true);
+      setState(() {
+        _localAvatarBytes = file.bytes;
+        _isUploadingAvatar = true;
+      });
 
       final uploadRes = await ApiClient.uploadFile(
         '/storage/upload',
@@ -106,6 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final stateCtrl = TextEditingController();
     final bioCtrl = TextEditingController();
     String? currentAvatarUrl = user.avatarUrl;
+    Uint8List? modalPreviewBytes;
     bool isModalUploading = false;
 
     showModalBottomSheet(
@@ -115,6 +120,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
+            Future<void> pickModalAvatar() async {
+              setModalState(() => isModalUploading = true);
+              try {
+                final res = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+                  withData: true,
+                );
+                if (res != null && res.files.isNotEmpty && res.files.first.bytes != null) {
+                  final file = res.files.first;
+                  setModalState(() {
+                    modalPreviewBytes = file.bytes;
+                  });
+                  final upload = await ApiClient.uploadFile(
+                    '/storage/upload',
+                    fileBytes: file.bytes!,
+                    fileName: file.name,
+                    fieldName: 'file',
+                  );
+                  if (upload != null && upload['fileUrl'] != null) {
+                    setModalState(() => currentAvatarUrl = upload['fileUrl']);
+                  }
+                }
+              } catch (_) {}
+              setModalState(() => isModalUploading = false);
+            }
+
             return Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -151,34 +183,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 width: 80,
                                 height: 80,
                                 decoration: const BoxDecoration(
-                                  color: Color(0xFF0F172A),
                                   shape: BoxShape.circle,
                                 ),
-                                child: ClipOval(
-                                  child: isModalUploading
-                                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF059669), strokeWidth: 2))
-                                      : (currentAvatarUrl != null && currentAvatarUrl!.isNotEmpty)
-                                          ? Image.network(currentAvatarUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Center(child: Text(user.firstName[0], style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800))))
-                                          : Center(child: Text(user.firstName[0], style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800))),
-                                ),
+                                child: isModalUploading
+                                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF059669), strokeWidth: 2))
+                                    : ImageHelper.buildAvatar(
+                                        imageUrl: currentAvatarUrl,
+                                        previewBytes: modalPreviewBytes,
+                                        size: 80,
+                                        fallbackName: '${firstCtrl.text} ${lastCtrl.text}',
+                                        borderRadius: BorderRadius.circular(40),
+                                      ),
                               ),
                               Positioned(
                                 bottom: 0,
                                 right: 0,
                                 child: InkWell(
-                                  onTap: () async {
-                                    setModalState(() => isModalUploading = true);
-                                    try {
-                                      final res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'], withData: true);
-                                      if (res != null && res.files.isNotEmpty && res.files.first.bytes != null) {
-                                        final upload = await ApiClient.uploadFile('/storage/upload', fileBytes: res.files.first.bytes!, fileName: res.files.first.name, fieldName: 'file');
-                                        if (upload['fileUrl'] != null) {
-                                          setModalState(() => currentAvatarUrl = upload['fileUrl']);
-                                        }
-                                      }
-                                    } catch (_) {}
-                                    setModalState(() => isModalUploading = false);
-                                  },
+                                  onTap: pickModalAvatar,
                                   child: Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: const BoxDecoration(
@@ -193,19 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const SizedBox(height: 4),
                           TextButton.icon(
-                            onPressed: () async {
-                              setModalState(() => isModalUploading = true);
-                              try {
-                                final res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'], withData: true);
-                                if (res != null && res.files.isNotEmpty && res.files.first.bytes != null) {
-                                  final upload = await ApiClient.uploadFile('/storage/upload', fileBytes: res.files.first.bytes!, fileName: res.files.first.name, fieldName: 'file');
-                                  if (upload['fileUrl'] != null) {
-                                    setModalState(() => currentAvatarUrl = upload['fileUrl']);
-                                  }
-                                }
-                              } catch (_) {}
-                              setModalState(() => isModalUploading = false);
-                            },
+                            onPressed: pickModalAvatar,
                             icon: const Icon(Icons.upload_file_rounded, size: 14, color: Color(0xFF059669)),
                             label: const Text('Change Photo', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF059669))),
                           ),
@@ -332,6 +341,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                             if (context.mounted) {
                               await auth.refreshUser();
+                              if (modalPreviewBytes != null) {
+                                setState(() {
+                                  _localAvatarBytes = modalPreviewBytes;
+                                });
+                              }
                               Navigator.pop(ctx);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -959,30 +973,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               width: 60,
                               height: 60,
                               decoration: const BoxDecoration(
-                                color: AppColors.primary,
                                 shape: BoxShape.circle,
                               ),
-                              child: ClipOval(
-                                child: (auth.isAuthenticated && user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
-                                    ? Image.network(
-                                        user.avatarUrl!,
-                                        width: 60,
-                                        height: 60,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Center(
-                                          child: Text(
-                                            auth.isAuthenticated ? (user.firstName.isNotEmpty ? user.firstName[0] : 'U') : '?',
-                                            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
-                                          ),
-                                        ),
-                                      )
-                                    : Center(
-                                        child: Text(
-                                          auth.isAuthenticated ? (user != null && user.firstName.isNotEmpty ? user.firstName[0] : 'U') : '?',
-                                          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
-                                        ),
-                                      ),
-                              ),
+                              child: _isUploadingAvatar
+                                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF059669), strokeWidth: 2))
+                                  : ImageHelper.buildAvatar(
+                                      imageUrl: user?.avatarUrl,
+                                      previewBytes: _localAvatarBytes,
+                                      size: 60,
+                                      fallbackName: auth.isAuthenticated ? (user?.fullName ?? 'User') : 'Guest',
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
                             ),
                             if (auth.isAuthenticated)
                               Positioned(

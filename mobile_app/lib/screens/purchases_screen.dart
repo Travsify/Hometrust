@@ -186,7 +186,6 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
             ),
           ),
         ),
-        bottomNavigationBar: const PersistentBottomNav(activeIndex: 3),
       );
     }
 
@@ -457,7 +456,6 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: const PersistentBottomNav(activeIndex: 3),
     );
   }
 

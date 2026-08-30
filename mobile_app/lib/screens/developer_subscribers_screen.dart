@@ -78,7 +78,6 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: const PersistentBottomNav(activeIndex: 2),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,

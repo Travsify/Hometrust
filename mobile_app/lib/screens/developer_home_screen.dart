@@ -18,6 +18,7 @@ import 'inbox_screen.dart';
 import 'wallet_screen.dart';
 import 'verify_screen.dart';
 import 'build_for_me_screen.dart';
+import 'support_tickets_screen.dart';
 
 class DeveloperHomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -371,9 +372,13 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
 
               // 6. REAL ESTATE DICTIONARY & LEGAL DRAFTING
               _buildLegalDictionaryBanner(context),
+              const SizedBox(height: 14),
+
+              // 7. DEVELOPER SUPPORT & DISPUTE TICKETS
+              _buildSupportTicketsBanner(context),
               const SizedBox(height: 24),
 
-              // 7. ACTIVE CONSTRUCTION MILESTONES (100% Real Database Data)
+              // 8. ACTIVE CONSTRUCTION MILESTONES (100% Real Database Data)
               _buildActiveMilestonesSection(context, activeMilestones),
               const SizedBox(height: 24),
 
@@ -425,12 +430,12 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
         },
       },
       {
-        'title': 'On-Site Structural Inspection & Testing',
-        'subtitle': 'Book COREN engineers for concrete cube testing, foundation audit & soil analysis.',
-        'badge': 'COREN ENGINEERING AUDITS',
+        'title': 'Charter A Builder 🏗️ (Build-For-Me)',
+        'subtitle': 'Contract vetted COREN engineers & master craftsmen with managed milestone escrow protection.',
+        'badge': 'CHARTER A BUILDER',
         'gradient': [const Color(0xFF581C87), const Color(0xFF7E22CE)],
-        'icon': Icons.engineering_rounded,
-        'action': 'Book Inspection →',
+        'icon': Icons.architecture_rounded,
+        'action': 'Charter A Builder →',
         'onTap': () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const BuildForMeScreen()));
         },
@@ -1063,7 +1068,61 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
     );
   }
 
-  // ── 11. ACTIVE CONSTRUCTION MILESTONES (100% Real Database Data) ──
+  // ── 11. DEVELOPER SUPPORT TICKETS BANNER ──
+  Widget _buildSupportTicketsBanner(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportTicketsScreen()));
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.headset_mic_rounded, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Developer Support & Priority Tickets',
+                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Request support for KYB, milestone audit reviews, escrow releases & technical queries.',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.35),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF94A3B8)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── 12. ACTIVE CONSTRUCTION MILESTONES (100% Real Database Data) ──
   Widget _buildActiveMilestonesSection(BuildContext context, List<dynamic> activeMilestones) {
     return Container(
       padding: const EdgeInsets.all(16),

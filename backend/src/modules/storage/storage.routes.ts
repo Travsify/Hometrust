@@ -52,7 +52,10 @@ router.post('/upload', authenticate as any, upload.any(), (req: Request, res: Re
     return;
   }
 
-  const fileUrl = `${config.storage.baseUrl}/files/${file.filename}`;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const host = req.get('host');
+  const serverBase = host ? `${protocol}://${host}/api/v1/storage` : config.storage.baseUrl;
+  const fileUrl = `${serverBase}/files/${file.filename}`;
 
   sendSuccess(res, {
     fileName: file.originalname,

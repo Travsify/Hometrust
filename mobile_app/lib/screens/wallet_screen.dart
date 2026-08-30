@@ -12,7 +12,6 @@ import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/persistent_bottom_nav.dart';
-import 'kyc_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -318,7 +317,12 @@ class _WalletScreenState extends State<WalletScreen> {
 
   void _showWithdrawModal() {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final double balance = (_virtualAccount?['balance'] as num?)?.toDouble() ?? auth.user?.virtualAccountBalance ?? 0.0;
+    final double availableBalance = (_virtualAccount?['availableBalance'] as num?)?.toDouble() ??
+        (_virtualAccount?['balance'] as num?)?.toDouble() ??
+        auth.user?.virtualAccountBalance ?? 0.0;
+    final double lockedBalance = (_virtualAccount?['lockedEscrowBalance'] as num?)?.toDouble() ?? 0.0;
+    final bool isDeveloper = auth.isDeveloperMode || (_virtualAccount?['isDeveloper'] == true);
+
     _amountController.clear();
     _accountNumberController.clear();
     _accountNameController.clear();
@@ -389,16 +393,39 @@ class _WalletScreenState extends State<WalletScreen> {
                         children: [
                           Icon(Icons.arrow_upward_rounded, color: AppColors.primary, size: 20),
                           SizedBox(width: 8),
-                          Text('Withdraw from Escrow', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                          Text('Withdraw / Payout', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
                         ],
                       ),
                       IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
                     ],
                   ),
                   Text(
-                    'Available Escrow Balance: ${CurrencyFormatter.format(balance)}',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF059669), fontWeight: FontWeight.w700),
+                    'Available Withdrawable Balance: ${CurrencyFormatter.format(availableBalance)}',
+                    style: const TextStyle(fontSize: 12.5, color: Color(0xFF059669), fontWeight: FontWeight.w800),
                   ),
+                  if (isDeveloper && lockedBalance > 0) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBEB),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFFDE68A)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_rounded, size: 14, color: Color(0xFFD97706)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Locked Escrow Funds: ${CurrencyFormatter.format(lockedBalance)} are securely reserved under construction milestones and cannot be withdrawn until certified inspection release.',
+                              style: const TextStyle(fontSize: 10.5, color: Color(0xFF92400E), fontWeight: FontWeight.w600, height: 1.3),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   // Amount
@@ -562,8 +589,8 @@ class _WalletScreenState extends State<WalletScreen> {
                                 setModalState(() => modalError = 'Minimum withdrawal amount is ₦1,000');
                                 return;
                               }
-                              if (rawAmount > balance) {
-                                setModalState(() => modalError = 'Insufficient escrow wallet balance (Available: ${CurrencyFormatter.format(balance)})');
+                              if (rawAmount > availableBalance) {
+                                setModalState(() => modalError = 'Insufficient available balance (Available: ${CurrencyFormatter.format(availableBalance)}). Locked escrow funds cannot be withdrawn.');
                                 return;
                               }
                               if (accNum.length != 10) {
@@ -955,8 +982,13 @@ Official Web Verification: https://hometrustng.com
       'accountName': user?.virtualAccountName ?? 'Hometrust / ${user?.fullName ?? 'Customer'}',
       'balance': user?.virtualAccountBalance ?? 0.0,
     };
-
-    final double balance = (effectiveAcc['balance'] as num?)?.toDouble() ?? 0.0;
+    final bool isDeveloper = auth.isDeveloperMode || (effectiveAcc['isDeveloper'] == true);
+    final double availableBalance = (effectiveAcc['availableBalance'] as num?)?.toDouble() ??
+        (effectiveAcc['balance'] as num?)?.toDouble() ??
+        0.0;
+    final double lockedBalance = (effectiveAcc['lockedEscrowBalance'] as num?)?.toDouble() ?? 0.0;
+    final double totalBalance = (effectiveAcc['totalEscrowBalance'] as num?)?.toDouble() ?? (availableBalance + lockedBalance);
+    final double balance = isDeveloper ? availableBalance : ((effectiveAcc['balance'] as num?)?.toDouble() ?? 0.0);
     final String accNum = effectiveAcc['accountNumber']?.toString() ?? '';
     final String bankName = effectiveAcc['bankName']?.toString() ?? 'Dedicated Escrow Bank';
     final String accName = effectiveAcc['accountName']?.toString() ?? 'Hometrust Customer';
@@ -973,9 +1005,9 @@ Official Web Verification: https://hometrustng.com
       bottomNavigationBar: const PersistentBottomNav(),
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'My Escrow Wallet',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF0F172A)),
+        title: Text(
+          isDeveloper ? 'Corporate Escrow Vault' : 'My Escrow Wallet',
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF0F172A)),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
@@ -1040,11 +1072,14 @@ Official Web Verification: https://hometrustng.com
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
-                              Icon(Icons.shield_rounded, color: Color(0xFF34D399), size: 12),
-                              SizedBox(width: 4),
-                              Text('DEDICATED ESCROW ACCOUNT', style: TextStyle(color: Color(0xFF34D399), fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                              const Icon(Icons.shield_rounded, color: Color(0xFF34D399), size: 12),
+                              const SizedBox(width: 4),
+                              Text(
+                                isDeveloper ? 'CORPORATE ESCROW VAULT' : 'DEDICATED ESCROW ACCOUNT',
+                                style: const TextStyle(color: Color(0xFF34D399), fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                              ),
                             ],
                           ),
                         ),
@@ -1069,32 +1104,130 @@ Official Web Verification: https://hometrustng.com
                     ),
                     const SizedBox(height: 18),
 
-                    // Balance Display with Eye Toggle
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('AVAILABLE ESCROW BALANCE', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
-                            const SizedBox(height: 4),
-                            Text(
-                              _hideBalance ? '₦ ••••••••' : CurrencyFormatter.format(balance),
-                              style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: 0.5),
-                            ),
-                          ],
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            _hideBalance ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                            color: const Color(0xFF34D399),
-                            size: 22,
+                    if (isDeveloper) ...[
+                      // Developer View: Total Escrow Vault + Available + Locked
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('TOTAL ESCROW PORTFOLIO VAULT', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.8)),
+                              const SizedBox(height: 4),
+                              Text(
+                                _hideBalance ? '₦ ••••••••' : CurrencyFormatter.format(totalBalance),
+                                style: const TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                              ),
+                            ],
                           ),
-                          onPressed: () => setState(() => _hideBalance = !_hideBalance),
-                        ),
-                      ],
-                    ),
+                          IconButton(
+                            icon: Icon(
+                              _hideBalance ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                              color: const Color(0xFF34D399),
+                              size: 22,
+                            ),
+                            onPressed: () => setState(() => _hideBalance = !_hideBalance),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Breakdown Cards: Available vs Locked
+                      Row(
+                        children: [
+                          // Available Withdrawable Balance Card
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF064E3B).withValues(alpha: 0.8),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: const [
+                                      Text('AVAILABLE', style: TextStyle(color: Color(0xFF34D399), fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                                      Icon(Icons.check_circle_rounded, color: Color(0xFF34D399), size: 13),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _hideBalance ? '₦ ••••••••' : CurrencyFormatter.format(availableBalance),
+                                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text('Withdrawable Now', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+
+                          // Locked Milestone Balance Card
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF78350F).withValues(alpha: 0.4),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: const [
+                                      Text('LOCKED IN ESCROW', style: TextStyle(color: Color(0xFFFBBF24), fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                                      Icon(Icons.lock_rounded, color: Color(0xFFFBBF24), size: 13),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _hideBalance ? '₦ ••••••••' : CurrencyFormatter.format(lockedBalance),
+                                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text('Pending Milestones', style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 9.5, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      // Buyer view: Standard single balance display
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('AVAILABLE ESCROW BALANCE', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+                              const SizedBox(height: 4),
+                              Text(
+                                _hideBalance ? '₦ ••••••••' : CurrencyFormatter.format(balance),
+                                style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              _hideBalance ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                              color: const Color(0xFF34D399),
+                              size: 22,
+                            ),
+                            onPressed: () => setState(() => _hideBalance = !_hideBalance),
+                          ),
+                        ],
+                      ),
+                    ],
 
                     const Divider(height: 24, color: Color(0xFF334155)),
 
