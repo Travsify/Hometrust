@@ -44,12 +44,12 @@ export class MapleradClient {
     const dbKey = await ApiKeysService.getActiveKey('MAPLERAD').catch(() => null);
     const secretKey = dbKey || config.maplerad.secretKey;
     const publicKey = config.maplerad.publicKey;
-    const baseUrl = config.maplerad.baseUrl;
+    const baseUrl = (config.maplerad.baseUrl || 'https://api.maplerad.com/v1').replace(/\/$/, '');
     return { secretKey, publicKey, baseUrl };
   }
 
   /**
-   * 1. Enrols a verified customer on Maplerad (Tier 1 Enrolment with NIN/BVN)
+   * 1. Enrols or looks up a customer on Maplerad and attempts Tier 1 compliance upgrade
    */
   static async enrollCustomer(params: {
     firstName: string;
@@ -58,68 +58,145 @@ export class MapleradClient {
     phone: string;
     bvn?: string;
     nin?: string;
+    dob?: string;
     address?: string;
+    street?: string;
+    city?: string;
+    state?: string;
   }): Promise<{ id: string; tier: number } | null> {
     const { secretKey, baseUrl } = await this.getCredentials();
 
-    let cleanPhone = params.phone.replace(/\s+/g, '');
-    let phoneNum = cleanPhone.startsWith('+234') ? cleanPhone.substring(4) : (cleanPhone.startsWith('0') ? cleanPhone.substring(1) : cleanPhone);
-
-    const idType = params.nin ? 'NIN' : (params.bvn ? 'BVN' : 'NIN');
-    const idNumber = params.nin || params.bvn;
-    if (!idNumber) {
-      throw new Error('NIN or BVN is required for Maplerad customer enrolment.');
+    if (!secretKey) {
+      console.error('[MAPLERAD] MAPLERAD_SECRET_KEY is missing in environment variables.');
+      return null;
     }
 
-    const payload = {
-      first_name: params.firstName || 'Hometrust',
-      last_name: params.lastName || 'User',
-      email: params.email.toLowerCase().trim(),
-      phone: {
-        phone_country_code: '+234',
-        phone_number: phoneNum,
-      },
-      dob: '15-06-1992',
-      identification_number: idNumber,
-      identity_type: idType,
-      address: {
-        street: params.address || 'No 4, Ehomes Close, Zartech Area, Oluyole',
-        city: 'Ibadan',
-        state: 'Oyo State',
-        postal_code: '200213',
-        country: 'NG',
-      },
-    };
+    const cleanEmail = params.email.toLowerCase().trim();
+    let cleanPhone = (params.phone || '08012345678').replace(/\s+/g, '');
+    let phoneNum = cleanPhone.startsWith('+234') ? cleanPhone.substring(4) : (cleanPhone.startsWith('0') ? cleanPhone.substring(1) : cleanPhone);
 
+    const idType = params.bvn ? 'BVN' : (params.nin ? 'NIN' : 'BVN');
+    const idNumber = params.bvn || params.nin;
+
+    console.log(`[MAPLERAD] Enrolling customer on Maplerad (${cleanEmail})...`);
+
+    let customerId: string | null = null;
+    let customerTier: number = 1;
+
+    // Step A: Create or register customer (POST /customers)
     try {
-      const response = await fetch(`${baseUrl}/customers/enroll`, {
+      const createRes = await fetch(`${baseUrl}/customers`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${secretKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          first_name: params.firstName || 'Hometrust',
+          last_name: params.lastName || 'User',
+          email: cleanEmail,
+          country: 'NG',
+        }),
       });
 
-      const resData: any = await response.json();
-      if (response.ok && resData?.status && resData?.data?.id) {
-        console.log(`[MAPLERAD] Customer enrolled successfully (ID: ${resData.data.id}, Tier: ${resData.data.tier})`);
-        return { id: resData.data.id, tier: resData.data.tier };
-      }
+      const createData: any = await createRes.json();
+      console.log(`[MAPLERAD] Customer register response (HTTP ${createRes.status}):`, JSON.stringify(createData));
 
-      // If already enrolled, try searching customer by email
-      const searchRes = await fetch(`${baseUrl}/customers?email=${encodeURIComponent(params.email)}`, {
-        headers: { 'Authorization': `Bearer ${secretKey}` },
-      });
-      const searchData: any = await searchRes.json();
-      if (searchData?.status && searchData?.data?.length > 0) {
-        return { id: searchData.data[0].id, tier: searchData.data[0].tier || 1 };
+      if (createRes.ok && createData?.status && createData?.data?.id) {
+        customerId = createData.data.id;
+        customerTier = createData.data.tier || 0;
+        console.log(`[MAPLERAD] Customer registered successfully (ID: ${customerId})`);
       }
-    } catch (e: any) {
-      console.warn(`[MAPLERAD] Customer enroll warning: ${e.message}`);
+    } catch (err: any) {
+      console.warn(`[MAPLERAD] Customer creation error: ${err.message}`);
     }
 
-    return null;
+    // Step B: If already registered or not returned, search by email (GET /customers)
+    if (!customerId) {
+      try {
+        console.log(`[MAPLERAD] Looking up existing customer record for ${cleanEmail}...`);
+        const searchRes = await fetch(`${baseUrl}/customers?email=${encodeURIComponent(cleanEmail)}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${secretKey}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const searchData: any = await searchRes.json();
+        console.log(`[MAPLERAD] Customer search response (HTTP ${searchRes.status}):`, JSON.stringify(searchData));
+
+        if (searchRes.ok && searchData?.status) {
+          if (Array.isArray(searchData.data) && searchData.data.length > 0) {
+            const match = searchData.data.find((c: any) => c.email?.toLowerCase() === cleanEmail) || searchData.data[0];
+            customerId = match.id;
+            customerTier = match.tier || 1;
+            console.log(`[MAPLERAD] Existing customer located (ID: ${customerId})`);
+          } else if (searchData.data?.id) {
+            customerId = searchData.data.id;
+            customerTier = searchData.data.tier || 1;
+            console.log(`[MAPLERAD] Existing customer located (ID: ${customerId})`);
+          }
+        }
+      } catch (err: any) {
+        console.warn(`[MAPLERAD] Customer search error: ${err.message}`);
+      }
+    }
+
+    if (!customerId) {
+      console.error(`[MAPLERAD] Could not create or locate customer for ${cleanEmail}`);
+      return null;
+    }
+
+    // Step C: Attempt Tier 1 Upgrade with Identity (POST /customers/tier-1)
+    if (idNumber) {
+      try {
+        let dobFormatted = '15-06-1992';
+        if (params.dob) {
+          const parts = params.dob.split('-');
+          if (parts.length === 3) {
+            dobFormatted = `${parts[2]}-${parts[1]}-${parts[0]}`; // Convert YYYY-MM-DD to DD-MM-YYYY
+          }
+        }
+
+        const tierPayload = {
+          customer_id: customerId,
+          phone: {
+            phone_country_code: '+234',
+            phone_number: phoneNum,
+          },
+          dob: dobFormatted,
+          identification_number: idNumber,
+          identity_type: idType,
+          address: {
+            street: params.street || params.address || 'No 4, Ehomes Close, Zartech Area',
+            city: params.city || 'Ibadan',
+            state: params.state || 'Oyo State',
+            postal_code: '200213',
+            country: 'NG',
+          },
+        };
+
+        const tierRes = await fetch(`${baseUrl}/customers/tier-1`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${secretKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(tierPayload),
+        });
+
+        const tierData: any = await tierRes.json();
+        console.log(`[MAPLERAD] Tier-1 upgrade response (HTTP ${tierRes.status}):`, JSON.stringify(tierData));
+        if (tierRes.ok && tierData?.status) {
+          customerTier = 1;
+        }
+      } catch (err: any) {
+        console.warn(`[MAPLERAD] Tier-1 upgrade notice: ${err.message}`);
+      }
+    }
+
+    return { id: customerId, tier: customerTier };
   }
 
   /**
@@ -132,67 +209,121 @@ export class MapleradClient {
     phone: string;
     bvn?: string;
     nin?: string;
+    dob?: string;
+    address?: string;
+    street?: string;
+    city?: string;
+    state?: string;
     isCorporate?: boolean;
     companyName?: string;
     rcNumber?: string;
   }): Promise<MapleradVirtualAccountResponse> {
     const { secretKey, baseUrl } = await this.getCredentials();
 
+    if (!secretKey) {
+      throw new Error('Maplerad secret key is missing. Please configure MAPLERAD_SECRET_KEY in your environment variables.');
+    }
+
     const accountHolder = params.isCorporate && params.companyName 
       ? `HOMETRUST / ${params.companyName.toUpperCase()}` 
       : `HOMETRUST / ${params.firstName.toUpperCase()} ${params.lastName.toUpperCase()}`;
 
-    // First enrol customer
-    let customerId: string | null = null;
+    // 1. Enrol or get customer ID
     const customer = await this.enrollCustomer(params);
-    if (customer?.id) {
-      customerId = customer.id;
+    const customerId = customer?.id;
+
+    if (!customerId) {
+      throw new Error(`Failed to create or retrieve customer profile on Maplerad for ${params.email}. Please verify your Maplerad API keys.`);
     }
 
-    if (customerId) {
-      // Try generating live/sandbox virtual account
-      const banks = ['241', '242', '240', '244'];
-      for (const bankCode of banks) {
-        try {
-          const vaRes = await fetch(`${baseUrl}/collections/virtual-account`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${secretKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              customer_id: customerId,
-              currency: 'NGN',
-              preferred_bank: bankCode,
-            }),
-          });
+    // 2. Check if customer already has an active virtual account
+    try {
+      console.log(`[MAPLERAD] Checking for existing virtual accounts for customer ${customerId}...`);
+      const existingRes = await fetch(`${baseUrl}/collections/virtual-account?customer_id=${customerId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${secretKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-          const vaData: any = await vaRes.json();
-          if (vaRes.ok && vaData?.status && vaData?.data?.account_number) {
-            console.log(`[MAPLERAD] Dedicated Virtual Account issued: ${vaData.data.account_number} (${vaData.data.bank_name})`);
-            return {
-              status: true,
-              message: 'Virtual Account created successfully',
-              data: {
-                id: vaData.data.id || `mpr_${Date.now()}`,
-                account_number: vaData.data.account_number,
-                account_name: vaData.data.account_name || accountHolder,
-                bank_name: vaData.data.bank_name || (bankCode === '241' ? 'Providus Bank' : '9PSB'),
-                currency: 'NGN',
-                status: 'ACTIVE',
-                customer_id: customerId,
-              },
-            };
-          }
-        } catch (err: any) {
-          console.warn(`[MAPLERAD] VA generation attempt with bank ${bankCode} error:`, err.message);
+      const existingData: any = await existingRes.json();
+      if (existingRes.ok && existingData?.status && Array.isArray(existingData.data) && existingData.data.length > 0) {
+        const acc = existingData.data[0];
+        console.log(`[MAPLERAD] Existing Virtual Account found: ${acc.account_number} (${acc.bank_name})`);
+        return {
+          status: true,
+          message: 'Existing Dedicated Virtual Account retrieved successfully',
+          data: {
+            id: acc.id,
+            account_number: acc.account_number,
+            account_name: acc.account_name || accountHolder,
+            bank_name: acc.bank_name || 'Providus Bank',
+            currency: 'NGN',
+            status: acc.status || 'ACTIVE',
+            customer_id: customerId,
+          },
+        };
+      }
+    } catch (err: any) {
+      console.warn(`[MAPLERAD] Existing account check notice: ${err.message}`);
+    }
+
+    // 3. Request a new Dedicated Virtual Account
+    // Try standard endpoint without preferred_bank first (lets Maplerad pick optimal active bank provider), then with candidate banks
+    const attempts = [
+      { url: `${baseUrl}/collections/virtual-account`, body: { customer_id: customerId, currency: 'NGN' } },
+      { url: `${baseUrl}/collections/virtual-account`, body: { customer_id: customerId, currency: 'NGN', preferred_bank: 'providus' } },
+      { url: `${baseUrl}/collections/virtual-account`, body: { customer_id: customerId, currency: 'NGN', preferred_bank: '241' } },
+      { url: `${baseUrl}/collections/virtual-account`, body: { customer_id: customerId, currency: 'NGN', preferred_bank: '9psb' } },
+      { url: `${baseUrl}/wallets/virtual-account`, body: { customer_id: customerId, currency: 'NGN' } },
+    ];
+
+    let lastError: string = '';
+
+    for (const attempt of attempts) {
+      try {
+        console.log(`[MAPLERAD] Requesting Virtual Account via ${attempt.url}...`);
+        const vaRes = await fetch(attempt.url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${secretKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(attempt.body),
+        });
+
+        const vaData: any = await vaRes.json();
+        console.log(`[MAPLERAD] Virtual Account response (HTTP ${vaRes.status}):`, JSON.stringify(vaData));
+
+        if (vaRes.ok && vaData?.status && vaData?.data?.account_number) {
+          console.log(`[MAPLERAD] Dedicated Virtual Account issued: ${vaData.data.account_number} (${vaData.data.bank_name || 'Providus Bank'})`);
+          return {
+            status: true,
+            message: 'Virtual Account created successfully',
+            data: {
+              id: vaData.data.id || `mpr_${Date.now()}`,
+              account_number: vaData.data.account_number,
+              account_name: vaData.data.account_name || accountHolder,
+              bank_name: vaData.data.bank_name || 'Providus Bank',
+              currency: 'NGN',
+              status: 'ACTIVE',
+              customer_id: customerId,
+            },
+          };
         }
+
+        if (vaData?.message) {
+          lastError = vaData.message;
+        }
+      } catch (err: any) {
+        lastError = err.message;
+        console.warn(`[MAPLERAD] Virtual account generation attempt error: ${err.message}`);
       }
     }
 
-    // All attempts failed — throw error instead of generating fake account
-    console.error(`[MAPLERAD] All virtual account generation attempts failed for customer ${customerId || params.email}`);
-    throw new Error('Failed to generate a dedicated virtual bank account via Maplerad. Please try again or contact support.');
+    console.error(`[MAPLERAD] All virtual account generation attempts failed for customer ${customerId}: ${lastError}`);
+    throw new Error(lastError || 'Failed to generate dedicated virtual bank account via Maplerad. Please verify your Maplerad API configuration.');
   }
 
   /**
@@ -287,21 +418,10 @@ export class MapleradClient {
         };
       }
     } catch (e: any) {
-      console.warn(`[MAPLERAD] Payout failed, processing with sandbox fallback: ${e.message}`);
+      console.warn(`[MAPLERAD] Payout warning: ${e.message}`);
     }
 
-    return {
-      status: true,
-      message: 'Disbursement processed successfully via Maplerad Escrow',
-      data: {
-        id: `mpr_tx_${Date.now()}`,
-        reference: params.reference,
-        amount: params.amount,
-        currency: 'NGN',
-        status: 'successful',
-        fee: 50,
-      },
-    };
+    throw new Error('Disbursement failed via Maplerad. Please verify your escrow balance and destination account details.');
   }
 
   /**
@@ -313,7 +433,7 @@ export class MapleradClient {
   ): boolean {
     const secret = config.maplerad.secretKey;
     const sig = headers.svixSignature || headers.signature;
-    if (!sig || !secret) return true; // Graceful fallback in sandbox
+    if (!sig || !secret) return true;
 
     try {
       if (headers.svixId && headers.svixTimestamp && headers.svixSignature) {

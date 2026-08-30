@@ -395,6 +395,11 @@ export class BankingService {
           phone: user.phone || '08012345678',
           bvn: bvn || undefined,
           nin: nin || undefined,
+          dob: params?.dob,
+          street: street || formattedAddress,
+          city: city || undefined,
+          state: state || undefined,
+          address: formattedAddress,
         });
 
         account = await prisma.virtualAccount.create({
