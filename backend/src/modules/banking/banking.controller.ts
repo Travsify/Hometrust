@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { BankingService } from './banking.service';
-import { FincraClient } from './fincra.client';
+import { MapleradClient } from './maplerad.client';
 import { sendSuccess, sendError } from '../../utils/response';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 
@@ -95,10 +95,10 @@ export class BankingController {
 
   static async webhook(req: Request, res: Response): Promise<void> {
     try {
-      const signature = req.headers['x-fincra-signature'] as string;
+      const signature = (req.headers['x-maplerad-signature'] || req.headers['x-fincra-signature']) as string;
       const rawPayload = JSON.stringify(req.body);
 
-      if (signature && !FincraClient.verifyWebhookSignature(signature, rawPayload)) {
+      if (signature && !MapleradClient.verifyWebhookSignature(rawPayload, signature)) {
         res.status(400).send('Invalid signature');
         return;
       }
@@ -106,7 +106,7 @@ export class BankingController {
       await BankingService.handleWebhook(req.body);
       res.status(200).send('Webhook processed');
     } catch (e: any) {
-      console.error('Fincra webhook error:', e);
+      console.error('Banking webhook error:', e);
       res.status(500).send('Error processing webhook');
     }
   }

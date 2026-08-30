@@ -52,4 +52,17 @@ export const config = {
     phoneNumber: process.env.TWILIO_PHONE_NUMBER || '',
     verifyServiceSid: process.env.TWILIO_VERIFY_SERVICE_SID || '',
   },
+
+  prembly: {
+    secretKey: process.env.PREMBLY_API_KEY || 'live_sk_2a238fff60994964b3f8d9a5a6178d23',
+    publicKey: process.env.PREMBLY_PUBLIC_KEY || 'live_pk_ffabb0478dd04d89b2b22729872f5b1d',
+    appId: process.env.PREMBLY_APP_ID || 'app_hometrust_identity_2026',
+    baseUrl: process.env.PREMBLY_BASE_URL || 'https://api.prembly.com/identitypass/verification',
+  },
+
+  maplerad: {
+    secretKey: process.env.MAPLERAD_SECRET_KEY || 'mpr_sandbox_sk_8818b3b9-deaf-420e-bdc7-51eb3d7896d3',
+    publicKey: process.env.MAPLERAD_PUBLIC_KEY || 'mpr_sandbox_pk_219161a8098efd2bd20aec7b24f09ddc',
+    baseUrl: process.env.MAPLERAD_BASE_URL || 'https://sandbox.api.maplerad.com/v1',
+  },
 };

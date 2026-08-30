@@ -1,4 +1,5 @@
 import { ApiKeysService } from '../admin/api_keys.service';
+import { config } from '../../config';
 
 export interface PremblyVerificationResponse {
   status: boolean;
@@ -26,14 +27,16 @@ export interface PremblyVerificationResponse {
 export class PremblyClient {
   private static defaultBaseUrl = 'https://api.prembly.com/identitypass/verification';
   private static defaultApiKey = 'live_sk_2a238fff60994964b3f8d9a5a6178d23';
+  private static defaultPublicKey = 'live_pk_ffabb0478dd04d89b2b22729872f5b1d';
   private static defaultAppId = 'app_hometrust_identity_2026';
 
   private static async getCredentials() {
     const dbKey = await ApiKeysService.getActiveKey('PREMBLY').catch(() => null);
-    const apiKey = dbKey || process.env.PREMBLY_API_KEY || this.defaultApiKey;
-    const appId = process.env.PREMBLY_APP_ID || this.defaultAppId;
-    const baseUrl = process.env.PREMBLY_BASE_URL || this.defaultBaseUrl;
-    return { apiKey, appId, baseUrl };
+    const apiKey = dbKey || config.prembly.secretKey || this.defaultApiKey;
+    const publicKey = config.prembly.publicKey || this.defaultPublicKey;
+    const appId = config.prembly.appId || this.defaultAppId;
+    const baseUrl = config.prembly.baseUrl || this.defaultBaseUrl;
+    return { apiKey, publicKey, appId, baseUrl };
   }
 
   /**

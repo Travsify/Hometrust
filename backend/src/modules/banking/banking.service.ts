@@ -1,11 +1,11 @@
 import { prisma } from '../../utils/prisma';
-import { FincraClient } from './fincra.client';
+import { MapleradClient } from './maplerad.client';
 import { PremblyClient } from './prembly.client';
 import { AuditService } from '../audit/audit.service';
 
 export class BankingService {
   /**
-   * Complete Buyer KYC & Auto-Generate Dedicated Virtual Bank Account
+   * Complete Buyer KYC & Auto-Generate Dedicated Virtual Bank Account via Maplerad
    */
   static async submitBuyerKyc(
     userId: string,
@@ -23,6 +23,13 @@ export class BankingService {
 
     if (!user) {
       throw new Error('User not found');
+    }
+
+    // Verify NIN / BVN with Prembly
+    if (data.nin) {
+      await PremblyClient.verifyNIN(data.nin, user.firstName, user.lastName);
+    } else if (data.bvn) {
+      await PremblyClient.verifyBVN(data.bvn);
     }
 
     // 1. Record KYC Verification
@@ -55,29 +62,27 @@ export class BankingService {
       },
     });
 
-    // 2. Auto-Generate Dedicated Virtual Account via Fincra if not existing
+    // 2. Auto-Generate Dedicated Virtual Account via Maplerad if not existing
     let account = user.virtualAccounts?.[0];
     if (!account) {
-      const ref = `EV-VBA-USR-${Date.now()}`;
-      const fincraRes = await FincraClient.createIndividualVirtualAccount({
+      const mapleradRes = await MapleradClient.createVirtualAccount({
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
         phone: user.phone || '08012345678',
         bvn: data.bvn,
         nin: data.nin,
-        reference: ref,
       });
 
       account = await prisma.virtualAccount.create({
         data: {
           userId: user.id,
-          accountName: fincraRes.data.accountInformation.accountName,
-          accountNumber: fincraRes.data.accountInformation.accountNumber,
-          bankName: fincraRes.data.accountInformation.bankName,
+          accountName: mapleradRes.data.account_name,
+          accountNumber: mapleradRes.data.account_number,
+          bankName: mapleradRes.data.bank_name,
           accountType: 'INDIVIDUAL',
           currency: 'NGN',
-          fincraAccountId: fincraRes.data.reference,
+          fincraAccountId: mapleradRes.data.id,
           status: 'ACTIVE',
           balance: 0,
         },
@@ -95,6 +100,7 @@ export class BankingService {
         bankName: account.bankName,
         accountName: account.accountName,
         kycStatus: kyc.status,
+        provider: 'MAPLERAD',
       },
     });
 
@@ -151,27 +157,28 @@ export class BankingService {
       },
     });
 
-    // 2. Provision Corporate Dedicated Virtual Account
+    // 2. Provision Corporate Dedicated Virtual Account via Maplerad
     let account = developer.virtualAccounts?.[0];
     if (!account) {
-      const ref = `EV-VBA-DEV-${Date.now()}`;
-      const fincraRes = await FincraClient.createCorporateVirtualAccount({
-        companyName: data.companyName,
-        cacNumber: data.cacNumber,
+      const mapleradRes = await MapleradClient.createVirtualAccount({
+        firstName: developer.companyName,
+        lastName: 'Corporate',
         email: developer.email,
-        phone: developer.phone,
-        reference: ref,
+        phone: developer.phone || '08012345678',
+        isCorporate: true,
+        companyName: data.companyName,
+        rcNumber: data.cacNumber,
       });
 
       account = await prisma.virtualAccount.create({
         data: {
           developerId: developer.id,
-          accountName: fincraRes.data.accountInformation.accountName,
-          accountNumber: fincraRes.data.accountInformation.accountNumber,
-          bankName: fincraRes.data.accountInformation.bankName,
+          accountName: mapleradRes.data.account_name,
+          accountNumber: mapleradRes.data.account_number,
+          bankName: mapleradRes.data.bank_name,
           accountType: 'CORPORATE',
           currency: 'NGN',
-          fincraAccountId: fincraRes.data.reference,
+          fincraAccountId: mapleradRes.data.id,
           status: 'ACTIVE',
           balance: 0,
         },
@@ -188,6 +195,7 @@ export class BankingService {
         cacNumber: data.cacNumber,
         accountNumber: account.accountNumber,
         bankName: account.bankName,
+        provider: 'MAPLERAD',
       },
     });
 
@@ -261,46 +269,29 @@ export class BankingService {
 
       let account = user.virtualAccounts?.[0];
       if (!account) {
-        const ref = `HT-VBA-DEV-${Date.now()}`;
-        try {
-          const fincraRes = await FincraClient.createCorporateVirtualAccount({
-            companyName: company,
-            cacNumber: cac,
-            email: user.email,
-            phone: user.phone || '08012345678',
-            reference: ref,
-          });
+        const mapleradRes = await MapleradClient.createVirtualAccount({
+          firstName: company,
+          lastName: 'Corporate',
+          email: user.email,
+          phone: user.phone || '08012345678',
+          isCorporate: true,
+          companyName: company,
+          rcNumber: cac,
+        });
 
-          const acctInfo = fincraRes.data?.accountInformation;
-          account = await prisma.virtualAccount.create({
-            data: {
-              developerId: user.developer.id,
-              userId: user.id,
-              accountNumber: acctInfo?.accountNumber || `99${Math.floor(10000000 + Math.random() * 90000000)}`,
-              accountName: acctInfo?.accountName || `${company} (Hometrust Escrow)`,
-              bankName: acctInfo?.bankName || 'Providus Bank',
-              currency: 'NGN',
-              accountType: 'CORPORATE',
-              status: 'ACTIVE',
-              fincraAccountId: ref,
-            },
-          });
-        } catch (_) {
-          const acctNum = `99${Math.floor(10000000 + Math.random() * 90000000)}`;
-          account = await prisma.virtualAccount.create({
-            data: {
-              developerId: user.developer.id,
-              userId: user.id,
-              accountNumber: acctNum,
-              accountName: `${company} (Hometrust Escrow)`,
-              bankName: 'Providus Bank',
-              currency: 'NGN',
-              accountType: 'CORPORATE',
-              status: 'ACTIVE',
-              fincraAccountId: ref,
-            },
-          });
-        }
+        account = await prisma.virtualAccount.create({
+          data: {
+            developerId: user.developer.id,
+            userId: user.id,
+            accountNumber: mapleradRes.data.account_number,
+            accountName: mapleradRes.data.account_name,
+            bankName: mapleradRes.data.bank_name,
+            currency: 'NGN',
+            accountType: 'CORPORATE',
+            status: 'ACTIVE',
+            fincraAccountId: mapleradRes.data.id,
+          },
+        });
       }
 
       return {
@@ -316,8 +307,12 @@ export class BankingService {
       const bvn = params?.bvn || `BVN-${Math.floor(10000000000 + Math.random() * 90000000000)}`;
       const resAddr = params?.residentialAddress;
 
-      // Verify NIN with Prembly
-      await PremblyClient.verifyNIN(nin, user.firstName, user.lastName);
+      // Verify NIN / BVN with Prembly
+      if (nin && !nin.startsWith('NIN-')) {
+        await PremblyClient.verifyNIN(nin, user.firstName, user.lastName);
+      } else if (bvn && !bvn.startsWith('BVN-')) {
+        await PremblyClient.verifyBVN(bvn);
+      }
 
       const kyc = await prisma.kycVerification.create({
         data: {
@@ -339,47 +334,27 @@ export class BankingService {
 
       let account = user.virtualAccounts?.[0];
       if (!account) {
-        const ref = `HT-VBA-USR-${Date.now()}`;
-        const fullName = `${user.firstName} ${user.lastName}`;
-        try {
-          const fincraRes = await FincraClient.createIndividualVirtualAccount({
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            phone: user.phone || '08012345678',
-            bvn: bvn.startsWith('BVN-') ? '22234567890' : bvn,
-            nin: nin.startsWith('NIN-') ? '12345678901' : nin,
-            reference: ref,
-          });
+        const mapleradRes = await MapleradClient.createVirtualAccount({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone || '08012345678',
+          bvn: bvn.startsWith('BVN-') ? '22234567890' : bvn,
+          nin: nin.startsWith('NIN-') ? '12345678901' : nin,
+        });
 
-          const acctInfo = fincraRes.data?.accountInformation;
-          account = await prisma.virtualAccount.create({
-            data: {
-              userId: user.id,
-              accountNumber: acctInfo?.accountNumber || `99${Math.floor(10000000 + Math.random() * 90000000)}`,
-              accountName: acctInfo?.accountName || `${fullName} (Hometrust Escrow)`,
-              bankName: acctInfo?.bankName || 'Providus Bank',
-              currency: 'NGN',
-              accountType: 'INDIVIDUAL',
-              status: 'ACTIVE',
-              fincraAccountId: ref,
-            },
-          });
-        } catch (_) {
-          const acctNum = `99${Math.floor(10000000 + Math.random() * 90000000)}`;
-          account = await prisma.virtualAccount.create({
-            data: {
-              userId: user.id,
-              accountNumber: acctNum,
-              accountName: `${fullName} (Hometrust Escrow)`,
-              bankName: 'Providus Bank',
-              currency: 'NGN',
-              accountType: 'INDIVIDUAL',
-              status: 'ACTIVE',
-              fincraAccountId: ref,
-            },
-          });
-        }
+        account = await prisma.virtualAccount.create({
+          data: {
+            userId: user.id,
+            accountNumber: mapleradRes.data.account_number,
+            accountName: mapleradRes.data.account_name,
+            bankName: mapleradRes.data.bank_name,
+            currency: 'NGN',
+            accountType: 'INDIVIDUAL',
+            status: 'ACTIVE',
+            fincraAccountId: mapleradRes.data.id,
+          },
+        });
       }
 
       return {
@@ -410,14 +385,14 @@ export class BankingService {
   }
 
   /**
-   * Name Enquiry for destination bank account
+   * Name Enquiry for destination bank account via Maplerad
    */
   static async resolveBankAccount(bankCode: string, accountNumber: string) {
-    return FincraClient.resolveAccount(bankCode, accountNumber);
+    return MapleradClient.nameEnquiry(accountNumber, bankCode);
   }
 
   /**
-   * Request Developer Withdrawal / Payout to any Nigerian Commercial Bank
+   * Request Developer Withdrawal / Payout to any Nigerian Commercial Bank via Maplerad
    */
   static async requestWithdrawal(params: {
     developerId?: string;
@@ -440,7 +415,7 @@ export class BankingService {
 
     const fee = 50; // Standard ₦50 NIP transfer fee
     const netAmount = params.amount - fee;
-    const ref = `EV-WD-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const ref = `HT-WD-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
     // Deduct balance
     await prisma.virtualAccount.update({
@@ -464,13 +439,14 @@ export class BankingService {
       },
     });
 
-    // Dispatch via Fincra Payouts
-    const payoutRes = await FincraClient.createPayout({
+    // Dispatch via Maplerad Transfer
+    const payoutRes = await MapleradClient.transfer({
       amount: netAmount,
       bankCode: params.bankCode,
       accountNumber: params.accountNumber,
-      accountName: params.accountName,
+      recipientName: params.accountName,
       reference: ref,
+      reason: 'Hometrust Escrow Milestone Disbursement',
     });
 
     await prisma.withdrawal.update({
