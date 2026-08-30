@@ -543,7 +543,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Your funds remain locked in CBN-licensed escrow. Review live 360° site videos and COREN engineer sign-offs before approving tranche releases.',
+                          'Your funds remain securely locked in Hometrust escrow. Review live 360° site videos and certified engineer sign-offs before approving tranche releases.',
                           style: TextStyle(fontSize: 11, color: Color(0xFF065F46), height: 1.35),
                         ),
                       ),

@@ -183,7 +183,7 @@ class _AiAssistantSheetState extends State<AiAssistantSheet> {
         lower.contains('safe') ||
         lower.contains('money')) {
       return 'How Hometrust Milestone Escrow Protects Buyers:\n\n'
-          '• Zero Upfront Developer Risk: Funds are held in a secure CBN-regulated escrow trust account.\n'
+          '• Zero Upfront Developer Risk: Funds are held in a secure Hometrust escrow trust vault.\n'
           '• Stage-by-Stage Verification: The developer does NOT receive money until a certified structural engineer audits and approves the on-site milestone.\n'
           '• 100% Dedicated NUBAN Accounts: Every buyer is issued a unique virtual bank account for automated, trackable instalment payments.\n'
           '• Critical Security Policy: NEVER transfer funds directly to developers or agents outside Hometrust, as off-app payments void all escrow warranties and cannot be recovered.';

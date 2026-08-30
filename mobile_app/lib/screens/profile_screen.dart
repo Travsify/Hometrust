@@ -78,7 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Live CBN Providus Account synced successfully!'),
+            content: Text('✅ Dedicated Escrow Account synced successfully!'),
             backgroundColor: Color(0xFF059669),
           ),
         );
@@ -439,7 +439,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: isWithdrawing
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Confirm & Withdraw via Maplerad', style: TextStyle(fontWeight: FontWeight.w800)),
+                          : const Text('Confirm & Withdraw to Bank', style: TextStyle(fontWeight: FontWeight.w800)),
                     ),
                   ),
                 ],
@@ -1010,7 +1010,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           content: const SingleChildScrollView(
                             child: Text(
                               'Hometrust collects your personal information (name, email, NIN, BVN) solely to provide property document verification, escrow payments, and dedicated virtual account services under Nigerian law (NDPR compliance).\n\n'
-                              'We do not share your data with third parties without consent, except where required by law or to fulfil our Fincra (banking) and Prembly (KYC) service agreements.\n\n'
+                              'We do not share your data with third parties without consent, except where required by law or to fulfil our secure banking and verification service agreements.\n\n'
                               'Your documents are stored in an encrypted vault and are only accessible to our licensed legal verification team.\n\n'
                               'For data requests or deletion: support@hometrust.ng\n\n'
                               'Full policy: https://hometrust.ng/privacy',

@@ -160,7 +160,7 @@ export class ResendService {
       </div>
       <div class="security-box">
         <p class="security-text">
-          🛡️ <strong>Hometrust Guarantee:</strong> All transactions are audited and held in CBN-regulated escrow accounts until construction milestones are verified by registered surveyors.
+          🛡️ <strong>Hometrust Guarantee:</strong> All transactions are audited and held in secure escrow custody accounts until construction milestones are verified by registered surveyors.
         </p>
       </div>
     `;
@@ -178,12 +178,12 @@ export class ResendService {
     const title = isDev ? 'Corporate KYB Verified Successfully' : 'Identity Verification Approved';
     const body = `
       <div class="title">✅ ${title}</div>
-      <div class="subtitle">Congratulations <strong>${name}</strong>! Your verification details have been authenticated against the National Registry via Prembly IdentityPass.</div>
+      <div class="subtitle">Congratulations <strong>${name}</strong>! Your verification details have been authenticated against the National Registry.</div>
       
       <div class="highlight-card">
         <div style="font-size: 13px; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">Compliance Status</div>
         <div style="font-size: 22px; font-weight: 800; color: #34d399; margin: 6px 0;">VERIFIED & ACTIVE</div>
-        <div style="font-size: 12px; color: #64748b;">Audited via Prembly • NIMC / CAC Registry</div>
+        <div style="font-size: 12px; color: #64748b;">Audited Compliance • National Database Verified</div>
       </div>
 
       <div class="content-box">
@@ -199,7 +199,7 @@ export class ResendService {
       </div>
     `;
 
-    await this.sendAdminAlert('KYC_KYB_APPROVED', `${isDev ? 'Developer KYB' : 'User KYC'} Verified`, `${name} (${to}) was verified via Prembly. Account: ${details.accountNumber || 'Pending'}`);
+    await this.sendAdminAlert('KYC_KYB_APPROVED', `${isDev ? 'Developer KYB' : 'User KYC'} Verified`, `${name} (${to}) was verified successfully. Account: ${details.accountNumber || 'Pending'}`);
     return this.sendRaw(to, `Congratulations! Your Hometrust ${isDev ? 'Corporate KYB' : 'Identity'} is Verified`, this.getBaseHtml(title, body));
   }
 
@@ -210,7 +210,7 @@ export class ResendService {
     const title = 'Your Dedicated Escrow Account is Live';
     const body = `
       <div class="title">🏦 Dedicated Bank Account Issued</div>
-      <div class="subtitle">Hello <strong>${name}</strong>, your dedicated NGN escrow account has been provisioned via Maplerad.</div>
+      <div class="subtitle">Hello <strong>${name}</strong>, your dedicated NGN escrow account has been provisioned.</div>
       
       <div class="highlight-card">
         <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Account Number</div>
@@ -247,7 +247,7 @@ export class ResendService {
       <div class="content-box">
         <div class="info-row"><span class="info-label">Transaction Reference</span><span class="info-value">${reference}</span></div>
         <div class="info-row"><span class="info-label">Date & Time</span><span class="info-value">${new Date().toLocaleString()}</span></div>
-        <div class="info-row"><span class="info-label">Channel</span><span class="info-value">Maplerad Interbank Transfer</span></div>
+        <div class="info-row"><span class="info-label">Channel</span><span class="info-value">Direct Bank Transfer</span></div>
         <div class="info-row"><span class="info-label">Status</span><span class="info-value" style="color: #34d399;">SUCCESSFUL ✅</span></div>
       </div>
     `;

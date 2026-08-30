@@ -68,7 +68,7 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Live CBN Providus Corporate Account synced successfully!'),
+            content: Text('✅ Dedicated Corporate Account synced successfully!'),
             backgroundColor: Color(0xFF059669),
           ),
         );
@@ -402,7 +402,7 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                                   _fetchAccount();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('💸 Milestone Payout of ${CurrencyFormatter.format(amount)} dispatched via Maplerad!'),
+                                      content: Text('💸 Milestone Payout of ${CurrencyFormatter.format(amount)} dispatched successfully!'),
                                       backgroundColor: const Color(0xFF059669),
                                     ),
                                   );
@@ -425,7 +425,7 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                       ),
                       child: isWithdrawing
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Confirm & Disburse via Maplerad Live', style: TextStyle(fontWeight: FontWeight.w800)),
+                          : const Text('Confirm & Disburse to Bank', style: TextStyle(fontWeight: FontWeight.w800)),
                     ),
                   ),
                 ],
@@ -836,7 +836,7 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
               'Hometrust is strictly compliant with the Nigeria Data Protection Act (NDPA) and NDPR regulations.\n\n'
               '1. Corporate Data Protection: Your uploaded corporate incorporation instruments, director identities, and banking details are encrypted with AES-256 bank-grade cryptography.\n\n'
               '2. Anti-Forgery Watermarking: All property titles and architectural plans you provide are rendered strictly through secure read-only streams with active buyer identity watermarking to eliminate forgery risks.\n\n'
-              '3. Arbiter Confidentiality: Payout requests, milestone escrow releases, and banking virtual account ledgers are strictly accessible only to your authorized directors and the designated CBN-licensed escrow trustees.',
+              '3. Arbiter Confidentiality: Payout requests, milestone escrow releases, and banking virtual account ledgers are strictly accessible only to your authorized directors and the designated Hometrust escrow trustees.',
               style: TextStyle(fontSize: 12, color: Color(0xFF475569), height: 1.5),
             ),
           ),

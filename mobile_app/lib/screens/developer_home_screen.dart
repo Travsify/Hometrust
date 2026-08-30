@@ -467,7 +467,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  isVerified ? 'CBN / FINCRA REGULATED' : 'KYC REQUIRED',
+                  isVerified ? 'HOMETRUST ESCROW PROTECTED' : 'KYC REQUIRED',
                   style: TextStyle(
                     fontSize: 8.5,
                     fontWeight: FontWeight.w800,
@@ -1561,7 +1561,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Payout request submitted successfully! Processing via Fincra NIP.'),
+                        content: Text('Payout request submitted successfully! Processing via Secure Bank Transfer.'),
                         backgroundColor: Color(0xFF059669),
                       ),
                     );

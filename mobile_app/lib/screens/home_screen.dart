@@ -446,7 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  isVerified ? 'FINCRA / CBN REGULATED' : 'KYC REQUIRED',
+                  isVerified ? 'HOMETRUST ESCROW PROTECTED' : 'KYC REQUIRED',
                   style: TextStyle(
                     fontSize: 8.5,
                     fontWeight: FontWeight.w900,
@@ -637,7 +637,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Complete quick Prembly KYC to activate your dedicated Fincra bank account.',
+                        'Complete quick identity verification to activate your dedicated escrow account.',
                         style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
                       ),
                     ],

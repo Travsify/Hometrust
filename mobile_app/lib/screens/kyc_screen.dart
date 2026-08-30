@@ -89,7 +89,7 @@ class _KycScreenState extends State<KycScreen> {
 
       if (mounted) {
         setState(() {
-          _currentStep = 'Activating Dedicated CBN-Regulated Virtual NUBAN Account...';
+          _currentStep = 'Activating Dedicated Escrow Virtual Account...';
         });
       }
 
@@ -252,7 +252,7 @@ class _KycScreenState extends State<KycScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Your identity is officially verified. Your dedicated CBN-regulated Virtual Bank Account is now live and ready for property escrow transactions.',
+                      'Your identity is officially verified. Your dedicated Hometrust Virtual Escrow Account is now live and ready for property transactions.',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
                     ),

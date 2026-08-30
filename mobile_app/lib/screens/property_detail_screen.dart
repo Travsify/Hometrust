@@ -644,7 +644,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             ],
           ),
           content: const Text(
-            'Under CBN real estate escrow regulations, all property purchases (Off-Plan & Pay-Small-Small) require a verified identity.\n\nPlease complete your quick KYC verification to activate your dedicated bank account and proceed with this purchase.',
+            'To ensure complete transaction security, all property purchases (Off-Plan & Pay-Small-Small) require a verified identity.\n\nPlease complete your quick KYC verification to activate your dedicated escrow account and proceed with this purchase.',
             style: TextStyle(fontSize: 12.5, height: 1.4, color: Color(0xFF475569)),
           ),
           actions: [
