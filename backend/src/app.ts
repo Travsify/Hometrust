@@ -25,6 +25,9 @@ import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
 
+// Enable trust proxy for Render / load balancers
+app.set('trust proxy', 1);
+
 // Security Middlewares
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
