@@ -324,15 +324,11 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                 ),
               ),
 
-              // 2. WALLET & ESCROW OVERVIEW CARD (Privacy-enabled)
-              _buildWalletCard(context, virtualAccount, availableBalance, lockedEscrow, grossRevenue, isVerified),
-              const SizedBox(height: 16),
-
-              // 3. SLIDEABLE SPOTLIGHT HERO BANNER CAROUSEL
+              // 2. SLIDEABLE SPOTLIGHT HERO BANNER CAROUSEL
               _buildSpotlightCarousel(context),
               const SizedBox(height: 16),
 
-              // 4. BENTO BOX GRID (Tools, Projects & Wallet Ledger)
+              // 3. BENTO BOX GRID (Tools, Projects & Wallet Ledger)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -353,8 +349,8 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                   Expanded(
                     child: Column(
                       children: [
-                        // Bento 3: Wallet & Settlement Vault
-                        _buildWalletBentoCard(context, availableBalance, lockedEscrow),
+                        // Bento 3: Wallet
+                        _buildWalletBentoCard(context),
                         const SizedBox(height: 14),
                         // Bento 4: Contractor BOQ Price Validator
                         _buildBoqBentoCard(context),
@@ -390,213 +386,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
   }
 
 
-  // ── 1. WALLET & ESCROW OVERVIEW CARD (Privacy-enabled) ──
-  Widget _buildWalletCard(
-    BuildContext context,
-    Map<String, dynamic>? vba,
-    double availableBalance,
-    double lockedEscrow,
-    double grossRevenue,
-    bool isVerified,
-  ) {
-    final acctNum = vba?['accountNumber']?.toString();
-    final bankName = vba?['bankName']?.toString() ?? 'Providus Bank';
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.15),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header: Title & Privacy Eye Toggle
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF10B981), size: 16),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Wallet',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            _isBalanceVisible ? Icons.visibility_rounded : Icons.visibility_off_rounded,
-                            color: const Color(0xFF94A3B8),
-                            size: 20,
-                          ),
-                          tooltip: _isBalanceVisible ? 'Hide Balance' : 'Show Balance',
-                          onPressed: () => setState(() => _isBalanceVisible = !_isBalanceVisible),
-                          constraints: const BoxConstraints(),
-                          padding: const EdgeInsets.all(4),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.chevron_right_rounded, color: Color(0xFF64748B), size: 20),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Available Balance (Withdrawable)
-                const Text(
-                  'Available Balance (Withdrawable)',
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _isBalanceVisible ? CurrencyFormatter.format(availableBalance) : '₦ • • • • • • • •',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // Sub-metrics: Locked in Escrow & Dedicated Account
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.lock_clock_rounded, size: 12, color: Color(0xFF38BDF8)),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Locked in Escrow',
-                                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w700),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              _isBalanceVisible ? CurrencyFormatter.format(lockedEscrow) : '₦ • • • • •',
-                              style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 12.5, fontWeight: FontWeight.w900),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(height: 28, width: 1, color: Colors.white.withValues(alpha: 0.1)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.account_balance_rounded, size: 12, color: Color(0xFF34D399)),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Dedicated Account',
-                                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w700),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              acctNum != null && acctNum.isNotEmpty ? '$acctNum ($bankName)' : 'Providus Bank',
-                              style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 11.5, fontWeight: FontWeight.w800),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // Action Buttons Row: Fund Wallet & Withdraw
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
-                        },
-                        icon: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF34D399)),
-                        label: const Text('Fund Wallet', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFF059669)),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
-                        },
-                        icon: const Icon(Icons.arrow_upward_rounded, size: 16, color: Colors.white),
-                        label: const Text('Withdraw', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF059669),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          elevation: 0,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── 2. SPOTLIGHT HERO CAROUSEL ──
+  // ── 1. SPOTLIGHT HERO CAROUSEL ──
   Widget _buildSpotlightCarousel(BuildContext context) {
     final List<Map<String, dynamic>> slides = [
       {
@@ -727,8 +517,8 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
     );
   }
 
-  // ── 3. BENTO BOX: WALLET & ESCROW SETTLEMENT ──
-  Widget _buildWalletBentoCard(BuildContext context, double availableBalance, double lockedEscrow) {
+  // ── 2. BENTO BOX: WALLET ──
+  Widget _buildWalletBentoCard(BuildContext context) {
     return GestureDetector(
       onTap: () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
@@ -758,7 +548,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF059669).withValues(alpha: 0.1),
+                    color: const Color(0xFF059669).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF059669), size: 20),
@@ -767,23 +557,18 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: const Color(0xFFECFDF5),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Text('WALLET', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w900, color: Color(0xFF065F46))),
+                  child: const Text('ESCROW', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w900, color: Color(0xFF065F46))),
                 ),
               ],
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Wallet', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-                const SizedBox(height: 2),
-                Text(
-                  _isBalanceVisible ? CurrencyFormatter.format(availableBalance) : '₦••••••••',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF059669)),
-                ),
-                const SizedBox(height: 2),
-                const Text('Fund, withdraw, or view statements', style: TextStyle(fontSize: 9.5, color: Color(0xFF64748B))),
+              children: const [
+                Text('Wallet', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                SizedBox(height: 2),
+                Text('Fund balance, withdraw, settlements & ledger', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
               ],
             ),
             Row(
