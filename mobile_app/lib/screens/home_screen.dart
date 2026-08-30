@@ -19,6 +19,10 @@ import 'purchases_screen.dart';
 import 'wallet_screen.dart';
 import 'inbox_screen.dart';
 import 'build_for_me_screen.dart';
+import '../core/network/api_client.dart';
+import '../core/utils/image_helper.dart';
+import 'site_reels_screen.dart';
+import 'create_reel_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -32,6 +36,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final PageController _spotlightController = PageController();
   int _currentSpotlightIndex = 0;
+  List<dynamic> _developerStories = [];
 
   @override
   void initState() {
@@ -44,7 +49,18 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         purchaseProvider.clear();
       }
+      _fetchStories();
     });
+  }
+
+  Future<void> _fetchStories() async {
+    try {
+      final res = await ApiClient.get('/reels/stories');
+      if (mounted) {
+        final list = res is List ? res : (res?['data'] is List ? res['data'] : []);
+        setState(() => _developerStories = list);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -245,6 +261,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // 2. MY ESCROW WALLET QUICK ACCESS CARD
               _buildMyWalletQuickCard(context, isVerified, virtualAccountBalance),
+              const SizedBox(height: 16),
+
+              // 2.5 DEVELOPER SITE STORIES & REELS BAR (TIKTOK FOR DEVELOPERS)
+              _buildDeveloperStoriesRow(context),
               const SizedBox(height: 16),
 
               // 3. SLIDEABLE SPOTLIGHT FEATURED HERO BANNER CAROUSEL
@@ -497,6 +517,191 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  // 2.5 DEVELOPER SITE STORIES & REELS BAR
+  Widget _buildDeveloperStoriesRow(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final isDeveloper = auth.isDeveloperMode;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Site Stories & Reels',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF0F172A),
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEF4444),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'LIVE',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFFEF4444),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SiteReelsScreen()),
+                );
+              },
+              child: const Row(
+                children: [
+                  Text(
+                    'Watch Reels',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  SizedBox(width: 2),
+                  Icon(Icons.arrow_forward_ios_rounded, size: 10, color: AppColors.primary),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        SizedBox(
+          height: 96,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: (isDeveloper ? 1 : 0) + _developerStories.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            itemBuilder: (ctx, index) {
+              if (isDeveloper && index == 0) {
+                // Developer Add Story Button
+                return InkWell(
+                  onTap: () async {
+                    final res = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CreateReelScreen()),
+                    );
+                    if (res == true) _fetchStories();
+                  },
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 62,
+                        height: 62,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF10B981), width: 2),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.add_a_photo_rounded, color: Color(0xFF34D399), size: 24),
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text(
+                        'Post Story',
+                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final storyIdx = isDeveloper ? (index - 1) : index;
+              final story = _developerStories[storyIdx];
+              final String name = story['companyName'] ?? 'Developer';
+              final String? logoUrl = story['logoUrl'];
+              final String? postId = story['latestPostId'];
+
+              return InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SiteReelsScreen(initialPostId: postId),
+                    ),
+                  );
+                },
+                child: Column(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      padding: const EdgeInsets.all(2.5),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF059669), Color(0xFFF59E0B), Color(0xFF10B981)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                        ),
+                        padding: const EdgeInsets.all(2),
+                        child: ImageHelper.buildAvatar(
+                          imageUrl: logoUrl,
+                          size: 56,
+                          fallbackName: name,
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    SizedBox(
+                      width: 66,
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF334155)),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

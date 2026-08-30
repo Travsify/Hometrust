@@ -65,6 +65,50 @@ export const authenticate = async (
 
 export const requireAuth = authenticate;
 
+export const optionalAuth = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    let token: string | undefined;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.query?.token && typeof req.query.token === 'string') {
+      token = req.query.token;
+    }
+
+    if (token) {
+      const decoded = jwt.verify(token, config.jwtSecret) as {
+        id: string;
+        email: string;
+        role: string;
+      };
+
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          firstName: true,
+          lastName: true,
+          isActive: true,
+        },
+      });
+
+      if (user && user.isActive) {
+        req.user = user;
+      }
+    }
+  } catch (_) {
+    // Ignore invalid token in optionalAuth
+  }
+  next();
+};
+
 export const requireRoles = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {

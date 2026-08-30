@@ -19,6 +19,8 @@ import 'wallet_screen.dart';
 import 'verify_screen.dart';
 import 'build_for_me_screen.dart';
 import 'support_tickets_screen.dart';
+import 'site_reels_screen.dart';
+import 'create_reel_screen.dart';
 
 class DeveloperHomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -326,6 +328,10 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                   ],
                 ),
               ),
+
+              // 1.5 DEVELOPER SITE STORIES & REELS PUBLISHING BANNER
+              _buildDeveloperStoriesActionBanner(context),
+              const SizedBox(height: 14),
 
               // 2. SLIDEABLE SPOTLIGHT HERO BANNER CAROUSEL
               _buildSpotlightCarousel(context),
@@ -1065,6 +1071,108 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // ── 1.5 DEVELOPER SITE STORIES & REELS PUBLISHING BANNER ──
+  Widget _buildDeveloperStoriesActionBanner(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF059669).withValues(alpha: 0.25),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
+                ),
+                child: const Icon(Icons.videocam_rounded, color: Color(0xFF34D399), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Site Stories & Reels 🎥',
+                      style: TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w900),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Post live build progress & reach subscribed buyers.',
+                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CreateReelScreen()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF059669),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.add_photo_alternate_rounded, size: 16),
+                  label: const Text('Post Site Story', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SiteReelsScreen()),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFF334155)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.play_circle_outline_rounded, size: 16, color: Color(0xFF34D399)),
+                  label: const Text('Watch Feed', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

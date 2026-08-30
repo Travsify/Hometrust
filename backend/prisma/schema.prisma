@@ -39,6 +39,8 @@ model User {
   supportTickets    SupportTicket[]
   buildRequests     BuildRequest[]
   assignedBuilds    BuildRequest[]      @relation("AssignedEngineerBuilds")
+  followedDevelopers DeveloperFollower[]
+  likedPosts        PostLike[]
 
   @@map("users")
 }
@@ -93,6 +95,8 @@ model Developer {
   virtualAccounts     VirtualAccount[]
   kycVerifications    KycVerification[]
   withdrawals         Withdrawal[]
+  posts               DeveloperPost[]
+  followers           DeveloperFollower[]
 
   @@map("developers")
 }
@@ -160,6 +164,7 @@ model Property {
   paymentPlans        PaymentPlan[]
   purchases           Purchase[]
   inspections         Inspection[]
+  posts               DeveloperPost[]
 
   @@map("properties")
 }
@@ -204,6 +209,7 @@ model Project {
   units               ProjectUnit[]
   milestones          ConstructionMilestone[]
   inspections         Inspection[]
+  posts               DeveloperPost[]
 
   @@map("projects")
 }
@@ -773,4 +779,54 @@ model BuildMilestone {
 
   @@map("build_milestones")
 }
+
+model DeveloperPost {
+  id              String       @id @default(uuid())
+  developerId     String
+  developer       Developer    @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  projectId       String?
+  project         Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  propertyId      String?
+  property        Property?    @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  mediaUrl        String       // Video or Photo URL
+  mediaType       String       @default("VIDEO") // "VIDEO" | "IMAGE"
+  thumbnailUrl    String?
+  caption         String?
+  tagTitle        String?      // e.g. "Ikoyi Heights • Pay-Small-Small"
+  tagPrice        String?      // e.g. "From ₦2.5M Initial Deposit"
+  viewsCount      Int          @default(0)
+  likesCount      Int          @default(0)
+  sharesCount     Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  likes           PostLike[]
+
+  @@map("developer_posts")
+}
+
+model DeveloperFollower {
+  id            String     @id @default(uuid())
+  developerId   String
+  developer     Developer  @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime   @default(now())
+
+  @@unique([developerId, userId])
+  @@map("developer_followers")
+}
+
+model PostLike {
+  id        String        @id @default(uuid())
+  postId    String
+  post      DeveloperPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([postId, userId])
+  @@map("post_likes")
+}
+
 

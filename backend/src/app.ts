@@ -23,6 +23,7 @@ import { aiRoutes } from './modules/ai/ai.routes';
 import { materialsRoutes } from './modules/materials/materials.routes';
 import supportRoutes from './modules/support/support.routes';
 import { buildRoutes } from './modules/build/build.routes';
+import { reelsRoutes } from './modules/reels/reels.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -90,6 +91,7 @@ app.use(`${apiPrefix}/ai`, aiRoutes);
 app.use(`${apiPrefix}/materials`, materialsRoutes);
 app.use(`${apiPrefix}/support`, supportRoutes);
 app.use(`${apiPrefix}/build`, buildRoutes);
+app.use(`${apiPrefix}/reels`, reelsRoutes);
 
 // Fallback to Admin Dashboard SPA if public/index.html exists
 app.get('*', (req: Request, res: Response, next) => {

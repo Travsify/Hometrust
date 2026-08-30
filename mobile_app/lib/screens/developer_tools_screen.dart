@@ -6,6 +6,8 @@ import 'legal_request_screen.dart';
 import 'real_estate_dictionary_screen.dart';
 import 'verify_screen.dart';
 import 'developer_boq_validator_screen.dart';
+import 'create_reel_screen.dart';
+import 'site_reels_screen.dart';
 
 class DeveloperToolsScreen extends StatefulWidget {
   const DeveloperToolsScreen({super.key});
@@ -192,7 +194,72 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
+
+          // ── SITE STORIES & REELS STUDIO CARD ──
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF059669).withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
+                  ),
+                  child: const Icon(Icons.videocam_rounded, color: Color(0xFF34D399), size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Site Stories & Reels Studio 🎥',
+                        style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Upload on-site drone tours & build progress to reach thousands of verified buyers.',
+                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, height: 1.3),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateReelScreen()));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF059669),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Post', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
 
           // ── 2. BENTO GRID SECTION HEADER ──
           Row(
