@@ -7,7 +7,7 @@ import { ResendService } from '../notifications/resend.service';
 
 export class BankingService {
   /**
-   * Internal Helper: Issues Dedicated Virtual Account (Paystack DVA Live -> Flutterwave Fallback)
+   * Internal Helper: Issues Dedicated Virtual Account exclusively via Flutterwave
    */
   private static async issueDedicatedVirtualAccount(params: {
     firstName: string;
@@ -31,60 +31,22 @@ export class BankingService {
     accountId: string;
     provider: string;
   }> {
-    let lastError: string = '';
-
-    // Primary: Flutterwave Live DVA — account name shows as "HOMETRUST / PATRICK ACHUA" on name enquiry
-    try {
-      console.log(`[BANKING] Provisioning Dedicated Virtual Account via Flutterwave for ${params.email}...`);
-      const flwRes = await FlutterwaveClient.createVirtualAccount(params);
-      if (flwRes?.data?.account_number) {
-        const displayName = params.isCorporate && params.companyName
-          ? `HOMETRUST / ${params.companyName}`
-          : `HOMETRUST / ${params.firstName} ${params.lastName}`;
-        return {
-          accountNumber: flwRes.data.account_number,
-          accountName: flwRes.data.account_name || displayName,
-          bankName: flwRes.data.bank_name || 'Flutterwave MFB',
-          accountId: flwRes.data.id,
-          provider: 'FLUTTERWAVE',
-        };
-      }
-    } catch (err: any) {
-      console.warn(`[BANKING] Flutterwave DVA notice:`, err.message);
-      lastError = err.message;
+    console.log(`[BANKING] Provisioning Dedicated Virtual Account via Flutterwave for ${params.email}...`);
+    const flwRes = await FlutterwaveClient.createVirtualAccount(params);
+    if (flwRes?.data?.account_number) {
+      const displayName = params.isCorporate && params.companyName
+        ? `HOMETRUST / ${params.companyName}`
+        : `HOMETRUST / ${params.firstName} ${params.lastName}`;
+      return {
+        accountNumber: flwRes.data.account_number,
+        accountName: flwRes.data.account_name || displayName,
+        bankName: flwRes.data.bank_name || 'Flutterwave MFB',
+        accountId: flwRes.data.id,
+        provider: 'FLUTTERWAVE',
+      };
     }
 
-    // Fallback: Paystack Live Dedicated Virtual Accounts (Wema Bank / Titan Trust Bank)
-    try {
-      console.log(`[BANKING] Falling back to Paystack DVA for ${params.email}...`);
-      const paystackRes = await PaystackClient.createDedicatedAccount({
-        customerEmail: params.email,
-        firstName: params.firstName,
-        lastName: params.lastName,
-        phone: params.phone,
-        bvn: params.bvn,
-        nin: params.nin,
-        isCorporate: params.isCorporate,
-        companyName: params.companyName,
-      });
-
-      if (paystackRes?.data?.account_number) {
-        return {
-          accountNumber: paystackRes.data.account_number,
-          accountName: paystackRes.data.account_name || (params.isCorporate && params.companyName
-            ? `HOMETRUST / ${params.companyName}`
-            : `HOMETRUST / ${params.firstName} ${params.lastName}`),
-          bankName: paystackRes.data.bank?.name || 'Wema Bank',
-          accountId: String(paystackRes.data.id || `pst_${Date.now()}`),
-          provider: 'PAYSTACK',
-        };
-      }
-    } catch (err: any) {
-      console.warn(`[BANKING] Paystack DVA notice:`, err.message);
-      lastError = err.message;
-    }
-
-    throw new Error(lastError || 'Failed to generate a dedicated virtual bank account.');
+    throw new Error('Failed to generate dedicated virtual bank account via Flutterwave.');
   }
   /**
    * Complete Buyer KYC & Auto-Generate Dedicated Virtual Bank Account via Maplerad

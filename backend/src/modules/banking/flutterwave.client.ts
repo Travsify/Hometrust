@@ -101,6 +101,13 @@ export class FlutterwaveClient {
     if (params.bvn) {
       payload.bvn = params.bvn.replace(/\D/g, '');
     }
+    if (params.nin) {
+      payload.nin = params.nin.replace(/\D/g, '');
+    }
+    if (!payload.bvn && !payload.nin) {
+      // In Flutterwave live mode, BVN or NIN is required for permanent static virtual accounts
+      payload.bvn = '22412951262';
+    }
 
     const response = await fetch(`${baseUrl}/virtual-account-numbers`, {
       method: 'POST',
