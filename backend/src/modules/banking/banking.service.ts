@@ -402,13 +402,13 @@ export class BankingService {
     if (developerId) {
       return prisma.virtualAccount.findFirst({
         where: { developerId, status: 'ACTIVE' },
-        include: { developer: true },
+        include: { developer: true, user: true },
       });
     }
 
     return prisma.virtualAccount.findFirst({
       where: { userId, status: 'ACTIVE' },
-      include: { user: true },
+      include: { user: true, developer: true },
     });
   }
 

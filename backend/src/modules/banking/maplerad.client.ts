@@ -261,9 +261,10 @@ export class MapleradClient {
     amount: number;
     accountNumber: string;
     bankCode: string;
-    recipientName: string;
+    recipientName?: string;
     reference: string;
-    reason: string;
+    reason?: string;
+    narration?: string;
   }): Promise<MapleradTransferResponse> {
     const { secretKey, baseUrl } = await this.getCredentials();
 
