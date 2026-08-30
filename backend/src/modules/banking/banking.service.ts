@@ -650,6 +650,7 @@ export class BankingService {
     const usedProvider = 'FLUTTERWAVE';
     let withdrawalStatus = 'SUCCESS';
     let externalRef = ref;
+    let failureMsg = '';
 
     try {
       const payoutRes = await FlutterwaveClient.transfer({
@@ -659,13 +660,38 @@ export class BankingService {
         reference: ref,
         narration: `Hometrust Escrow Settlement ${ref}`,
       });
-      if (payoutRes.status) {
+      if (payoutRes && payoutRes.status) {
         withdrawalStatus = 'SUCCESS';
         externalRef = String(payoutRes.data?.reference || payoutRes.data?.id || ref);
+      } else {
+        withdrawalStatus = 'FAILED';
+        failureMsg = payoutRes?.message || 'Payout transfer failed on settlement gateway';
       }
     } catch (e: any) {
-      console.warn(`[WITHDRAWAL] Payout transfer status notice: ${e.message}`);
-      withdrawalStatus = 'PROCESSING';
+      console.warn(`[WITHDRAWAL] Payout transfer error: ${e.message}`);
+      withdrawalStatus = 'FAILED';
+      failureMsg = e.message;
+    }
+
+    if (withdrawalStatus === 'FAILED') {
+      // Revert wallet balance decrement so user's funds remain intact
+      await prisma.virtualAccount.update({
+        where: { id: account.id },
+        data: { balance: { increment: params.amount } },
+      });
+
+      await prisma.withdrawal.update({
+        where: { id: withdrawal.id },
+        data: {
+          status: 'FAILED',
+          failureReason: failureMsg,
+          fincraPayoutId: `${usedProvider}:${externalRef}`,
+        },
+      });
+
+      throw new Error(
+        `Disbursement could not be completed by settlement gateway: ${failureMsg}. Your wallet balance of ₦${params.amount.toLocaleString()} has been fully refunded.`
+      );
     }
 
     await prisma.withdrawal.update({

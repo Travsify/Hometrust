@@ -780,7 +780,7 @@ Reference: $ref
 Description: $desc
 Date: $date
 Security: Secured by CBN-Licensed Custodial & Settlement Partners
-Platform: Hometrust, a product of Ehommes Global Inclusive Limited
+Platform: Hometrust, a product of Ehomes Global Inclusive Limited
 ═══════════════════════════════════
 Official Web Verification: https://hometrustng.com
 ''';

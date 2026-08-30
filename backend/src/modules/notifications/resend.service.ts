@@ -48,7 +48,7 @@ export class ResendService {
             ${bodyContent}
             <div class="divider"></div>
             <div class="footer-section">
-              <div class="footer-company">Hometrust is a product of Ehommes Global Inclusive Limited</div>
+              <div class="footer-company">Hometrust is a product of Ehomes Global Inclusive Limited</div>
               <div class="footer-services">
                 Verified Land Titles &amp; Legal Audits • Milestone-Protected Escrow Settlements • Build-for-Me Construction Management • Off-Plan Project Tracking &amp; Site Stories • Real-Time Building Material Index • Land Radar &amp; Geospatial Intelligence • Verified Developer Directory &amp; In-App Voice/Chat
               </div>
@@ -59,7 +59,7 @@ export class ResendService {
                 No 4, Ehomes Close, Zartech Area, Oluyole, Ibadan, Oyo State • info@hometrustng.com • support@hometrust.ng
               </div>
               <div class="footer-copy">
-                &copy; ${new Date().getFullYear()} Ehommes Global Inclusive Limited. All rights reserved.
+                &copy; ${new Date().getFullYear()} Ehomes Global Inclusive Limited. All rights reserved.
               </div>
             </div>
           </div>

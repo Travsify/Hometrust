@@ -30,7 +30,7 @@ export interface FlutterwaveNameEnquiryResponse {
 export interface FlutterwaveTransferResponse {
   status: boolean;
   message: string;
-  data: {
+  data?: {
     id: number | string;
     reference: string;
     amount: number;
@@ -326,18 +326,10 @@ export class FlutterwaveClient {
       }
     }
 
-    // If both gateways are in sandbox/testing mode, return a successful queued transfer
+    // If both gateways failed to disburse, return failure with reason
     return {
-      status: true,
-      message: 'Disbursement queued for NIBSS settlement processing',
-      data: {
-        id: `ht_payout_${Date.now()}`,
-        reference: params.reference,
-        amount: params.amount,
-        currency: 'NGN',
-        status: 'SUCCESSFUL',
-        fee: 50,
-      },
+      status: false,
+      message: 'Settlement gateways (Flutterwave & Paystack) could not disburse transfer. Please ensure payout balance is available on payment processor.',
     };
   }
 
