@@ -240,4 +240,71 @@ export class FlutterwaveClient {
     if (!configuredHash || !secretHashHeader) return true;
     return secretHashHeader === configuredHash;
   }
+
+  /**
+   * 5. Resolve a bank name string to Flutterwave bank code (needed for auto-reversal)
+   */
+  static async getBankCodeByName(bankName: string): Promise<string | null> {
+    const { secretKey, baseUrl } = await this.getCredentials();
+    try {
+      const res = await fetch(`${baseUrl}/banks/NG`, {
+        headers: { Authorization: `Bearer ${secretKey}` },
+      });
+      const data: any = await res.json();
+      if (data?.status === 'success' && Array.isArray(data.data)) {
+        const strip = (s: string) => s.toUpperCase()
+          .replace(/\b(BANK|LTD|PLC|MFB|LIMITED|MICROFINANCE)\b/g, '')
+          .replace(/[^A-Z\s]/g, '')
+          .trim();
+        const needle = strip(bankName);
+        const match = data.data.find((b: any) => {
+          const hay = strip(b.name || '');
+          return hay === needle || hay.includes(needle) || needle.includes(hay);
+        });
+        if (match) {
+          console.log(`[FLUTTERWAVE] Resolved bank "${bankName}" → code ${match.code}`);
+          return match.code;
+        }
+      }
+    } catch (e: any) {
+      console.warn(`[FLUTTERWAVE] Bank code lookup failed for "${bankName}":`, e.message);
+    }
+    return null;
+  }
+
+  /**
+   * 6. Auto-reverse a payment back to the sender (fraud prevention: name mismatch)
+   */
+  static async reversePendingTransfer(params: {
+    senderAccountNumber: string;
+    senderBankName: string;
+    amount: number;
+    originalReference: string;
+    reason: string;
+  }): Promise<{ success: boolean; message: string }> {
+    const bankCode = await this.getBankCodeByName(params.senderBankName);
+
+    if (!bankCode) {
+      console.warn(`[FLUTTERWAVE REVERSAL] Cannot resolve bank code for "${params.senderBankName}" — flagged for manual review.`);
+      return {
+        success: false,
+        message: `Bank code not resolved for "${params.senderBankName}". Flagged for admin review.`,
+      };
+    }
+
+    try {
+      const result = await this.transfer({
+        amount: params.amount,
+        accountNumber: params.senderAccountNumber,
+        bankCode,
+        reference: `REV-${params.originalReference.substring(0, 20)}-${Date.now()}`,
+        narration: `Hometrust Reversal: ${params.reason}`,
+      });
+      console.log(`[FLUTTERWAVE REVERSAL] ₦${params.amount.toLocaleString()} returned to ${params.senderAccountNumber} (${params.senderBankName}).`);
+      return { success: true, message: 'Reversal dispatched successfully' };
+    } catch (err: any) {
+      console.warn(`[FLUTTERWAVE REVERSAL] Auto-reversal failed:`, err.message);
+      return { success: false, message: err.message };
+    }
+  }
 }

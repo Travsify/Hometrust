@@ -33,9 +33,30 @@ export class BankingService {
   }> {
     let lastError: string = '';
 
-    // Primary: Paystack Live Dedicated Virtual Accounts (Wema Bank & Titan Trust Bank)
+    // Primary: Flutterwave Live DVA — account name shows as "HOMETRUST / PATRICK ACHUA" on name enquiry
     try {
-      console.log(`[BANKING] Provisioning Dedicated Virtual Account via Paystack for ${params.email}...`);
+      console.log(`[BANKING] Provisioning Dedicated Virtual Account via Flutterwave for ${params.email}...`);
+      const flwRes = await FlutterwaveClient.createVirtualAccount(params);
+      if (flwRes?.data?.account_number) {
+        const displayName = params.isCorporate && params.companyName
+          ? `HOMETRUST / ${params.companyName}`
+          : `HOMETRUST / ${params.firstName} ${params.lastName}`;
+        return {
+          accountNumber: flwRes.data.account_number,
+          accountName: flwRes.data.account_name || displayName,
+          bankName: flwRes.data.bank_name || 'Flutterwave MFB',
+          accountId: flwRes.data.id,
+          provider: 'FLUTTERWAVE',
+        };
+      }
+    } catch (err: any) {
+      console.warn(`[BANKING] Flutterwave DVA notice:`, err.message);
+      lastError = err.message;
+    }
+
+    // Fallback: Paystack Live Dedicated Virtual Accounts (Wema Bank / Titan Trust Bank)
+    try {
+      console.log(`[BANKING] Falling back to Paystack DVA for ${params.email}...`);
       const paystackRes = await PaystackClient.createDedicatedAccount({
         customerEmail: params.email,
         firstName: params.firstName,
@@ -50,7 +71,9 @@ export class BankingService {
       if (paystackRes?.data?.account_number) {
         return {
           accountNumber: paystackRes.data.account_number,
-          accountName: paystackRes.data.account_name || (params.isCorporate && params.companyName ? `HOMETRUST / ${params.companyName}` : `HOMETRUST / ${params.firstName} ${params.lastName}`),
+          accountName: paystackRes.data.account_name || (params.isCorporate && params.companyName
+            ? `HOMETRUST / ${params.companyName}`
+            : `HOMETRUST / ${params.firstName} ${params.lastName}`),
           bankName: paystackRes.data.bank?.name || 'Wema Bank',
           accountId: String(paystackRes.data.id || `pst_${Date.now()}`),
           provider: 'PAYSTACK',
@@ -58,24 +81,6 @@ export class BankingService {
       }
     } catch (err: any) {
       console.warn(`[BANKING] Paystack DVA notice:`, err.message);
-      lastError = err.message;
-    }
-
-    // Secondary Fallback: Flutterwave Live Dedicated Virtual Accounts
-    try {
-      console.log(`[BANKING] Falling back to Flutterwave for ${params.email}...`);
-      const flwRes = await FlutterwaveClient.createVirtualAccount(params);
-      if (flwRes?.data?.account_number) {
-        return {
-          accountNumber: flwRes.data.account_number,
-          accountName: flwRes.data.account_name,
-          bankName: flwRes.data.bank_name,
-          accountId: flwRes.data.id,
-          provider: 'FLUTTERWAVE',
-        };
-      }
-    } catch (err: any) {
-      console.warn(`[BANKING] Flutterwave notice:`, err.message);
       lastError = err.message;
     }
 
@@ -804,129 +809,283 @@ export class BankingService {
   }
 
   /**
-   * Process incoming Paystack/Flutterwave webhook when a buyer transfers money into their virtual account
-   * Automatically captures deposit, credits escrow wallet, and updates milestone plans
+   * Fuzzy name matcher — checks if sender name contains BOTH the holder's first & last name
+   * Handles name order differences, abbreviations, and extra middle names
+   */
+  private static senderNameMatchesHolder(senderRaw: string, holderFirstName: string, holderLastName: string): boolean {
+    if (!senderRaw) return false;
+
+    const normalize = (s: string) =>
+      s.toUpperCase()
+        .replace(/\b(MR|MRS|MS|MISS|DR|PROF|CHIEF|ALHAJI|ALHAJA|PASTOR|REV|ENGR|BARR|HON|ESQ)\b\.?/g, '')
+        .replace(/[^A-Z\s]/g, '')
+        .trim()
+        .split(/\s+/)
+        .filter(w => w.length > 1);
+
+    const senderWords = normalize(senderRaw);
+    const firstWords = normalize(holderFirstName);
+    const lastWords = normalize(holderLastName);
+
+    const wordInSender = (w: string) =>
+      senderWords.some(sw => sw === w || sw.startsWith(w.substring(0, 4)));
+
+    const firstMatch = firstWords.some(wordInSender);
+    const lastMatch = lastWords.some(wordInSender);
+
+    // Both first name AND last name must be traceable in the sender name
+    return firstMatch && lastMatch;
+  }
+
+  /**
+   * Process incoming Paystack/Flutterwave webhook when money hits a virtual account.
+   * FRAUD PREVENTION: Verifies sender name matches account holder. Auto-reverses mismatches.
    */
   static async handleWebhook(event: any) {
     const eventType = event.event || event.type || event['event.type'] || '';
-    const isCollection = 
+    const isCollection =
       eventType.includes('charge.success') ||
-      eventType.includes('dedicated_account') || 
-      eventType.includes('collection') || 
-      eventType.includes('virtual_account') || 
+      eventType.includes('charge.completed') ||
+      eventType.includes('dedicated_account') ||
+      eventType.includes('collection') ||
+      eventType.includes('virtual_account') ||
       eventType.includes('credit') ||
       eventType.includes('deposit') ||
       eventType.includes('successful');
 
-    if (isCollection) {
-      const data = event.data || event;
-      const accountNumber = data.account_number || data.accountNumber || data.virtual_account_number || data.customer?.dedicated_account?.account_number;
-      const customerCode = data.customer?.customer_code || data.customer_id || data.customerId;
-      const rawAmount = data.amount || data.settlement_amount || 0;
-      const reference = data.reference || data.tx_ref || data.id || `HT-DEP-${Date.now()}`;
+    if (!isCollection) return { success: true };
 
-      let amount = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount;
-      // In Paystack, amount is sent in kobo (e.g. 5000000 kobo = ₦50,000)
-      if (data.currency === 'NGN' && amount > 10000 && !eventType.includes('flutterwave')) {
-        amount = amount / 100;
+    const data = event.data || event;
+
+    // ── Extract account identifier ──────────────────────────────────────────
+    const accountNumber =
+      data.account_number ||
+      data.accountNumber ||
+      data.virtual_account_number ||
+      data.customer?.dedicated_account?.account_number ||
+      data.meta?.receiver_account_number;
+
+    const customerCode = data.customer?.customer_code || data.customer_id || data.customerId;
+
+    // ── Extract sender info from Flutterwave webhook (meta field) ───────────
+    const senderName: string =
+      data.meta?.originatorname ||
+      data.meta?.sender ||
+      data.authorization?.sender_name ||
+      data.payer?.name ||
+      '';
+
+    const senderAccountNumber: string =
+      data.meta?.originatoraccountnumber ||
+      data.meta?.sourceaccountnumber ||
+      data.meta?.sender_bank_account ||
+      '';
+
+    const senderBankName: string =
+      data.meta?.bankname ||
+      data.meta?.sender_bank ||
+      data.authorization?.bank ||
+      '';
+
+    // ── Extract amount (Paystack sends kobo, Flutterwave sends naira) ───────
+    const rawAmount = data.amount || data.settlement_amount || 0;
+    let amount = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount;
+    // Paystack sends amounts in kobo (subunit). Values >10,000 on a Paystack event = kobo.
+    if (eventType.includes('charge.success') && amount > 10000) {
+      amount = amount / 100;
+    }
+
+    const reference = data.reference || data.tx_ref || data.flw_ref || `HT-DEP-${Date.now()}`;
+
+    // ── Locate virtual account in database ──────────────────────────────────
+    let account: any = null;
+    if (accountNumber) {
+      account = await prisma.virtualAccount.findUnique({
+        where: { accountNumber },
+        include: { user: true, developer: true },
+      });
+    }
+    if (!account && customerCode) {
+      account = await prisma.virtualAccount.findFirst({
+        where: { fincraAccountId: customerCode },
+        include: { user: true, developer: true },
+      });
+    }
+
+    if (!account) {
+      console.warn(`[WEBHOOK] No virtual account found for accountNumber=${accountNumber}, customerCode=${customerCode}`);
+      return { success: true };
+    }
+
+    // ── Determine the expected holder name ──────────────────────────────────
+    const holderFirstName = account.user?.firstName || account.developer?.companyName || '';
+    const holderLastName  = account.user?.lastName  || 'Ltd';
+    const holderFullName  = `${holderFirstName} ${holderLastName}`.trim();
+    const isCompany       = !!account.developer;
+    const recipientEmail  = account.user?.email || account.developer?.email || '';
+    const recipientName   = account.user
+      ? `${account.user.firstName} ${account.user.lastName}`
+      : (account.developer?.companyName || 'Valued Partner');
+
+    // ── FRAUD CHECK: Sender name verification ───────────────────────────────
+    const hasSenderInfo = senderName.trim().length > 0;
+
+    if (hasSenderInfo) {
+      let nameMatch: boolean;
+
+      if (isCompany) {
+        // For companies: at least one significant word of company name must appear in sender name
+        const companyWords = account.developer.companyName
+          .toUpperCase()
+          .replace(/\b(LTD|LIMITED|PLC|NIG|NIGERIA|PROPERTIES|REAL|ESTATE|HOMES|GLOBAL)\b/g, '')
+          .trim()
+          .split(/\s+/)
+          .filter((w: string) => w.length > 2);
+        nameMatch = companyWords.some((w: string) =>
+          senderName.toUpperCase().includes(w)
+        );
+      } else {
+        nameMatch = this.senderNameMatchesHolder(senderName, holderFirstName, holderLastName);
       }
 
-      let account = null;
-      if (accountNumber) {
-        account = await prisma.virtualAccount.findUnique({
-          where: { accountNumber },
-          include: { user: true, developer: true },
-        });
-      }
+      if (!nameMatch) {
+        console.warn(
+          `[FRAUD BLOCK] Sender "${senderName}" does NOT match account holder "${holderFullName}". ` +
+          `Account: ${accountNumber}. Amount: ₦${amount.toLocaleString()}. Ref: ${reference}. Initiating reversal...`
+        );
 
-      if (!account && customerCode) {
-        account = await prisma.virtualAccount.findFirst({
-          where: { fincraAccountId: customerCode },
-          include: { user: true, developer: true },
-        });
-      }
+        // ── Attempt auto-reversal ──────────────────────────────────────────
+        let reversalStatus = 'PENDING_ADMIN_REVIEW';
+        let reversalNote = 'Bank code could not be resolved. Flagged for manual admin review.';
 
-      if (account) {
-        // 1. Credit virtual account balance
-        const updatedVa = await prisma.virtualAccount.update({
-          where: { id: account.id },
-          data: { balance: { increment: amount } },
-        });
-
-        console.log(`[ESCROW AUTO-CAPTURE] Credited ₦${amount.toLocaleString()} to Account ${account.accountNumber} (${account.accountName})`);
-
-        // 2. If user has an active purchase, auto-credit the next instalment!
-        if (account.userId) {
-          const activePurchase = await prisma.purchase.findFirst({
-            where: { userId: account.userId, status: 'ACTIVE' },
-            include: { property: true, projectUnit: true },
-          });
-
-          if (activePurchase) {
-            const paidAmount = amount;
-            const newAmountPaid = activePurchase.amountPaid + paidAmount;
-            const newBalance = Math.max(0, activePurchase.totalPrice - newAmountPaid);
-            const isCompleted = newBalance <= 0;
-
-            await prisma.purchase.update({
-              where: { id: activePurchase.id },
-              data: {
-                amountPaid: newAmountPaid,
-                outstandingBalance: newBalance,
-                status: isCompleted ? 'COMPLETED' : 'ACTIVE',
-              },
-            });
-
-            // Record payment entry
-            await prisma.payment.create({
-              data: {
-                paymentReference: reference,
-                userId: account.userId,
-                purchaseId: activePurchase.id,
-                developerId: activePurchase.property?.developerId || account.developerId,
-                amount: paidAmount,
-                platformFee: 0,
-                processingFee: 0,
-                totalAmount: paidAmount,
-                purpose: 'INSTALMENT',
-                status: 'SUCCESS',
-                paidAt: new Date(),
-              },
-            });
-
-            console.log(`[ESCROW AUTO-CAPTURE] Applied ₦${paidAmount.toLocaleString()} to Purchase ${activePurchase.id}. New Balance: ₦${newBalance.toLocaleString()}`);
-          }
-        }
-
-        // 3. Send Payment Received Email to User
-        const recipientEmail = account.user?.email || account.developer?.email;
-        const recipientName = account.user ? `${account.user.firstName} ${account.user.lastName}` : (account.developer?.companyName || 'Valued Partner');
-        if (recipientEmail) {
-          ResendService.sendPaymentReceivedEmail(
-            recipientEmail,
-            recipientName,
+        if (senderAccountNumber && senderBankName) {
+          const reversal = await FlutterwaveClient.reversePendingTransfer({
+            senderAccountNumber,
+            senderBankName,
             amount,
-            updatedVa.balance,
-            reference
-          ).catch(console.warn);
+            originalReference: reference,
+            reason: `Name mismatch: sender "${senderName}" ≠ holder "${holderFullName}"`,
+          });
+          reversalStatus = reversal.success ? 'REVERSED' : 'PENDING_ADMIN_REVIEW';
+          reversalNote = reversal.message;
         }
 
-        // 4. Audit Log
+        // ── Audit log the fraud block ──────────────────────────────────────
         await AuditService.log({
-          adminEmail: recipientEmail || 'system@hometrustng.com',
-          action: 'PAYMENT_AUTO_CAPTURED',
+          adminEmail: 'fraud-alert@hometrustng.com',
+          action: 'DEPOSIT_REVERSED_NAME_MISMATCH',
           entityType: 'VIRTUAL_ACCOUNT',
           entityId: account.id,
           details: {
-            accountNumber: account.accountNumber,
+            accountNumber,
+            holderName: holderFullName,
+            senderName,
+            senderAccount: senderAccountNumber,
+            senderBank: senderBankName,
             amount,
             reference,
-            provider: 'PAYSTACK_DVA',
+            reversalStatus,
+            reversalNote,
           },
         });
+
+        // Notify account holder that a suspicious deposit was blocked
+        if (recipientEmail) {
+          ResendService.sendAdminAlert(
+            'FRAUD_DEPOSIT_BLOCKED',
+            `⚠️ Suspicious Deposit Blocked on ${holderFullName}'s Account`,
+            `A deposit of ₦${amount.toLocaleString()} from "${senderName}" (${senderBankName}) was blocked because ` +
+            `the sender's name does not match the account holder "${holderFullName}". ` +
+            `Reversal status: ${reversalStatus}. Reference: ${reference}.`
+          ).catch(console.warn);
+        }
+
+        return { success: true, action: 'REVERSED', reason: 'Sender name mismatch' };
+      }
+
+      console.log(`[FRAUD CHECK ✅] Sender "${senderName}" matches holder "${holderFullName}". Crediting ₦${amount.toLocaleString()}.`);
+    } else {
+      // No sender info in webhook → hold and flag for review rather than reject
+      console.warn(`[WEBHOOK] No sender name in payload for ref ${reference}. Crediting cautiously — manual review recommended.`);
+    }
+
+    // ── PASS: Credit the virtual account balance ────────────────────────────
+    const updatedVa = await prisma.virtualAccount.update({
+      where: { id: account.id },
+      data: { balance: { increment: amount } },
+    });
+
+    console.log(`[ESCROW] ✅ Credited ₦${amount.toLocaleString()} to ${account.accountName} (${account.accountNumber})`);
+
+    // ── Auto-apply to active purchase instalment ────────────────────────────
+    if (account.userId) {
+      const activePurchase = await prisma.purchase.findFirst({
+        where: { userId: account.userId, status: 'ACTIVE' },
+        include: { property: true, projectUnit: true },
+      });
+
+      if (activePurchase) {
+        const newAmountPaid = activePurchase.amountPaid + amount;
+        const newBalance    = Math.max(0, activePurchase.totalPrice - newAmountPaid);
+        const isCompleted   = newBalance <= 0;
+
+        await prisma.purchase.update({
+          where: { id: activePurchase.id },
+          data: {
+            amountPaid: newAmountPaid,
+            outstandingBalance: newBalance,
+            status: isCompleted ? 'COMPLETED' : 'ACTIVE',
+          },
+        });
+
+        await prisma.payment.create({
+          data: {
+            paymentReference: reference,
+            userId: account.userId,
+            purchaseId: activePurchase.id,
+            developerId: activePurchase.property?.developerId || account.developerId,
+            amount,
+            platformFee: 0,
+            processingFee: 0,
+            totalAmount: amount,
+            purpose: 'INSTALMENT',
+            status: 'SUCCESS',
+            paidAt: new Date(),
+          },
+        });
+
+        console.log(`[ESCROW] Applied ₦${amount.toLocaleString()} to Purchase ${activePurchase.id}. Remaining: ₦${newBalance.toLocaleString()}`);
       }
     }
-    return { success: true };
+
+    // ── Send payment received email ─────────────────────────────────────────
+    if (recipientEmail) {
+      ResendService.sendPaymentReceivedEmail(
+        recipientEmail,
+        recipientName,
+        amount,
+        updatedVa.balance,
+        reference
+      ).catch(console.warn);
+    }
+
+    // ── Audit log successful deposit ────────────────────────────────────────
+    await AuditService.log({
+      adminEmail: recipientEmail || 'system@hometrustng.com',
+      action: 'PAYMENT_AUTO_CAPTURED',
+      entityType: 'VIRTUAL_ACCOUNT',
+      entityId: account.id,
+      details: {
+        accountNumber: account.accountNumber,
+        holderName: holderFullName,
+        senderName: senderName || 'UNKNOWN',
+        amount,
+        reference,
+        provider: account.provider || 'FLUTTERWAVE',
+      },
+    });
+
+    return { success: true, action: 'CREDITED' };
   }
 
   /**
