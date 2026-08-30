@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'chat_screen.dart';
 import 'kyc_screen.dart';
+import 'inspection_booking_modal.dart';
 import '../widgets/in_app_call_modal.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -614,79 +615,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       return;
     }
 
-    DateTime selectedDate = DateTime.now().add(const Duration(days: 2));
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime.now().add(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 60)),
-      helpText: 'Select Inspection Date',
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppColors.primary),
-        ),
-        child: child!,
-      ),
+    InspectionBookingModal.show(
+      context,
+      propertyId: widget.property.id,
+      title: widget.property.title,
+      location: '${widget.property.address}, ${widget.property.state}',
     );
-
-    if (picked == null || !mounted) return;
-    selectedDate = picked;
-
-    // Confirm dialog
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Inspection Request', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Property: ${widget.property.title}'),
-            const SizedBox(height: 8),
-            Text('Date: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
-            const SizedBox(height: 8),
-            const Text('Team: Hometrust Technical Officers & Developer Rep.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-            const SizedBox(height: 4),
-            const Text('Hours: 10:00 AM – 4:00 PM', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Confirm', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    try {
-      await ApiClient.post('/inspections', {
-        'propertyId': widget.property.id,
-        'scheduledDate': selectedDate.toIso8601String(),
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Inspection request submitted! Our team will confirm within 24 hours.'),
-            backgroundColor: AppColors.emeraldText,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not submit inspection: ${e.toString().replaceAll('Exception: ', '')}'),
-            backgroundColor: AppColors.roseText,
-          ),
-        );
-      }
-    }
   }
 
   void _handleStartPurchase(BuildContext context) async {

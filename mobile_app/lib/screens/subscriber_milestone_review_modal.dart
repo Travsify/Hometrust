@@ -1,7 +1,8 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
+import 'inspection_booking_modal.dart';
 
 class SubscriberMilestoneReviewModal extends StatefulWidget {
   final Map<String, dynamic> milestone;
@@ -443,7 +444,61 @@ class _SubscriberMilestoneReviewModalState extends State<SubscriberMilestoneRevi
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
+
+            // Optional Site Inspection / COREN Audit Trigger
+            InkWell(
+              onTap: () {
+                InspectionBookingModal.show(
+                  context,
+                  projectId: widget.milestone['projectId'],
+                  milestoneId: widget.milestone['id'],
+                  title: widget.projectName,
+                  location: 'Construction Site Location',
+                  milestoneName: title,
+                  trancheAmount: trancheAmount,
+                );
+              },
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.engineering_rounded, color: Color(0xFF059669), size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Need on-site verification first?',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF065F46)),
+                          ),
+                          Text(
+                            'Book free Self-Visit (₦0) or Hire Independent COREN Engineer (₦25k)',
+                            style: TextStyle(fontSize: 10.5, color: Color(0xFF047857), fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Color(0xFF059669)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
 
             // Voting Actions
             if (userVoted) ...[

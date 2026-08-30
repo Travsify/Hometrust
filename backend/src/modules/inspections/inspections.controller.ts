@@ -14,14 +14,20 @@ export class InspectionsController {
         userId: req.user.id,
         propertyId: req.body.propertyId,
         projectId: req.body.projectId,
+        milestoneId: req.body.milestoneId,
+        inspectionType: req.body.inspectionType,
+        scope: req.body.scope,
         preferredDate: req.body.preferredDate,
         preferredTime: req.body.preferredTime,
         attendeeName: req.body.attendeeName || `${req.user.firstName} ${req.user.lastName}`,
         attendeePhone: req.body.attendeePhone || '',
         attendeeEmail: req.body.attendeeEmail || req.user.email,
+        representativeName: req.body.representativeName,
+        representativePhone: req.body.representativePhone,
         notes: req.body.notes,
+        paymentReference: req.body.paymentReference,
       });
-      sendSuccess(res, result, 'Inspection requested', 201);
+      sendSuccess(res, result, 'Inspection booked successfully', 201);
     } catch (error: any) {
       sendError(res, error.message, 400);
     }
@@ -44,8 +50,50 @@ export class InspectionsController {
     try {
       const result = await InspectionsService.getAll({
         status: req.query.status as string,
+        type: req.query.type as string,
+        scope: req.query.scope as string,
       });
       sendSuccess(res, result, 'All inspections retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async assignCoren(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const { engineerName, licenseNumber } = req.body;
+      const result = await InspectionsService.assignCorenEngineer(req.params.id as string, engineerName, licenseNumber, req.user);
+      sendSuccess(res, result, 'COREN Engineer assigned');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async submitCorenReport(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await InspectionsService.submitCorenReport(req.params.id as string, req.body, req.user);
+      sendSuccess(res, result, 'COREN Inspection Report uploaded');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async submitGeofencedVideo(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await InspectionsService.submitGeofencedVideo(req.params.id as string, req.body);
+      sendSuccess(res, result, 'Geofenced live video submitted');
     } catch (error: any) {
       sendError(res, error.message, 400);
     }

@@ -9,6 +9,7 @@ import 'login_screen.dart';
 import 'chat_screen.dart';
 import '../widgets/in_app_call_modal.dart';
 import 'purchases_screen.dart';
+import 'inspection_booking_modal.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final ProjectModel project;
@@ -172,52 +173,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     );
   }
 
-  void _bookProjectInspection(BuildContext context) async {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!auth.isAuthenticated) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-      return;
-    }
-
-    final selectedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().add(const Duration(days: 2)),
-      firstDate: DateTime.now().add(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 60)),
-      helpText: 'Select Project Site Visit Date',
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppColors.primary),
-        ),
-        child: child!,
-      ),
+  void _bookProjectInspection(BuildContext context) {
+    InspectionBookingModal.show(
+      context,
+      projectId: widget.project.id,
+      title: widget.project.name,
+      location: '${widget.project.area}, ${widget.project.city}',
     );
-
-    if (selectedDate == null || !context.mounted) return;
-
-    try {
-      await ApiClient.post('/inspections', {
-        'projectId': widget.project.id,
-        'scheduledDate': selectedDate.toIso8601String(),
-      });
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Site inspection requested! Our engineering rep will contact you to confirm.'),
-            backgroundColor: AppColors.emeraldText,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not submit inspection: ${e.toString().replaceAll('Exception: ', '')}'),
-            backgroundColor: AppColors.roseText,
-          ),
-        );
-      }
-    }
   }
 
   @override

@@ -448,23 +448,54 @@ model LegalRequest {
 }
 
 model Inspection {
-  id                String      @id @default(uuid())
-  userId            String
-  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  propertyId        String?
-  property          Property?   @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  projectId         String?
-  project           Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  preferredDate     String
-  preferredTime     String
-  attendeeName      String
-  attendeePhone     String
-  attendeeEmail     String
-  status            String      @default("REQUESTED") // REQUESTED, CONFIRMED, COMPLETED, CANCELLED
-  notes             String?
-  developerNotes    String?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  id                    String      @id @default(uuid())
+  userId                String
+  user                  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId            String?
+  property              Property?   @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  projectId             String?
+  project               Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  milestoneId           String?
+  
+  // Inspection Pathway & Scope
+  inspectionType        String      @default("SELF_OR_REPRESENTATIVE") // SELF_OR_REPRESENTATIVE, COREN_ENGINEER, GEOFENCED_VIDEO
+  scope                 String      @default("PRE_PURCHASE") // PRE_PURCHASE, MILESTONE_VERIFICATION
+  preferredDate         String
+  preferredTime         String
+  attendeeName          String
+  attendeePhone         String
+  attendeeEmail         String
+  
+  // Pricing & Gate Pass
+  fee                   Float       @default(0) // 0 for Self/Video, 25000 for COREN
+  paymentStatus         String      @default("WAIVED") // PENDING, PAID, WAIVED, REFUNDED
+  paymentReference      String?
+  gatePassCode          String?     // e.g. "HT-PASS-7489"
+  
+  // Self / Rep Details
+  representativeName    String?
+  representativePhone   String?
+  
+  // COREN Independent Structural Engineer Details & Report
+  corenEngineerName     String?
+  corenLicenseNumber    String?
+  corenReportUrl        String?
+  structuralScore       Int?        // 0 - 100 rating
+  defectNotes           String?
+  
+  // Geofenced Live Walkthrough Video
+  geofencedVideoUrl     String?
+  isGeofenceVerified    Boolean     @default(false)
+  geofenceLatitude      Float?
+  geofenceLongitude     Float?
+  geofenceRadiusMeters  Float?      @default(150)
+  
+  status                String      @default("REQUESTED") // REQUESTED, ASSIGNED, IN_REVIEW, COMPLETED, CANCELLED, REJECTED
+  notes                 String?
+  developerNotes        String?
+  reportSubmittedAt     DateTime?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
 
   @@map("inspections")
 }
