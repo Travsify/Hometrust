@@ -46,8 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+        type: FileType.any,
         withData: true,
       );
 
@@ -124,8 +123,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               setModalState(() => isModalUploading = true);
               try {
                 final res = await FilePicker.platform.pickFiles(
-                  type: FileType.custom,
-                  allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+                  type: FileType.any,
                   withData: true,
                 );
                 if (res != null && res.files.isNotEmpty && res.files.first.bytes != null) {

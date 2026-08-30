@@ -470,7 +470,7 @@ class _ReelItemViewState extends State<_ReelItemView> {
   @override
   void initState() {
     super.initState();
-    if (widget.post['mediaType'] == 'VIDEO') {
+    if (widget.post['mediaType'] == 'VIDEO' || widget.post['mediaType'] == 'AUDIO') {
       _initVideo();
     }
   }
@@ -570,18 +570,57 @@ class _ReelItemViewState extends State<_ReelItemView> {
                           ),
                         ],
                       ))
-                : Image.network(
-                    ImageHelper.resolveUrl(post['mediaUrl']) ?? '',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Center(
-                      child: Icon(Icons.broken_image_rounded, color: Colors.white54, size: 48),
-                    ),
-                  ),
+                : mediaType == 'AUDIO'
+                    ? Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF0F172A), Color(0xFF064E3B)],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 110,
+                                height: 110,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFF059669).withValues(alpha: 0.2),
+                                  border: Border.all(color: const Color(0xFF34D399), width: 3),
+                                ),
+                                child: const Center(
+                                  child: Icon(Icons.graphic_eq_rounded, color: Color(0xFF34D399), size: 54),
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              Text(
+                                dev['companyName'] ?? 'Developer Audio Update',
+                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Audio Site Commentary / Voice Note 🎙️',
+                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : Image.network(
+                        ImageHelper.resolveUrl(post['mediaUrl']) ?? '',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Center(
+                          child: Icon(Icons.broken_image_rounded, color: Colors.white54, size: 48),
+                        ),
+                      ),
           ),
         ),
 
         // Pause Indicator Overlay
-        if (!_isPlaying && mediaType == 'VIDEO' && _isVideoInitialized)
+        if (!_isPlaying && (mediaType == 'VIDEO' || mediaType == 'AUDIO') && _isVideoInitialized)
           Center(
             child: Container(
               padding: const EdgeInsets.all(16),

@@ -4,6 +4,7 @@ import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/persistent_bottom_nav.dart';
+import 'chat_screen.dart';
 
 class SupportTicketsScreen extends StatefulWidget {
   const SupportTicketsScreen({super.key});
@@ -469,6 +470,36 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
                 ),
               ],
               const SizedBox(height: 20),
+
+              // ── CHAT WITH ADMIN BUTTON ──
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    final String ticketCode = ticket['ticketNumber'] ?? (ticket['id'] != null ? ticket['id'].toString().substring(0, 8).toUpperCase() : 'TICKET');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatScreen(
+                          recipientName: 'Hometrust Support & Escrow Admin',
+                          propertyTitle: 'Support Ticket #$ticketCode: $subject',
+                          isSupport: true,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                  label: const Text('Chat Live with Admin on this Ticket', style: TextStyle(fontWeight: FontWeight.w800)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F172A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
           ),
         ),

@@ -139,8 +139,6 @@ export class ReelsService {
             companyName: true,
             logoUrl: true,
             isVerified: true,
-            cacNumber: true,
-            phone: true,
             userId: true,
           },
         },

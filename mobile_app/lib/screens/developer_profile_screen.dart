@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../widgets/persistent_bottom_nav.dart';
 import 'kyc_screen.dart';
 import 'login_screen.dart';
+import 'support_tickets_screen.dart';
 
 class DeveloperProfileScreen extends StatefulWidget {
   const DeveloperProfileScreen({super.key});
@@ -46,8 +47,7 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
   Future<String?> _pickAndUploadImage({required String title}) async {
     try {
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+        type: FileType.any,
         withData: true,
       );
 
@@ -150,8 +150,7 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
             Future<void> pickModalLogo() async {
               try {
                 final result = await FilePicker.platform.pickFiles(
-                  type: FileType.custom,
-                  allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+                  type: FileType.any,
                   withData: true,
                 );
                 if (result != null && result.files.isNotEmpty && result.files.first.bytes != null) {
@@ -879,7 +878,32 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
             ),
             const SizedBox(height: 20),
 
-            // 2. ACCOUNT SECURITY & CORPORATE COMPLIANCE MENU
+            // 2. DEVELOPER SUPPORT & ESCALATIONS TICKET SYSTEM
+            const Text('Priority Developer Support & Helpdesk', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  _buildMenuTile(
+                    icon: Icons.confirmation_number_outlined,
+                    color: const Color(0xFF059669),
+                    title: 'Developer Support Tickets',
+                    subtitle: 'Open a ticket, report milestone issues & chat with admin',
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportTicketsScreen()));
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // 3. ACCOUNT SECURITY & CORPORATE COMPLIANCE MENU
             const Text('Security, Governance & Facts', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
             const SizedBox(height: 10),
             Container(

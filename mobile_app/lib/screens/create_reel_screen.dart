@@ -64,19 +64,19 @@ class _CreateReelScreenState extends State<CreateReelScreen> {
   Future<void> _pickMedia() async {
     try {
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['mp4', 'mov', 'jpg', 'jpeg', 'png', 'webp'],
+        type: FileType.any,
         withData: true,
       );
 
       if (result != null && result.files.isNotEmpty && result.files.first.bytes != null) {
         final file = result.files.first;
         final ext = (file.extension ?? '').toLowerCase();
-        final isImg = ['jpg', 'jpeg', 'png', 'webp'].contains(ext);
+        final isImg = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif', 'bmp', 'svg'].contains(ext);
+        final isAudio = ['mp3', 'wav', 'aac', 'm4a', 'ogg', 'flac'].contains(ext);
 
         setState(() {
           _pickedFile = file;
-          _mediaType = isImg ? 'IMAGE' : 'VIDEO';
+          _mediaType = isImg ? 'IMAGE' : (isAudio ? 'AUDIO' : 'VIDEO');
           _previewBytes = file.bytes;
         });
       }
@@ -197,13 +197,32 @@ class _CreateReelScreenState extends State<CreateReelScreen> {
                                 ? Image.memory(_previewBytes!, fit: BoxFit.cover)
                                 : Container(
                                     color: const Color(0xFF0F172A),
-                                    child: const Center(
+                                    child: Center(
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.video_library_rounded, color: Color(0xFF34D399), size: 48),
-                                          SizedBox(height: 8),
-                                          Text('Video Selected (Ready to Upload)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                                          Icon(
+                                            _mediaType == 'AUDIO'
+                                                ? Icons.audiotrack_rounded
+                                                : Icons.video_library_rounded,
+                                            color: const Color(0xFF34D399),
+                                            size: 48,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            _mediaType == 'AUDIO'
+                                                ? 'Audio Selected: ${_pickedFile?.name ?? ""}'
+                                                : 'Video Selected: ${_pickedFile?.name ?? ""}',
+                                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          const Text(
+                                            'Ready to Upload (Securely Encrypted)',
+                                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -220,9 +239,15 @@ class _CreateReelScreenState extends State<CreateReelScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(_mediaType == 'VIDEO' ? Icons.videocam_rounded : Icons.photo_camera_rounded, color: Colors.white, size: 14),
+                                  Icon(
+                                    _mediaType == 'IMAGE'
+                                        ? Icons.photo_camera_rounded
+                                        : (_mediaType == 'AUDIO' ? Icons.audiotrack_rounded : Icons.videocam_rounded),
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text('Tap to Change', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                                  const Text('Tap to Change', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
                                 ],
                               ),
                             ),
@@ -243,12 +268,12 @@ class _CreateReelScreenState extends State<CreateReelScreen> {
                           ),
                           const SizedBox(height: 12),
                           const Text(
-                            'Select Site Video or Photo',
+                            'Select Site Video, Photo, or Audio',
                             style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 4),
                           const Text(
-                            'MP4, MOV, JPG, PNG • Max 60 Seconds',
+                            'JPEG, PNG, MP4, MP3 & All Formats Supported • Up to 150MB',
                             style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5),
                           ),
                         ],
