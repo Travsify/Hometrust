@@ -36,6 +36,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscureConfirmPassword = true;
   String _selectedRole = 'BUYER'; // 'BUYER' or 'DEVELOPER'
 
+  // Sign-in method toggle: false = Email, true = Phone
+  bool _loginByPhone = false;
+  final _loginPhoneCtrl = TextEditingController();
+
   // Verification states for Sign-Up
   bool _isEmailVerified = false;
   bool _isPhoneVerified = false;
@@ -68,6 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
     _phoneCtrl.dispose();
+    _loginPhoneCtrl.dispose();
     _companyNameCtrl.dispose();
     _cacCtrl.dispose();
     _officeAddressCtrl.dispose();
@@ -575,44 +580,171 @@ class _LoginScreenState extends State<LoginScreen> {
                   // 1. SIGN IN VIEW (NOT REGISTERING)
                   // ==========================================
                   if (!_isRegistering) ...[
-                    TextFormField(
-                      controller: _emailCtrl,
-                      keyboardType: TextInputType.emailAddress,
-                      autocorrect: false,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Email address or phone number is required';
-                        final clean = v.trim();
-                        if (clean.contains('@')) {
-                          final emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+\.\w{2,}$');
-                          if (!emailRegex.hasMatch(clean)) return 'Enter a valid email address';
-                        } else {
-                          final phoneClean = clean.replaceAll(RegExp(r'[\s\-\+]'), '');
-                          if (phoneClean.length < 10) return 'Enter a valid 11-digit phone number';
-                        }
-                        return null;
-                      },
-                      decoration: const InputDecoration(
-                        labelText: 'Email Address or Phone Number',
-                        hintText: 'e.g. name@domain.com or 08026990956',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person_outline),
+
+                    // ── Email / Phone Tab Toggle ─────────────────────────
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _loginByPhone = false),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: !_loginByPhone ? Colors.white : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: !_loginByPhone
+                                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 2))]
+                                      : [],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.email_outlined,
+                                      size: 16,
+                                      color: !_loginByPhone ? AppColors.primary : AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Email',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: !_loginByPhone ? AppColors.primary : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _loginByPhone = true),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: _loginByPhone ? Colors.white : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: _loginByPhone
+                                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 2))]
+                                      : [],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.phone_outlined,
+                                      size: 16,
+                                      color: _loginByPhone ? AppColors.primary : AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Phone',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: _loginByPhone ? AppColors.primary : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 20),
+
+                    // ── Input Field (switches based on tab) ──────────────
+                    if (!_loginByPhone)
+                      TextFormField(
+                        controller: _emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        autocorrect: false,
+                        textInputAction: TextInputAction.next,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Email address is required';
+                          final emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+\.\w{2,}$');
+                          if (!emailRegex.hasMatch(v.trim())) return 'Enter a valid email address';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Email Address',
+                          hintText: 'e.g. name@domain.com',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                          ),
+                          prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                        ),
+                      )
+                    else
+                      TextFormField(
+                        controller: _loginPhoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        autocorrect: false,
+                        textInputAction: TextInputAction.next,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Phone number is required';
+                          final cleaned = v.trim().replaceAll(RegExp(r'[\s\-\+]'), '');
+                          if (cleaned.length < 10) return 'Enter a valid Nigerian phone number (e.g. 08012345678)';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number',
+                          hintText: 'e.g. 08012345678',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                          ),
+                          prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.primary),
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                        ),
+                      ),
+
                     const SizedBox(height: 14),
+
+                    // ── Password Field ────────────────────────────────────
                     TextFormField(
                       controller: _passwordCtrl,
                       obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.done,
                       validator: (v) => (v == null || v.isEmpty) ? 'Password is required' : null,
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                            color: AppColors.textSecondary,
+                          ),
                           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
                       ),
                     ),
+
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
@@ -622,11 +754,15 @@ class _LoginScreenState extends State<LoginScreen> {
                             MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                           );
                         },
-                        child: const Text('Forgot Password?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                        child: const Text(
+                          'Forgot Password?',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
 
+                    // ── Sign In Button ────────────────────────────────────
                     SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -635,7 +771,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? null
                             : () async {
                                 if (!_formKey.currentState!.validate()) return;
-                                final loginRes = await auth.login(_emailCtrl.text.trim(), _passwordCtrl.text);
+                                final identifier = _loginByPhone
+                                    ? _loginPhoneCtrl.text.trim()
+                                    : _emailCtrl.text.trim();
+                                final loginRes = await auth.login(identifier, _passwordCtrl.text);
                                 if (!mounted) return;
 
                                 if (loginRes['requires2FA'] == true) {
@@ -646,8 +785,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                         twoFactorToken: loginRes['twoFactorToken'] ?? '',
                                         email: loginRes['email'] ?? '',
                                         phone: loginRes['phone'],
-                                        identifier: _emailCtrl.text.trim(),
-                                        channel: loginRes['channel'] ?? (_emailCtrl.text.contains('@') ? 'EMAIL' : 'SMS'),
+                                        identifier: identifier,
+                                        channel: loginRes['channel'] ?? (_loginByPhone ? 'SMS' : 'EMAIL'),
                                         maskedDestination: loginRes['maskedDestination'] ?? '',
                                       ),
                                     ),
@@ -671,9 +810,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 width: 20,
                                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
-                            : const Text(
-                                'Sign In',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+                            : Text(
+                                _loginByPhone ? 'Sign In with Phone' : 'Sign In with Email',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
                               ),
                       ),
                     ),
