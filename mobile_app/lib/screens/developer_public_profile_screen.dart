@@ -534,6 +534,12 @@ class _DeveloperPublicProfileScreenState extends State<DeveloperPublicProfileScr
     final cac = (dev['cacNumber'] ?? '').toString();
     final verified = dev['isVerified'] == true;
 
+    final auth = Provider.of<AuthProvider>(context);
+    final user = auth.user;
+    final devId = dev['id'] ?? widget.developer['id'];
+    final devUserId = dev['userId'] ?? widget.developer['userId'];
+    final isOwner = user != null && (user.id == devId || user.id == devUserId || (user.developerCompanyName != null && user.developerCompanyName == companyName));
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: NestedScrollView(
