@@ -11,7 +11,7 @@ router.get('/my-requests', authenticate as any, LegalController.getMyRequests as
 router.get('/all', authenticate as any, requireRoles('ADMIN', 'SUPER_ADMIN', 'LEGAL_MANAGER') as any, LegalController.getAll as any);
 router.get('/:idOrCode', authenticate as any, LegalController.getById);
 router.post('/:id/dispatch', authenticate as any, requireRoles('ADMIN', 'SUPER_ADMIN', 'LEGAL_MANAGER', 'LAWYER') as any, LegalController.dispatchCourier as any);
-router.post('/:id/confirm-delivery', LegalController.confirmDelivery as any);
+router.post('/:id/confirm-delivery', authenticate as any, LegalController.confirmDelivery as any);
 router.patch('/:id/status', authenticate as any, requireRoles('ADMIN', 'SUPER_ADMIN', 'LEGAL_MANAGER') as any, LegalController.updateStatus as any);
 
 export const legalRoutes = router;

@@ -16,7 +16,7 @@ router.get('/all', authenticate as any, requireRoles('ADMIN', 'SUPER_ADMIN', 'VE
 router.get('/:idOrCode', authenticate as any, VerificationsController.getById);
 router.post('/:id/pay-wallet', authenticate as any, VerificationsController.payWithWallet as any);
 router.post('/:id/dispatch', authenticate as any, requireRoles('ADMIN', 'SUPER_ADMIN', 'VERIFICATION_MANAGER', 'LEGAL_MANAGER') as any, VerificationsController.dispatchCourier as any);
-router.post('/:id/confirm-delivery', VerificationsController.confirmDelivery as any);
+router.post('/:id/confirm-delivery', authenticate as any, VerificationsController.confirmDelivery as any);
 router.patch('/:id/status', authenticate as any, requireRoles('ADMIN', 'SUPER_ADMIN', 'VERIFICATION_MANAGER', 'LEGAL_MANAGER') as any, VerificationsController.updateStatus as any);
 
 export const verificationRoutes = router;

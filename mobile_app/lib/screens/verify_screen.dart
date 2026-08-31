@@ -28,15 +28,8 @@ class _VerifyScreenState extends State<VerifyScreen> {
   final _cityCtrl = TextEditingController(text: 'Lekki');
   final _stateCtrl = TextEditingController(text: 'Lagos');
 
-  // Physical Delivery Controllers
-  final _recipientNameCtrl = TextEditingController();
-  final _recipientPhoneCtrl = TextEditingController();
-  final _deliveryAddressCtrl = TextEditingController();
-  final _landmarkCtrl = TextEditingController();
-
   String _selectedDocType = 'C_OF_O';
   String _urgency = 'STANDARD'; // STANDARD (₦25,000) or EXPRESS (₦45,000)
-  String _deliveryOption = 'DIGITAL_ONLY'; // DIGITAL_ONLY, LOCAL_COURIER, INTERSTATE_COURIER, INTERNATIONAL
   bool _submitting = false;
 
   // Wallet info
@@ -57,21 +50,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
   ];
 
   double get _urgencyFee => _urgency == 'EXPRESS' ? 45000.0 : 25000.0;
-
-  double get _deliveryFee {
-    switch (_deliveryOption) {
-      case 'LOCAL_COURIER':
-        return 4500.0;
-      case 'INTERSTATE_COURIER':
-        return 8500.0;
-      case 'INTERNATIONAL':
-        return 45000.0;
-      default:
-        return 0.0;
-    }
-  }
-
-  double get _totalFee => _urgencyFee + _deliveryFee;
+  double get _totalFee => _urgencyFee;
 
   @override
   void initState() {
@@ -127,10 +106,6 @@ class _VerifyScreenState extends State<VerifyScreen> {
     _propAddressCtrl.dispose();
     _cityCtrl.dispose();
     _stateCtrl.dispose();
-    _recipientNameCtrl.dispose();
-    _recipientPhoneCtrl.dispose();
-    _deliveryAddressCtrl.dispose();
-    _landmarkCtrl.dispose();
     super.dispose();
   }
 
@@ -371,120 +346,45 @@ class _VerifyScreenState extends State<VerifyScreen> {
                     ),
 
                     const SizedBox(height: 18),
-                    // DELIVERY METHOD SELECTOR
-                    const Text('Delivery & Fulfillment Format', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
-                    Column(
-                      children: [
-                        _buildDeliveryRadioTile(
-                          id: 'DIGITAL_ONLY',
-                          title: 'Digital Vault Only (Instant & Free)',
-                          subtitle: 'Download signed & stamped PDF report directly in-app.',
-                          price: '₦0',
-                          icon: Icons.picture_as_pdf_rounded,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildDeliveryRadioTile(
-                          id: 'LOCAL_COURIER',
-                          title: 'Local Doorstep Delivery (Lagos / Abuja)',
-                          subtitle: 'Sealed tamper-evident pouch + wet-stamped hard copies (24hr dispatch).',
-                          price: '+₦4,500',
-                          icon: Icons.local_shipping_rounded,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildDeliveryRadioTile(
-                          id: 'INTERSTATE_COURIER',
-                          title: 'Nationwide Inter-State Delivery (36 States)',
-                          subtitle: 'Tracked ground/air courier with OTP handover (48–72 hrs).',
-                          price: '+₦8,500',
-                          icon: Icons.markunread_mailbox_rounded,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildDeliveryRadioTile(
-                          id: 'INTERNATIONAL',
-                          title: 'International Diaspora Delivery (UK / US / CA / UAE)',
-                          subtitle: 'DHL Express Worldwide priority courier (3–5 business days).',
-                          price: '+₦45,000',
-                          icon: Icons.flight_takeoff_rounded,
-                        ),
-                      ],
-                    ),
-
-                    if (_deliveryOption != 'DIGITAL_ONLY') ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFCBD5E1)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: const [
-                                Icon(Icons.location_on_rounded, size: 16, color: AppColors.primary),
-                                SizedBox(width: 6),
+                    // DIGITAL REPORT INFO CARD
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECFDF5),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF6EE7B7), width: 1.2),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF059669).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFF059669), size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Text(
-                                  'Doorstep Delivery Address & Contact',
-                                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.primary),
+                                  'Digital Report Delivery (Included)',
+                                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF065F46)),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Your signed & stamped title verification report will be uploaded directly to your app dashboard for secure download once our legal team, surveyors, and COREN engineers complete the on-site inspection.',
+                                  style: TextStyle(fontSize: 10.5, color: Color(0xFF047857), height: 1.45),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _recipientNameCtrl,
-                              validator: (v) => (_deliveryOption != 'DIGITAL_ONLY' && (v == null || v.trim().isEmpty)) ? 'Recipient name required' : null,
-                              decoration: InputDecoration(
-                                labelText: 'Recipient Full Name',
-                                filled: true,
-                                fillColor: Colors.white,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                isDense: true,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            TextFormField(
-                              controller: _recipientPhoneCtrl,
-                              validator: (v) => (_deliveryOption != 'DIGITAL_ONLY' && (v == null || v.trim().isEmpty)) ? 'Phone number required' : null,
-                              keyboardType: TextInputType.phone,
-                              decoration: InputDecoration(
-                                labelText: 'Recipient Phone Number (For Rider Handover)',
-                                filled: true,
-                                fillColor: Colors.white,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                isDense: true,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            TextFormField(
-                              controller: _deliveryAddressCtrl,
-                              validator: (v) => (_deliveryOption != 'DIGITAL_ONLY' && (v == null || v.trim().isEmpty)) ? 'Delivery address required' : null,
-                              maxLines: 2,
-                              decoration: InputDecoration(
-                                labelText: 'Complete Delivery Street Address & City',
-                                filled: true,
-                                fillColor: Colors.white,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                isDense: true,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            TextFormField(
-                              controller: _landmarkCtrl,
-                              decoration: InputDecoration(
-                                labelText: 'Nearest Landmark / Gate Description (Optional)',
-                                filled: true,
-                                fillColor: Colors.white,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                isDense: true,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
 
                     const SizedBox(height: 18),
                     // File Upload
@@ -795,67 +695,6 @@ class _VerifyScreenState extends State<VerifyScreen> {
     );
   }
 
-  Widget _buildDeliveryRadioTile({
-    required String id,
-    required String title,
-    required String subtitle,
-    required String price,
-    required IconData icon,
-  }) {
-    final isSelected = _deliveryOption == id;
-    return GestureDetector(
-      onTap: () => setState(() => _deliveryOption = id),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFF0FDF4) : AppColors.background,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.cardBorder,
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: isSelected ? AppColors.primary : const Color(0xFF64748B), size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: isSelected ? AppColors.primary : const Color(0xFF0F172A),
-                        ),
-                      ),
-                      Text(
-                        price,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: isSelected ? AppColors.primary : const Color(0xFF475569),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B))),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showInsufficientFundsModal() {
     final walletBalance = (_virtualAccount?['balance'] as num?)?.toDouble() ?? 0.0;
     final accNum = _virtualAccount?['accountNumber'] ?? 'Generate via Profile';
@@ -1024,16 +863,6 @@ class _VerifyScreenState extends State<VerifyScreen> {
       return;
     }
 
-    String? deliveryAddressJson;
-    if (_deliveryOption != 'DIGITAL_ONLY') {
-      deliveryAddressJson = jsonEncode({
-        'recipientName': _recipientNameCtrl.text.trim(),
-        'recipientPhone': _recipientPhoneCtrl.text.trim(),
-        'streetAddress': _deliveryAddressCtrl.text.trim(),
-        'landmark': _landmarkCtrl.text.trim(),
-      });
-    }
-
     setState(() => _submitting = true);
     final verifProvider = Provider.of<VerificationProvider>(context, listen: false);
 
@@ -1044,9 +873,9 @@ class _VerifyScreenState extends State<VerifyScreen> {
       city: _cityCtrl.text.trim(),
       documentType: _selectedDocType,
       urgency: _urgency,
-      deliveryOption: _deliveryOption,
-      deliveryAddress: deliveryAddressJson,
-      deliveryFee: _deliveryFee,
+      deliveryOption: 'DIGITAL_ONLY',
+      deliveryAddress: null,
+      deliveryFee: 0,
       fileName: _pickedFileName ?? 'document.pdf',
       fileBytes: _pickedFileBytes,
     );
@@ -1082,7 +911,6 @@ class _VerifyScreenState extends State<VerifyScreen> {
   }
 
   void _showSuccessDialog(dynamic req) {
-    final isPhysical = _deliveryOption != 'DIGITAL_ONLY';
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1102,9 +930,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
             Text('Request Code: ${req.verificationCode}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.primary)),
             const SizedBox(height: 8),
             Text(
-              isPhysical
-                  ? 'Your verification fee of ${CurrencyFormatter.format(_totalFee)} was successfully paid from your dedicated wallet.\n\nOur legal team is conducting cadastral registry searches. Once complete, your certified report will be dispatched to your doorstep with OTP PIN protection.'
-                  : 'Your verification fee of ${CurrencyFormatter.format(_totalFee)} was successfully paid from your dedicated wallet.\n\nOur legal team is conducting cadastral searches. Your certified report will be available in your Digital Vault within ${_urgency == "EXPRESS" ? "24–48 hours" : "3–5 days"}.',
+              'Your verification fee of ${CurrencyFormatter.format(_totalFee)} was successfully paid from your dedicated wallet.\n\nOur legal team, surveyors, and COREN engineers will conduct the on-site cadastral registry inspection. Your certified verification report will be uploaded to your Digital Vault within ${_urgency == "EXPRESS" ? "24–48 hours" : "3–5 working days"} for secure download.',
               style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
             ),
           ],

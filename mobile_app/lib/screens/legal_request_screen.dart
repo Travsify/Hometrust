@@ -602,27 +602,39 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: isSelected ? const Color(0xFF059669) : const Color(0xFF0F172A),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: isSelected ? const Color(0xFF059669) : const Color(0xFF0F172A),
+                          ),
+                          overflow: TextOverflow.visible,
+                          softWrap: true,
                         ),
                       ),
-                      Text(
-                        price,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
                           color: isSelected ? const Color(0xFF059669) : const Color(0xFF475569),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          price,
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(subtitle, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B))),
                 ],
               ),
