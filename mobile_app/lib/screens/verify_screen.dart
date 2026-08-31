@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,6 +12,7 @@ import '../providers/verification_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/persistent_bottom_nav.dart';
 import 'login_screen.dart';
+import 'wallet_screen.dart';
 
 class VerifyScreen extends StatefulWidget {
   const VerifyScreen({super.key});
@@ -77,25 +79,42 @@ class _VerifyScreenState extends State<VerifyScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       if (auth.isAuthenticated) {
+        // 1. Hydrate immediately from auth.user
+        if (auth.user != null) {
+          _recipientNameCtrl.text = auth.user!.fullName;
+          _recipientPhoneCtrl.text = auth.user!.phone ?? '';
+          if (auth.user!.virtualAccountNumber != null) {
+            _virtualAccount = {
+              'accountNumber': auth.user!.virtualAccountNumber,
+              'bankName': auth.user!.virtualBankName ?? 'Providus Bank / Wema Bank',
+              'accountName': auth.user!.virtualAccountName ?? 'Hometrust / ${auth.user!.fullName}',
+              'balance': auth.user!.virtualAccountBalance,
+            };
+          }
+        }
         Provider.of<VerificationProvider>(context, listen: false).fetchMyRequests();
         _fetchUserVirtualAccount();
-        if (auth.currentUser != null) {
-          _recipientNameCtrl.text = auth.currentUser!.fullName ?? '';
-          _recipientPhoneCtrl.text = auth.currentUser!.phoneNumber ?? '';
-        }
       }
     });
   }
 
   Future<void> _fetchUserVirtualAccount() async {
     setState(() => _loadingAccount = true);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     try {
-      final res = await ApiClient.get('/banking/virtual-account');
-      if (mounted) {
+      final res = await ApiClient.get('/banking/my-account');
+      if (mounted && res != null) {
+        final Map<String, dynamic>? data = (res is Map<String, dynamic> && res.containsKey('data'))
+            ? (res['data'] as Map<String, dynamic>?)
+            : (res is Map<String, dynamic> ? res : null);
+
         setState(() {
-          _virtualAccount = res is Map<String, dynamic> ? res : null;
+          _virtualAccount = data ?? _virtualAccount;
           _loadingAccount = false;
         });
+        auth.refreshUser();
+      } else {
+        if (mounted) setState(() => _loadingAccount = false);
       }
     } catch (_) {
       if (mounted) setState(() => _loadingAccount = false);
@@ -837,6 +856,134 @@ class _VerifyScreenState extends State<VerifyScreen> {
     );
   }
 
+  void _showInsufficientFundsModal() {
+    final walletBalance = (_virtualAccount?['balance'] as num?)?.toDouble() ?? 0.0;
+    final accNum = _virtualAccount?['accountNumber'] ?? 'Generate via Profile';
+    final bankName = _virtualAccount?['bankName'] ?? 'Providus Bank / Wema Bank';
+    final accName = _virtualAccount?['accountName'] ?? 'Hometrust Dedicated Account';
+    final needed = _totalFee - walletBalance;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: const [
+                Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 24),
+                SizedBox(width: 8),
+                Text(
+                  'Insufficient Dedicated Balance',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Your Hometrust dedicated wallet has ${CurrencyFormatter.format(walletBalance)}, but this verification fee is ${CurrencyFormatter.format(_totalFee)} (${CurrencyFormatter.format(needed)} top-up needed).\n\nTransfer to your dedicated account below to fund your wallet instantly:',
+              style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
+            ),
+            const SizedBox(height: 16),
+
+            // Top-up Bank Account Details Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('TRANSFER TO YOUR DEDICATED ACCOUNT', style: TextStyle(color: Color(0xFF34D399), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        accNum,
+                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy_rounded, color: Color(0xFF34D399), size: 20),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: accNum));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Account number copied to clipboard!')),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  Text(
+                    bankName,
+                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    accName,
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('Go to Wallet', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await _fetchUserVirtualAccount();
+                      _handleSubmit(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF059669),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('Refresh & Pay', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _handlePayUnpaidRequest(String requestId) async {
     final verifProvider = Provider.of<VerificationProvider>(context, listen: false);
     final success = await verifProvider.payVerificationWithWallet(requestId);
@@ -847,9 +994,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
         );
         _fetchUserVirtualAccount();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(verifProvider.errorMessage ?? 'Payment failed. Please check wallet balance.'), backgroundColor: AppColors.roseText),
-        );
+        _showInsufficientFundsModal();
       }
     }
   }
@@ -870,6 +1015,12 @@ class _VerifyScreenState extends State<VerifyScreen> {
           backgroundColor: AppColors.roseText,
         ),
       );
+      return;
+    }
+
+    final walletBalance = (_virtualAccount?['balance'] as num?)?.toDouble() ?? 0.0;
+    if (walletBalance < _totalFee) {
+      _showInsufficientFundsModal();
       return;
     }
 
@@ -902,25 +1053,75 @@ class _VerifyScreenState extends State<VerifyScreen> {
 
     if (req != null) {
       // Auto-pay with wallet
-      await verifProvider.payVerificationWithWallet(req.id);
+      final paid = await verifProvider.payVerificationWithWallet(req.id);
       await _fetchUserVirtualAccount();
+      setState(() => _submitting = false);
+
+      if (paid && mounted) {
+        _showSuccessDialog(req);
+        _propNameCtrl.clear();
+        _propAddressCtrl.clear();
+        setState(() {
+          _pickedFileBytes = null;
+          _pickedFileName = null;
+        });
+      } else if (!paid && mounted) {
+        _showInsufficientFundsModal();
+      }
+    } else {
+      setState(() => _submitting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(verifProvider.errorMessage ?? 'Failed to submit verification request. Please check inputs.'),
+            backgroundColor: AppColors.roseText,
+          ),
+        );
+      }
     }
+  }
 
-    setState(() => _submitting = false);
-
-    if (req != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Verification Request Submitted & Paid: ${req.verificationCode} ($_urgency Tier)'),
-          backgroundColor: AppColors.emeraldText,
+  void _showSuccessDialog(dynamic req) {
+    final isPhysical = _deliveryOption != 'DIGITAL_ONLY';
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.check_circle_rounded, color: Color(0xFF059669), size: 24),
+            SizedBox(width: 8),
+            Text('Verification Order Placed', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          ],
         ),
-      );
-      _propNameCtrl.clear();
-      _propAddressCtrl.clear();
-      setState(() {
-        _pickedFileBytes = null;
-        _pickedFileName = null;
-      });
-    }
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Request Code: ${req.verificationCode}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.primary)),
+            const SizedBox(height: 8),
+            Text(
+              isPhysical
+                  ? 'Your verification fee of ${CurrencyFormatter.format(_totalFee)} was successfully paid from your dedicated wallet.\n\nOur legal team is conducting cadastral registry searches. Once complete, your certified report will be dispatched to your doorstep with OTP PIN protection.'
+                  : 'Your verification fee of ${CurrencyFormatter.format(_totalFee)} was successfully paid from your dedicated wallet.\n\nOur legal team is conducting cadastral searches. Your certified report will be available in your Digital Vault within ${_urgency == "EXPRESS" ? "24–48 hours" : "3–5 days"}.',
+              style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF059669),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Done', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
   }
 }

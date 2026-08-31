@@ -91,12 +91,20 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
   void initState() {
     super.initState();
     _fetchFeeSettings();
-    _fetchUserVirtualAccount();
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (auth.currentUser != null) {
-      _recipientNameCtrl.text = auth.currentUser!.fullName ?? '';
-      _recipientPhoneCtrl.text = auth.currentUser!.phoneNumber ?? '';
+    if (auth.user != null) {
+      _recipientNameCtrl.text = auth.user!.fullName;
+      _recipientPhoneCtrl.text = auth.user!.phone ?? '';
+      if (auth.user!.virtualAccountNumber != null) {
+        _virtualAccount = {
+          'accountNumber': auth.user!.virtualAccountNumber,
+          'bankName': auth.user!.virtualBankName ?? 'Providus Bank / Wema Bank',
+          'accountName': auth.user!.virtualAccountName ?? 'Hometrust / ${auth.user!.fullName}',
+          'balance': auth.user!.virtualAccountBalance,
+        };
+      }
     }
+    _fetchUserVirtualAccount();
   }
 
   @override
@@ -114,7 +122,7 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
   Future<void> _fetchFeeSettings() async {
     try {
       final res = await ApiClient.get('/legal/fee-quote?agreedAmount=0');
-      if (res['data'] != null && res['data']['feePercentage'] != null) {
+      if (res != null && res is Map<String, dynamic> && res['data'] != null && res['data']['feePercentage'] != null) {
         setState(() {
           _feePercentage = (res['data']['feePercentage'] as num).toDouble();
         });
@@ -126,23 +134,24 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
 
   Future<void> _fetchUserVirtualAccount() async {
     setState(() => _loadingAccount = true);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     try {
-      final res = await ApiClient.get('/banking/virtual-account');
-      if (res['data'] != null) {
+      final res = await ApiClient.get('/banking/my-account');
+      if (mounted && res != null) {
+        final Map<String, dynamic>? data = (res is Map<String, dynamic> && res.containsKey('data'))
+            ? (res['data'] as Map<String, dynamic>?)
+            : (res is Map<String, dynamic> ? res : null);
+
         setState(() {
-          _virtualAccount = res['data'];
+          _virtualAccount = data ?? _virtualAccount;
           _loadingAccount = false;
         });
-      } else if (res is Map<String, dynamic>) {
-        setState(() {
-          _virtualAccount = res;
-          _loadingAccount = false;
-        });
+        auth.refreshUser();
       } else {
-        setState(() => _loadingAccount = false);
+        if (mounted) setState(() => _loadingAccount = false);
       }
     } catch (_) {
-      setState(() => _loadingAccount = false);
+      if (mounted) setState(() => _loadingAccount = false);
     }
   }
 
@@ -849,9 +858,9 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
             Text('Order Reference: ${req['requestCode'] ?? 'HT-LEG-ORD'}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Text(
-              'Your legal drafting fee of ${CurrencyFormatter.format(_totalFee)} was successfully paid from your dedicated wallet.
-
-${isPhysical ? "Once signed and sealed, hard copies will be dispatched to your doorstep with courier PIN verification." : "Our certified solicitors are drafting your documents."}',
+              isPhysical
+                  ? 'Your legal drafting fee of ${CurrencyFormatter.format(_totalFee)} was successfully paid from your dedicated wallet.\n\nOnce signed and sealed, hard copies will be dispatched to your doorstep with courier PIN verification.'
+                  : 'Your legal drafting fee of ${CurrencyFormatter.format(_totalFee)} was successfully paid from your dedicated wallet.\n\nOur certified solicitors are drafting your documents.',
               style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
             ),
           ],
