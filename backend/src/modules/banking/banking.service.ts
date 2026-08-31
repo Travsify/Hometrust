@@ -671,6 +671,9 @@ export class BankingService {
 
       if (payoutRes.status === true) {
         externalRef = String(payoutRes.data?.reference || payoutRes.data?.id || ref);
+        if (payoutRes.message?.toLowerCase().includes('paystack') || (payoutRes.data as any)?.id?.toString().startsWith('TRF_') || (payoutRes.data as any)?.id?.toString().startsWith('ps_')) {
+          providerLabel = 'PAYSTACK';
+        }
         // "new" means queued by Flutterwave — webhook will confirm later
         // "successful"/"success" means instant settlement
         if (['successful', 'success'].includes(gwRawStatus)) {
