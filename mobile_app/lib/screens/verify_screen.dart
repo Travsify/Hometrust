@@ -60,8 +60,6 @@ class _VerifyScreenState extends State<VerifyScreen> {
       if (auth.isAuthenticated) {
         // 1. Hydrate immediately from auth.user
         if (auth.user != null) {
-          _recipientNameCtrl.text = auth.user!.fullName;
-          _recipientPhoneCtrl.text = auth.user!.phone ?? '';
           if (auth.user!.virtualAccountNumber != null) {
             _virtualAccount = {
               'accountNumber': auth.user!.virtualAccountNumber,
