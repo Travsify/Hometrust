@@ -235,7 +235,12 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
               ),
             ),
 
-            if (purchaseProvider.userPurchases.isEmpty)
+            if (purchaseProvider.isLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+              )
+            else if (purchaseProvider.userPurchases.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Center(

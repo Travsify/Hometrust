@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
 
@@ -85,11 +87,11 @@ class _ProvisionalAllocationScreenState extends State<ProvisionalAllocationScree
           IconButton(
             icon: const Icon(Icons.share_rounded, color: Colors.white),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Provisional Allocation Certificate link copied for sharing!'),
-                  backgroundColor: Color(0xFF059669),
-                ),
+              final shareUrl = _allocationData?['qrVerificationUrl'] ??
+                  'https://hometrust.ng/verify/${widget.purchaseCode}';
+              Share.share(
+                'My Hometrust Provisional Allocation Certificate (${widget.purchaseCode}):\n$shareUrl',
+                subject: 'Hometrust Allocation Certificate - ${widget.purchaseCode}',
               );
             },
           ),
@@ -368,15 +370,37 @@ class _ProvisionalAllocationScreenState extends State<ProvisionalAllocationScree
                       ),
                       const SizedBox(height: 20),
 
-                      // Download & Copy Buttons
+                      // Download PDF Button
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            _copyToClipboard(
-                              alloc?['qrVerificationUrl'] ?? 'https://hometrust.ng',
-                              'Public Verification Link',
-                            );
+                          onPressed: () async {
+                            final certUrl = _allocationData?['certificatePdfUrl'] ??
+                                'https://estateverify-app.onrender.com/api/v1/purchases/${widget.purchaseId}/allocation-certificate.pdf';
+                            try {
+                              final uri = Uri.parse(certUrl);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              } else {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Could not open PDF. Please try again.'),
+                                      backgroundColor: Color(0xFFDC2626),
+                                    ),
+                                  );
+                                }
+                              }
+                            } catch (_) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Could not open PDF. Please check your internet connection.'),
+                                    backgroundColor: Color(0xFFDC2626),
+                                  ),
+                                );
+                              }
+                            }
                           },
                           icon: const Icon(Icons.download_rounded, size: 18),
                           label: const Text('Download Official Stamped PDF Certificate', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),

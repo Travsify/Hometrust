@@ -277,12 +277,12 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> isBiometricsEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('biometrics_enabled') ?? false;
+    return prefs.getBool('biometrics_transaction_enabled') ?? false;
   }
 
   Future<void> setBiometricsEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('biometrics_enabled', enabled);
+    await prefs.setBool('biometrics_transaction_enabled', enabled);
     notifyListeners();
   }
 

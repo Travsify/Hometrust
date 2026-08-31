@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/colors.dart';
 import '../core/network/api_client.dart';
+import '../providers/purchase_provider.dart';
 import '../widgets/persistent_bottom_nav.dart';
 
 class ContractOfSaleScreen extends StatefulWidget {
@@ -76,10 +78,21 @@ class _ContractOfSaleScreenState extends State<ContractOfSaleScreen> {
       });
 
       if (mounted) {
+        // Backend may return { contract: {...} } or the contract object directly
+        final contractData = (res is Map && res['contract'] is Map)
+            ? res['contract'] as Map<String, dynamic>
+            : (res is Map<String, dynamic> ? res : null);
+
         setState(() {
           _isSigning = false;
-          _contractData = res['contract'];
+          _contractData = contractData ?? _contractData;
         });
+
+        // Refresh purchases so the signed status shows immediately
+        if (mounted) {
+          Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('🎉 Contract successfully signed and verified with cryptographic timestamp!'),

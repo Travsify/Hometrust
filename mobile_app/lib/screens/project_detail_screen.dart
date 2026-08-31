@@ -5,7 +5,9 @@ import '../core/utils/currency_formatter.dart';
 import '../core/network/api_client.dart';
 import '../models/project_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/purchase_provider.dart';
 import 'login_screen.dart';
+import 'kyc_screen.dart';
 import 'chat_screen.dart';
 import '../widgets/in_app_call_modal.dart';
 import '../widgets/persistent_bottom_nav.dart';
@@ -50,6 +52,39 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+
+    // Enforce KYC before allowing unit lock
+    if (!(auth.user?.isVerified ?? false)) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.verified_user_rounded, color: Color(0xFFEA580C)),
+              SizedBox(width: 8),
+              Text('KYC Required', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          content: const Text(
+            'Identity verification (BVN/NIN) is required before reserving an off-plan unit. This protects both you and the developer under Nigerian property law.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Later')),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('Verify Now', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
       return;
     }
 
@@ -118,18 +153,28 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     Navigator.pop(ctx);
+                    final purchaseProvider = Provider.of<PurchaseProvider>(context, listen: false);
                     try {
-                      await ApiClient.post('/purchases', {
-                        'projectUnitId': unit['id'],
-                      });
-                      if (mounted) {
+                      final purchase = await purchaseProvider.initiatePurchase(
+                        projectUnitId: unit['id'],
+                      );
+                      if (!mounted) return;
+                      if (purchase != null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('🎉 Unit reserved! Proceeding to your Purchases & Escrow portal.'),
                             backgroundColor: Color(0xFF059669),
                           ),
                         );
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchasesScreen()));
+                        await purchaseProvider.fetchMyPurchases();
+                        if (mounted) Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchasesScreen()));
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(purchaseProvider.errorMessage ?? 'Could not reserve unit. Please try again.'),
+                            backgroundColor: const Color(0xFFDC2626),
+                          ),
+                        );
                       }
                     } catch (e) {
                       if (mounted) {

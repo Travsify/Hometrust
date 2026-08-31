@@ -232,8 +232,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     separatorBuilder: (_, __) => const SizedBox(width: 8),
                     itemBuilder: (context, index) {
                       final cat = _categories[index];
-                      final isSelected = (propProvider.selectedType == cat.toUpperCase()) ||
-                          (cat == 'All' && propProvider.selectedType == null);
+                      final isSelected = (cat == 'All' && propProvider.selectedType == null && (propProvider.selectedListingType == null || propProvider.selectedListingType == 'ALL')) ||
+                          (cat == 'Off-Plan' && propProvider.selectedListingType == 'OFF_PLAN') ||
+                          (cat == 'Pay-Small-Small' && propProvider.selectedListingType == 'PAY_SMALL_SMALL') ||
+                          (cat != 'All' && cat != 'Off-Plan' && cat != 'Pay-Small-Small' && propProvider.selectedType == cat.toUpperCase());
 
                       return InkWell(
                         onTap: () {

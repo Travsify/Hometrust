@@ -28,13 +28,17 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
     setState(() => _isLoading = true);
     try {
       final res = await ApiClient.get('/support/tickets');
-      if (res != null && res['data'] is List) {
+      if (mounted) {
         setState(() {
-          _tickets = res['data'];
+          if (res is List) {
+            _tickets = res;
+          } else if (res is Map && res['data'] is List) {
+            _tickets = res['data'] as List;
+          } else {
+            _tickets = [];
+          }
           _isLoading = false;
         });
-      } else {
-        setState(() => _isLoading = false);
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);

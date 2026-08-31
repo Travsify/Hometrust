@@ -106,10 +106,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final firstCtrl = TextEditingController(text: user.firstName);
     final lastCtrl = TextEditingController(text: user.lastName);
     final phoneCtrl = TextEditingController(text: user.phone ?? '');
-    final streetCtrl = TextEditingController();
-    final cityCtrl = TextEditingController();
-    final stateCtrl = TextEditingController();
-    final bioCtrl = TextEditingController();
+    final streetCtrl = TextEditingController(text: (user.toJson()['address'] as String?) ?? '');
+    final cityCtrl = TextEditingController(text: (user.toJson()['city'] as String?) ?? '');
+    final stateCtrl = TextEditingController(text: (user.toJson()['state'] as String?) ?? '');
+    final bioCtrl = TextEditingController(text: (user.toJson()['about'] as String?) ?? '');
     String? currentAvatarUrl = user.avatarUrl;
     Uint8List? modalPreviewBytes;
     bool isModalUploading = false;
@@ -1413,7 +1413,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const Divider(height: 24),
               Expanded(
                 child: FutureBuilder<List<dynamic>>(
-                  future: ApiClient.get('/purchases/my').then((r) => r as List? ?? []),
+                  future: ApiClient.get('/purchases/my-purchases').then((r) => r is List ? r : []),
                   builder: (ctx, snap) {
                     if (snap.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());

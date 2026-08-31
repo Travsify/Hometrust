@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'chat_screen.dart';
 import 'kyc_screen.dart';
+import 'purchases_screen.dart';
 import 'inspection_booking_modal.dart';
 import '../widgets/in_app_call_modal.dart';
 import '../widgets/persistent_bottom_nav.dart';
@@ -729,11 +730,40 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       paymentPlanId: _selectedPlan?.id,
     );
 
-    if (purchase != null && mounted) {
+    if (!mounted) return;
+
+    if (purchase != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Purchase created: ${purchase.purchaseCode} — Transfer to your dedicated account to begin.'),
+          content: Text('🎉 Purchase ${purchase.purchaseCode} created — transfer funds to your dedicated escrow account to begin.'),
           backgroundColor: AppColors.emeraldText,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchasesScreen()));
+    } else {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626)),
+              SizedBox(width: 8),
+              Text('Purchase Failed', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          content: Text(
+            purchaseProvider.errorMessage ?? 'Could not initiate your purchase. Please try again or contact support.',
+            style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('OK', style: TextStyle(color: Colors.white)),
+            ),
+          ],
         ),
       );
     }

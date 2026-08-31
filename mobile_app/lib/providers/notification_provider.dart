@@ -74,6 +74,21 @@ class NotificationProvider with ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<void> markAsRead(String id) async {
+    final idx = _notifications.indexWhere((n) => n.id == id);
+    if (idx == -1 || _notifications[idx].isRead) return;
+    // Optimistically mark as read locally
+    final old = _notifications[idx];
+    _notifications[idx] = NotificationItem(
+      id: old.id, title: old.title, message: old.message,
+      type: old.type, isRead: true, createdAt: old.createdAt,
+    );
+    notifyListeners();
+    try {
+      await ApiClient.patch('/notifications/$id/read', {});
+    } catch (_) {}
+  }
+
   Future<void> dismissNotification(String id) async {
     _notifications.removeWhere((n) => n.id == id);
     notifyListeners();

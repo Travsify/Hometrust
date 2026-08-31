@@ -137,7 +137,7 @@ class ApiClient {
           .patch(url, headers: headers, body: jsonEncode(body))
           .timeout(const Duration(seconds: 30));
     }
-    return _handleResponse(response);
+    return _handleResponse(response, endpoint: endpoint);
   }
 
   static Future<dynamic> delete(String endpoint) async {
@@ -148,7 +148,7 @@ class ApiClient {
       await _wakeUpBackend();
       response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 30));
     }
-    return _handleResponse(response);
+    return _handleResponse(response, endpoint: endpoint);
   }
 
   /// Upload a file via backend multipart endpoint (authenticated, Supabase service-role key).
