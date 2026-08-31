@@ -19,6 +19,8 @@ model User {
   isActive          Boolean   @default(true)
   isEmailVerified   Boolean   @default(false)
   avatarUrl         String?
+  transactionPinHash String?
+  hasTransactionPin Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 

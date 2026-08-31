@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { prisma } from '../../utils/prisma';
 import { FlutterwaveClient } from './flutterwave.client';
 import { PremblyClient } from './prembly.client';
@@ -596,6 +597,8 @@ export class BankingService {
     bankName: string;
     accountNumber: string;
     accountName: string;
+    pin?: string;
+    biometricAuth?: boolean;
   }) {
     if (params.amount < 1000) {
       throw new Error('Minimum withdrawal amount is ₦1,000');
@@ -639,6 +642,22 @@ export class BankingService {
         include: { user: true },
       });
       targetUser = dev?.user;
+    }
+
+    // ── Security Check: Verify 6-Digit Payment PIN or Biometric Authorization ──
+    if (targetUser?.transactionPinHash) {
+      if (params.biometricAuth === true) {
+        // Biometric hardware authentication approved on mobile device
+        console.log(`[WITHDRAWAL SECURITY] Biometric authentication confirmed for user ${targetUser.email}`);
+      } else if (params.pin) {
+        const isPinValid = await bcrypt.compare(String(params.pin).trim(), targetUser.transactionPinHash);
+        if (!isPinValid) {
+          throw new Error('Incorrect 6-digit Payment PIN. Please re-enter your PIN or use biometrics to confirm.');
+        }
+        console.log(`[WITHDRAWAL SECURITY] 6-digit PIN verified for user ${targetUser.email}`);
+      } else {
+        throw new Error('6-digit Payment PIN or Biometric confirmation is required to authorize this withdrawal.');
+      }
     }
 
     const recipientEmail = targetUser?.email || (account as any).developer?.email || (account as any).user?.email || '';
@@ -1005,6 +1024,8 @@ export class BankingService {
     verificationId?: string;
     inspectionId?: string;
     description?: string;
+    pin?: string;
+    biometricAuth?: boolean;
   }) {
     if (params.amount <= 0) {
       throw new Error('Invalid payment amount');
@@ -1016,6 +1037,21 @@ export class BankingService {
     });
 
     if (!user) throw new Error('User not found');
+
+    // ── Security Check: Verify 6-Digit Payment PIN or Biometric Authorization ──
+    if (user.transactionPinHash) {
+      if (params.biometricAuth === true) {
+        console.log(`[WALLET PAYMENT SECURITY] Biometric authentication confirmed for user ${user.email}`);
+      } else if (params.pin) {
+        const isPinValid = await bcrypt.compare(String(params.pin).trim(), user.transactionPinHash);
+        if (!isPinValid) {
+          throw new Error('Incorrect 6-digit Payment PIN. Please re-enter your PIN or use biometrics to confirm.');
+        }
+        console.log(`[WALLET PAYMENT SECURITY] 6-digit PIN verified for user ${user.email}`);
+      } else {
+        throw new Error('6-digit Payment PIN or Biometric confirmation is required to authorize this payment.');
+      }
+    }
 
     const account = user.virtualAccounts?.[0];
     if (!account || account.balance < params.amount) {

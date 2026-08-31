@@ -119,6 +119,8 @@ export class BankingController {
         bankName: req.body.bankName,
         accountNumber: req.body.accountNumber,
         accountName: req.body.accountName,
+        pin: req.body.pin,
+        biometricAuth: Boolean(req.body.biometricAuth),
       });
       sendSuccess(res, result, 'Withdrawal request processed successfully', 201);
     } catch (error: any) {
@@ -140,6 +142,8 @@ export class BankingController {
         verificationId: req.body.verificationId,
         inspectionId: req.body.inspectionId,
         description: req.body.description,
+        pin: req.body.pin,
+        biometricAuth: Boolean(req.body.biometricAuth),
       });
       sendSuccess(res, result, 'Payment deducted successfully from Escrow Wallet', 200);
     } catch (error: any) {

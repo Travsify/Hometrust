@@ -545,11 +545,137 @@ export class AuthService {
       (user.developer && (user.developer.isVerified || user.developer.verificationStatus === 'VERIFIED' || user.developer.verificationStatus === 'VERIFIED_WITH_LIMITATIONS'))
     );
 
-    const { passwordHash, ...userWithoutPassword } = user;
+    const { passwordHash, transactionPinHash, ...userWithoutPassword } = user;
     return {
       ...userWithoutPassword,
+      hasTransactionPin: Boolean(transactionPinHash || user.hasTransactionPin),
       isVerified,
     };
+  }
+
+  /**
+   * Set up a 6-digit transaction/payment PIN for the first time.
+   */
+  static async setupTransactionPin(userId: string, pin: string) {
+    const cleanPin = String(pin || '').trim();
+    if (!/^\d{6}$/.test(cleanPin)) {
+      throw new Error('Payment PIN must be exactly 6 numeric digits.');
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+
+    const pinHash = await bcrypt.hash(cleanPin, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        transactionPinHash: pinHash,
+        hasTransactionPin: true,
+      },
+    });
+
+    await AuditService.log({
+      adminId: userId,
+      adminEmail: user.email,
+      action: 'TRANSACTION_PIN_SETUP',
+      entityType: 'USER',
+      entityId: userId,
+      details: { timestamp: new Date().toISOString() },
+    });
+
+    NotificationsService.createAndDispatch({
+      userId: user.id,
+      title: '🔒 6-Digit Payment PIN Set Up',
+      message: 'You have successfully set up your 6-digit Payment PIN to secure all withdrawals and wallet payments.',
+      type: 'SECURITY',
+      sendEmail: true,
+      actionDetails: [
+        { label: 'Security Level', value: '6-Digit Encrypted PIN' },
+        { label: 'Timestamp', value: new Date().toUTCString() },
+      ],
+    }).catch((err) => console.warn('[AUTH] PIN setup notification notice:', err.message));
+
+    return {
+      success: true,
+      message: '6-digit Payment PIN created successfully.',
+      hasTransactionPin: true,
+    };
+  }
+
+  /**
+   * Change or reset transaction PIN.
+   */
+  static async changeTransactionPin(userId: string, data: { currentPin?: string; currentPassword?: string; newPin: string }) {
+    const cleanNewPin = String(data.newPin || '').trim();
+    if (!/^\d{6}$/.test(cleanNewPin)) {
+      throw new Error('New Payment PIN must be exactly 6 numeric digits.');
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+
+    // Authenticate with current PIN or account password
+    let isAuthorized = false;
+    if (data.currentPin && user.transactionPinHash) {
+      isAuthorized = await bcrypt.compare(String(data.currentPin).trim(), user.transactionPinHash);
+    } else if (data.currentPassword) {
+      isAuthorized = await bcrypt.compare(data.currentPassword, user.passwordHash);
+    } else if (!user.transactionPinHash) {
+      isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
+      throw new Error('Incorrect current PIN or account password.');
+    }
+
+    const pinHash = await bcrypt.hash(cleanNewPin, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        transactionPinHash: pinHash,
+        hasTransactionPin: true,
+      },
+    });
+
+    await AuditService.log({
+      adminId: userId,
+      adminEmail: user.email,
+      action: 'TRANSACTION_PIN_CHANGED',
+      entityType: 'USER',
+      entityId: userId,
+      details: { timestamp: new Date().toISOString() },
+    });
+
+    NotificationsService.createAndDispatch({
+      userId: user.id,
+      title: '🔒 Payment PIN Changed',
+      message: 'Your 6-digit Payment PIN has been changed. If you did not make this change, please contact support immediately.',
+      type: 'SECURITY',
+      sendEmail: true,
+      actionDetails: [
+        { label: 'Security Level', value: '6-Digit Encrypted PIN' },
+        { label: 'Timestamp', value: new Date().toUTCString() },
+      ],
+    }).catch((err) => console.warn('[AUTH] PIN change notification notice:', err.message));
+
+    return {
+      success: true,
+      message: 'Payment PIN updated successfully.',
+      hasTransactionPin: true,
+    };
+  }
+
+  /**
+   * Verify transaction PIN (used for pre-checks and middleware).
+   */
+  static async verifyTransactionPin(userId: string, pin: string): Promise<boolean> {
+    const cleanPin = String(pin || '').trim();
+    if (!cleanPin) return false;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.transactionPinHash) return false;
+
+    return bcrypt.compare(cleanPin, user.transactionPinHash);
   }
 
   /**

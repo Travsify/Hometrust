@@ -18,5 +18,8 @@ router.post('/reset-password', AuthController.resetPassword);
 router.get('/me', requireAuth, AuthController.getMe);
 router.post('/upgrade-to-developer', requireAuth, AuthController.upgradeToDeveloper);
 router.post('/change-password', requireAuth, AuthController.changePassword);
+router.post('/pin/setup', requireAuth, AuthController.setupPin);
+router.post('/pin/change', requireAuth, AuthController.changePin);
+router.post('/pin/verify', requireAuth, AuthController.verifyPin);
 
 export const authRoutes = router;

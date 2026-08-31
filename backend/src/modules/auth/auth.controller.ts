@@ -241,4 +241,66 @@ export class AuthController {
       sendError(res, error.message, 400);
     }
   }
+
+  static async setupPin(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const { pin } = req.body;
+      if (!pin) {
+        sendError(res, '6-digit Payment PIN is required', 400);
+        return;
+      }
+      const result = await AuthService.setupTransactionPin(req.user.id, pin);
+      sendSuccess(res, result, result.message, 201);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async changePin(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const { currentPin, currentPassword, newPin } = req.body;
+      if (!newPin) {
+        sendError(res, 'New 6-digit Payment PIN is required', 400);
+        return;
+      }
+      const result = await AuthService.changeTransactionPin(req.user.id, {
+        currentPin,
+        currentPassword,
+        newPin,
+      });
+      sendSuccess(res, result, result.message, 200);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async verifyPin(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const { pin } = req.body;
+      if (!pin) {
+        sendError(res, 'PIN is required', 400);
+        return;
+      }
+      const isValid = await AuthService.verifyTransactionPin(req.user.id, pin);
+      if (!isValid) {
+        sendError(res, 'Incorrect 6-digit Payment PIN', 400);
+        return;
+      }
+      sendSuccess(res, { isValid: true }, 'Payment PIN verified successfully', 200);
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }
