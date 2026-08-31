@@ -10,6 +10,7 @@ import '../widgets/persistent_bottom_nav.dart';
 import 'kyc_screen.dart';
 import 'login_screen.dart';
 import 'support_tickets_screen.dart';
+import 'payment_security_screen.dart';
 
 class DeveloperProfileScreen extends StatefulWidget {
   const DeveloperProfileScreen({super.key});
@@ -914,6 +915,19 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
               ),
               child: Column(
                 children: [
+                  _buildMenuTile(
+                    icon: Icons.shield_outlined,
+                    color: const Color(0xFF059669),
+                    title: 'Payment PIN & Biometrics 🔒',
+                    subtitle: authProvider.hasTransactionPin ? '6-digit PIN & Biometrics active' : 'Set up 6-digit payment PIN to secure disbursements',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const PaymentSecurityScreen()),
+                      ).then((_) => authProvider.refreshUser());
+                    },
+                  ),
+                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
                   _buildMenuTile(
                     icon: Icons.lock_outline_rounded,
                     color: const Color(0xFF475569),

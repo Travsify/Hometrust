@@ -47,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final purchaseProvider = Provider.of<PurchaseProvider>(context, listen: false);
       if (auth.isAuthenticated) {
+        auth.refreshUser();
         purchaseProvider.fetchMyPurchases();
       } else {
         purchaseProvider.clear();

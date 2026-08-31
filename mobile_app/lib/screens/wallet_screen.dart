@@ -120,6 +120,7 @@ class _WalletScreenState extends State<WalletScreen> {
           _virtualAccount = accRes;
           _loadingAccount = false;
         });
+        auth.refreshUser();
       }
     } catch (e) {
       if (mounted) setState(() => _loadingAccount = false);

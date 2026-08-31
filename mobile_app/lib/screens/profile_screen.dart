@@ -16,6 +16,7 @@ import 'wallet_screen.dart';
 import 'inbox_screen.dart';
 import 'build_for_me_screen.dart';
 import 'support_tickets_screen.dart';
+import 'payment_security_screen.dart';
 import '../widgets/transaction_security_modal.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -1176,20 +1177,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFFD97706)),
                             ),
                           ),
-                    onTap: () async {
-                      final result = await TransactionSecurityModal.show(
+                    onTap: () {
+                      Navigator.push(
                         context,
-                        title: auth.hasTransactionPin ? 'Verify / Change Payment PIN' : 'Create 6-Digit Payment PIN',
-                        forcePinOnly: true,
-                      );
-                      if (result != null && result.authorized && mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('6-Digit Payment PIN is active & securing your account 🔒'),
-                            backgroundColor: Color(0xFF059669),
-                          ),
-                        );
-                      }
+                        MaterialPageRoute(builder: (_) => const PaymentSecurityScreen()),
+                      ).then((_) {
+                        final auth = Provider.of<AuthProvider>(context, listen: false);
+                        auth.refreshUser();
+                      });
                     },
                   ),
                   const Divider(height: 1, color: AppColors.cardBorder),

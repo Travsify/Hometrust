@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { config } from '../../config';
 import { prisma } from '../../utils/prisma';
 import { FlutterwaveClient } from './flutterwave.client';
 import { PremblyClient } from './prembly.client';
@@ -561,12 +562,56 @@ export class BankingService {
     }
 
     for (const w of withdrawals) {
+      let finalStatus = w.status;
+
+      // Real-time settlement verification with Paystack for pending/processing payouts
+      if ((w.status === 'PROCESSING' || w.status === 'PENDING') && w.reference) {
+        try {
+          const secretKey = process.env.PAYSTACK_SECRET_KEY || config.paystack?.secretKey;
+          if (secretKey) {
+            const psRes = await fetch(`https://api.paystack.co/transfer/verify/${encodeURIComponent(w.reference)}`, {
+              headers: { Authorization: `Bearer ${secretKey}` },
+            });
+            const psData: any = await psRes.json();
+            if (psData?.status && psData.data?.status) {
+              const liveStatus = psData.data.status.toLowerCase();
+              if (liveStatus === 'success' || liveStatus === 'successful') {
+                finalStatus = 'SUCCESS';
+                await prisma.withdrawal.update({
+                  where: { id: w.id },
+                  data: {
+                    status: 'SUCCESS',
+                    fincraPayoutId: `PAYSTACK:${psData.data.transfer_code || w.reference}`,
+                  },
+                }).catch(() => {});
+              } else if (liveStatus === 'failed' || liveStatus === 'reversed') {
+                finalStatus = 'FAILED';
+                await prisma.withdrawal.update({
+                  where: { id: w.id },
+                  data: {
+                    status: 'FAILED',
+                    failureReason: psData.data?.gateway_response || `Settlement status: ${liveStatus}`,
+                  },
+                }).catch(() => {});
+                // Auto-reverse funds if not already reversed
+                await prisma.virtualAccount.updateMany({
+                  where: { userId: w.userId || undefined, developerId: w.developerId || undefined },
+                  data: { balance: { increment: w.amount } },
+                }).catch(() => {});
+              }
+            }
+          }
+        } catch (e: any) {
+          console.warn(`[RECONCILIATION] Failed to verify transfer ${w.reference}:`, e.message);
+        }
+      }
+
       txs.push({
         id: w.id,
         type: 'DEBIT',
         amount: w.amount,
         currency: 'NGN',
-        status: w.status === 'SUCCESS' ? 'SUCCESS' : w.status === 'PENDING' ? 'PENDING' : 'PROCESSING',
+        status: finalStatus,
         purpose: 'WITHDRAWAL',
         description: `Payout to ${w.accountName} (${w.bankName})`,
         reference: w.reference,
