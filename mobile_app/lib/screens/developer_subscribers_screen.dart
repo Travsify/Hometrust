@@ -70,10 +70,6 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
     }
   }
 
-  String _maskPhone(String? phone) {
-    if (phone == null || phone.length < 8) return '+234 80* *** **19';
-    return '${phone.substring(0, 6)} *** **${phone.substring(phone.length - 2)}';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,95 +116,102 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
                     itemCount: _subscribers.length,
                     itemBuilder: (context, index) {
                       final sub = _subscribers[index];
-                      final buyer = sub['buyer'] ?? {};
                       final totalPrice = (sub['totalPrice'] as num?)?.toDouble() ?? 0;
                       final amountPaid = (sub['amountPaid'] as num?)?.toDouble() ?? 0;
                       final balance = (sub['outstandingBalance'] as num?)?.toDouble() ?? (totalPrice - amountPaid);
                       final progress = totalPrice > 0 ? (amountPaid / totalPrice).clamp(0.0, 1.0) : 0.0;
-                      final buyerName = buyer['name'] ?? 'Subscriber';
+                      final buyerRef = sub['buyerRef'] ?? 'Verified Subscriber';
+                      final unitLabel = sub['unitName'] ?? 'Unit';
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.02),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Buyer Name & Privacy Shield
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF059669).withValues(alpha: 0.1),
-                                        shape: BoxShape.circle,
+                      return InkWell(
+                        onTap: () => _showSubscriberDetailsModal(sub),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.02),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Anonymized Buyer Reference & Status
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF059669).withValues(alpha: 0.1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.shield_rounded, color: Color(0xFF059669), size: 16),
                                       ),
-                                      child: const Icon(Icons.person_rounded, color: Color(0xFF059669), size: 16),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            buyerRef,
+                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                                          ),
+                                          Text(
+                                            sub['purchaseCode'] ?? 'HT-PUR-001',
+                                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0284C7).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
-                                    const SizedBox(width: 10),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          buyerName,
-                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-                                        ),
-                                        Row(
-                                          children: [
-                                            Text(
-                                              sub['purchaseCode'] ?? 'HT-PUR-001',
-                                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              '• ${_maskPhone(buyer['phone'])}',
-                                              style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                                    child: Text(
+                                      sub['status'] ?? 'ACTIVE',
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF0284C7)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Unit Locked / Purchased
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.lock_rounded, size: 13, color: Color(0xFF059669)),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'Reserved Unit: $unitLabel',
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                                      ),
                                     ),
                                   ],
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF0284C7).withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    sub['status'] ?? 'ACTIVE',
-                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF0284C7)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Property & Unit Title
-                            Text(
-                              sub['propertyTitle'] ?? 'Off-Plan Unit',
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF334155)),
-                            ),
-                            Text(
-                              sub['projectName'] ?? 'Estate Project',
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                            ),
-                            const SizedBox(height: 12),
+                              ),
+                              const SizedBox(height: 12),
 
                             // Financial Progress Bar
                             Row(
@@ -276,10 +279,10 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
                                         context,
                                         MaterialPageRoute(
                                           builder: (_) => ChatScreen(
-                                            recipientId: buyer['id'] ?? sub['userId'],
-                                            recipientName: buyerName,
+                                            recipientId: sub['userId'],
+                                            recipientName: buyerRef,
                                             recipientRole: 'Subscriber (${sub['purchaseCode'] ?? 'HT-PUR'})',
-                                            propertyTitle: sub['propertyTitle'],
+                                            propertyTitle: sub['unitName'],
                                           ),
                                         ),
                                       );
@@ -299,7 +302,7 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
                                     onPressed: () {
                                       InAppCallModal.show(
                                         context,
-                                        entityName: buyerName,
+                                        entityName: buyerRef,
                                         entityRole: 'Subscriber (${sub['purchaseCode'] ?? 'HT-PUR'})',
                                       );
                                     },
@@ -316,7 +319,7 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
                                 IconButton(
                                   icon: const Icon(Icons.notifications_active_outlined, color: Color(0xFFD97706), size: 20),
                                   tooltip: 'Send Payment Reminder SMS & Push',
-                                  onPressed: () => _sendAutomatedReminder(sub['id'], buyerName),
+                                  onPressed: () => _sendAutomatedReminder(sub['id'], buyerRef),
                                   style: IconButton.styleFrom(
                                     backgroundColor: const Color(0xFFFFFBEB),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -326,10 +329,132 @@ class _DeveloperSubscribersScreenState extends State<DeveloperSubscribersScreen>
                             ),
                           ],
                         ),
-                      );
-                    },
+                      ),
+                    );
+                  },
                   ),
                 ),
+    );
+  }
+
+  void _showSubscriberDetailsModal(dynamic sub) {
+    final buyerRef = sub['buyerRef'] ?? 'Subscriber';
+    final unitLabel = sub['unitName'] ?? 'Unit';
+    final totalPrice = (sub['totalPrice'] as num?)?.toDouble() ?? 0;
+    final amountPaid = (sub['amountPaid'] as num?)?.toDouble() ?? 0;
+    final balance = (sub['outstandingBalance'] as num?)?.toDouble() ?? (totalPrice - amountPaid);
+    final progress = totalPrice > 0 ? (amountPaid / totalPrice).clamp(0.0, 1.0) : 0.0;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.shield_rounded, color: Color(0xFF059669), size: 22),
+                    const SizedBox(width: 8),
+                    Text(
+                      buyerRef,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'Purchase Code: ${sub['purchaseCode'] ?? 'N/A'} · Status: ${sub['status'] ?? 'ACTIVE'}',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569)),
+              ),
+            ),
+            const Divider(height: 24),
+            _detailRow('Locked Unit', unitLabel),
+            _detailRow('Payment Plan', sub['paymentPlanName'] ?? 'Instalment Plan'),
+            _detailRow('Total Agreed Price', CurrencyFormatter.format(totalPrice)),
+            _detailRow('Total Paid into Escrow', CurrencyFormatter.format(amountPaid), valueColor: const Color(0xFF059669)),
+            _detailRow('Outstanding Balance', CurrencyFormatter.format(balance), valueColor: const Color(0xFFDC2626)),
+            _detailRow('Progress', '${(progress * 100).toInt()}% Paid'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF059669).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.lock_rounded, color: Color(0xFF059669), size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Unit Locked: This unit is permanently locked and cannot be resold or advertised to other buyers.',
+                      style: TextStyle(fontSize: 11.5, color: Color(0xFF065F46), fontWeight: FontWeight.w700, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F172A),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Close Ledger', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: valueColor ?? const Color(0xFF0F172A),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1142,8 +1142,36 @@ export class BankingService {
             amountPaid: newPaid,
             outstandingBalance: newBal,
             status: newBal <= 0 ? 'COMPLETED' : 'ACTIVE',
+            lockStatus: 'UNLOCKED',
           },
         });
+
+        // Permanently lock the purchased unit so it cannot be sold again
+        if (purchase.projectUnitId) {
+          await prisma.projectUnit.update({
+            where: { id: purchase.projectUnitId },
+            data: { status: 'SOLD', availableUnits: 0 },
+          });
+
+          const unit = await prisma.projectUnit.findUnique({
+            where: { id: purchase.projectUnitId },
+            select: { projectId: true },
+          });
+          if (unit?.projectId) {
+            const availableUnitsCount = await prisma.projectUnit.count({
+              where: { projectId: unit.projectId, status: 'AVAILABLE' },
+            });
+            await prisma.project.update({
+              where: { id: unit.projectId },
+              data: { availableUnits: availableUnitsCount },
+            });
+          }
+        } else if (purchase.propertyId) {
+          await prisma.property.update({
+            where: { id: purchase.propertyId },
+            data: { isPublished: false, completionStatus: 'COMPLETED' },
+          });
+        }
       }
     }
 

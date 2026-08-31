@@ -167,9 +167,39 @@ export class PaymentsService {
           amountPaid: newAmountPaid,
           outstandingBalance: newOutstandingBalance,
           status: isFullyPaid ? 'COMPLETED' : 'ACTIVE',
+          lockStatus: 'UNLOCKED', // Lock is now converted to an active/confirmed purchase
           nextPaymentDueDate: isFullyPaid ? null : nextDueDate,
         },
       });
+
+      // Permanently lock the purchased unit so it cannot be sold again
+      if (payment.purchase.projectUnitId) {
+        await prisma.projectUnit.update({
+          where: { id: payment.purchase.projectUnitId },
+          data: { status: 'SOLD', availableUnits: 0 },
+        });
+
+        // Decrement available units in parent project
+        const unit = await prisma.projectUnit.findUnique({
+          where: { id: payment.purchase.projectUnitId },
+          select: { projectId: true },
+        });
+        if (unit?.projectId) {
+          const availableUnitsCount = await prisma.projectUnit.count({
+            where: { projectId: unit.projectId, status: 'AVAILABLE' },
+          });
+          await prisma.project.update({
+            where: { id: unit.projectId },
+            data: { availableUnits: availableUnitsCount },
+          });
+        }
+      } else if (payment.purchase.propertyId) {
+        // Direct sale property
+        await prisma.property.update({
+          where: { id: payment.purchase.propertyId },
+          data: { isPublished: false, completionStatus: 'COMPLETED' },
+        });
+      }
     }
 
     // 2. If this was a Verification request fee, update verification request

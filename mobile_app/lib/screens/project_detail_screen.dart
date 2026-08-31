@@ -13,6 +13,7 @@ import '../widgets/in_app_call_modal.dart';
 import '../widgets/persistent_bottom_nav.dart';
 import 'purchases_screen.dart';
 import 'inspection_booking_modal.dart';
+import '../widgets/purchase_attestation_modal.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final ProjectModel project;
@@ -88,6 +89,23 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       return;
     }
 
+    _proceedToUnitModal(unit);
+  }
+
+  Future<void> _proceedToUnitModal(dynamic unit) async {
+    // ─── 1. ENGAGEMENT GATE CHECK ───
+    try {
+      final engagementRes = await ApiClient.get('/purchases/engagement-status?projectId=${widget.project.id}');
+      final hasEngaged = engagementRes != null && engagementRes['hasEngaged'] == true;
+      if (!hasEngaged) {
+        if (!mounted) return;
+        _showEngagementRequiredDialog(context);
+        return;
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -130,7 +148,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        '30-Minute Atomic Lock: This unit will be held exclusively for you. Other buyers cannot reserve it while your transfer clears.',
+                        '30-Minute Atomic Lock: Once confirmed and attested, this unit is held exclusively for you. If payment is not initiated within 30 minutes, it will automatically be released.',
                         style: TextStyle(fontSize: 11.5, color: Color(0xFF065F46), fontWeight: FontWeight.w700, height: 1.3),
                       ),
                     ),
@@ -138,6 +156,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              _row('Unit Identifier', unit['unitCode'] ?? unit['name']),
               _row('Unit Type', unit['unitType'] ?? unit['name']),
               _row('Total Purchase Price', CurrencyFormatter.format((unit['price'] as num?)?.toDouble() ?? 0)),
               _row('Initial Commitment Deposit', CurrencyFormatter.format((unit['initialDeposit'] as num?)?.toDouble() ?? 0)),
@@ -153,6 +172,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     Navigator.pop(ctx);
+
+                    // ─── 2. LEGAL ATTESTATION MODAL ───
+                    final attested = await PurchaseAttestationModal.show(
+                      context,
+                      title: '${widget.project.name} (${unit['unitCode'] ?? unit['name']})',
+                    );
+
+                    if (!attested || !mounted) return;
+
                     final purchaseProvider = Provider.of<PurchaseProvider>(context, listen: false);
                     try {
                       final purchase = await purchaseProvider.initiatePurchase(
@@ -160,21 +188,33 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       );
                       if (!mounted) return;
                       if (purchase != null) {
+                        // Record attestation
+                        try {
+                          await ApiClient.post('/purchases/${purchase.id}/attest', {
+                            'q1': true, 'q2': true, 'q3': true,
+                            'q4': true, 'q5': true, 'q6': true,
+                          });
+                        } catch (_) {}
+
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('🎉 Unit reserved! Proceeding to your Purchases & Escrow portal.'),
-                            backgroundColor: Color(0xFF059669),
+                          SnackBar(
+                            content: Text('⏱ 30-Minute Lock Activated for ${unit['unitCode'] ?? unit['name']} (${purchase.purchaseCode}). Transfer funds to complete.'),
+                            backgroundColor: const Color(0xFF059669),
+                            duration: const Duration(seconds: 4),
                           ),
                         );
                         await purchaseProvider.fetchMyPurchases();
+                        _fetchUnitsMatrix(); // refresh matrix so unit immediately shows as RESERVED
                         if (mounted) Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchasesScreen()));
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(purchaseProvider.errorMessage ?? 'Could not reserve unit. Please try again.'),
-                            backgroundColor: const Color(0xFFDC2626),
-                          ),
-                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(purchaseProvider.errorMessage ?? 'Could not reserve unit. Please try again.'),
+                              backgroundColor: const Color(0xFFDC2626),
+                            ),
+                          );
+                        }
                       }
                     } catch (e) {
                       if (mounted) {
@@ -193,9 +233,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text(
-                    'Confirm 30-Min Lock & Reserve Unit',
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                  child: Text(
+                    'Confirm 30-Min Lock on ${unit['unitCode'] ?? "Unit"}',
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
                   ),
                 ),
               ),
@@ -203,6 +243,111 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           ),
         );
       },
+    );
+  }
+
+  void _showEngagementRequiredDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.verified_outlined, color: AppColors.primary, size: 24),
+                SizedBox(width: 10),
+                Text('Engagement Required', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Before reserving or purchasing a unit in ${widget.project.name}, Nigerian property protection covenants require that you engage first — by booking a site inspection, chatting with the developer, or calling the developer.',
+              style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
+            ),
+            const SizedBox(height: 18),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFE0F2FE),
+                child: Icon(Icons.calendar_today_rounded, color: Color(0xFF0284C7), size: 20),
+              ),
+              title: const Text('Book a Site Inspection', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              subtitle: const Text('Self, representative, or COREN engineer site inspection', style: TextStyle(fontSize: 11)),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+              onTap: () {
+                Navigator.pop(ctx);
+                _bookProjectInspection(context);
+              },
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFDCFCE7),
+                child: Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF16A34A), size: 20),
+              ),
+              title: const Text('Chat with Developer', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              subtitle: const Text('Inquire about project milestones and unit specs', style: TextStyle(fontSize: 11)),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+              onTap: () {
+                Navigator.pop(ctx);
+                final auth = Provider.of<AuthProvider>(context, listen: false);
+                if (!auth.isAuthenticated) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                  return;
+                }
+                // Record engagement
+                ApiClient.post('/purchases/engagement', {
+                  'projectUnitId': widget.project.id,
+                  'engagementType': 'CHAT_STARTED',
+                }).catchError((_) => null);
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      recipientName: widget.project.name,
+                      projectId: widget.project.id,
+                      propertyTitle: widget.project.name,
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFFEF3C7),
+                child: Icon(Icons.phone_in_talk_rounded, color: Color(0xFFD97706), size: 20),
+              ),
+              title: const Text('Call Developer', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              subtitle: const Text('Direct voice consultation with project engineer', style: TextStyle(fontSize: 11)),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+              onTap: () {
+                Navigator.pop(ctx);
+                final auth = Provider.of<AuthProvider>(context, listen: false);
+                if (!auth.isAuthenticated) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                  return;
+                }
+                // Record engagement
+                ApiClient.post('/purchases/engagement', {
+                  'projectUnitId': widget.project.id,
+                  'engagementType': 'CALL_INITIATED',
+                }).catchError((_) => null);
+
+                InAppCallModal.show(
+                  context,
+                  entityName: widget.project.name,
+                  projectId: widget.project.id,
+                  propertyTitle: widget.project.name,
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
     );
   }
 
@@ -366,7 +511,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 itemBuilder: (context, idx) {
                   final u = units[idx];
                   final isAvail = u['status'] == 'AVAILABLE';
-                  final isSubscribed = u['status'] == 'SUBSCRIBED';
+                  final isReserved = u['status'] == 'RESERVED';
+                  final isSold = u['status'] == 'SOLD' || u['status'] == 'SUBSCRIBED';
 
                   return GestureDetector(
                     onTap: isAvail ? () => _lockUnitModal(u) : null,
@@ -374,16 +520,16 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       decoration: BoxDecoration(
                         color: isAvail
                             ? const Color(0xFF059669).withValues(alpha: 0.12)
-                            : isSubscribed
-                                ? const Color(0xFFEF4444).withValues(alpha: 0.12)
-                                : const Color(0xFF64748B).withValues(alpha: 0.12),
+                            : isReserved
+                                ? const Color(0xFFF59E0B).withValues(alpha: 0.12)
+                                : const Color(0xFFEF4444).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: isAvail
                               ? const Color(0xFF059669)
-                              : isSubscribed
-                                  ? const Color(0xFFEF4444)
-                                  : const Color(0xFF94A3B8),
+                              : isReserved
+                                  ? const Color(0xFFF59E0B)
+                                  : const Color(0xFFEF4444),
                           width: 1.2,
                         ),
                       ),
@@ -393,15 +539,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           Icon(
                             isAvail
                                 ? Icons.check_circle_outline_rounded
-                                : isSubscribed
-                                    ? Icons.lock_rounded
-                                    : Icons.block_rounded,
+                                : isReserved
+                                    ? Icons.timer_outlined
+                                    : Icons.lock_rounded,
                             size: 16,
                             color: isAvail
                                 ? const Color(0xFF059669)
-                                : isSubscribed
-                                    ? const Color(0xFFDC2626)
-                                    : const Color(0xFF64748B),
+                                : isReserved
+                                    ? const Color(0xFFD97706)
+                                    : const Color(0xFFDC2626),
                           ),
                           const SizedBox(height: 3),
                           Text(
@@ -411,17 +557,21 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               fontWeight: FontWeight.w900,
                               color: isAvail
                                   ? const Color(0xFF059669)
-                                  : isSubscribed
-                                      ? const Color(0xFFDC2626)
-                                      : const Color(0xFF64748B),
+                                  : isReserved
+                                      ? const Color(0xFFD97706)
+                                      : const Color(0xFFDC2626),
                             ),
                           ),
                           Text(
-                            isAvail ? 'OPEN' : (isSubscribed ? 'SOLD' : 'LOCKED'),
+                            isAvail ? 'OPEN' : (isReserved ? '30M LOCK' : 'SOLD'),
                             style: TextStyle(
                               fontSize: 8,
                               fontWeight: FontWeight.w800,
-                              color: isAvail ? const Color(0xFF059669) : const Color(0xFF64748B),
+                              color: isAvail
+                                  ? const Color(0xFF059669)
+                                  : isReserved
+                                      ? const Color(0xFFD97706)
+                                      : const Color(0xFFDC2626),
                             ),
                           ),
                         ],

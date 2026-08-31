@@ -53,6 +53,8 @@ class PurchaseModel {
   final PropertyModel? property;
   final ProjectUnitModel? projectUnit;
   final PaymentPlanModel? paymentPlan;
+  final DateTime? lockedUntil;
+  final String lockStatus;
   final List<PaymentRecordModel> payments;
 
   PurchaseModel({
@@ -69,10 +71,14 @@ class PurchaseModel {
     this.property,
     this.projectUnit,
     this.paymentPlan,
+    this.lockedUntil,
+    this.lockStatus = 'UNLOCKED',
     required this.payments,
   });
 
   double get progressPercentage => totalPrice > 0 ? (amountPaid / totalPrice).clamp(0.0, 1.0) : 0.0;
+  bool get isLockActive => lockStatus == 'LOCKED' && lockedUntil != null && lockedUntil!.isAfter(DateTime.now());
+  Duration get lockRemaining => lockedUntil != null ? lockedUntil!.difference(DateTime.now()) : Duration.zero;
 
   factory PurchaseModel.fromJson(Map<String, dynamic> json) {
     var pmts = (json['payments'] as List<dynamic>?)
@@ -96,6 +102,8 @@ class PurchaseModel {
       property: json['property'] != null ? PropertyModel.fromJson(json['property']) : null,
       projectUnit: json['projectUnit'] != null ? ProjectUnitModel.fromJson(json['projectUnit']) : null,
       paymentPlan: json['paymentPlan'] != null ? PaymentPlanModel.fromJson(json['paymentPlan']) : null,
+      lockedUntil: json['lockedUntil'] != null ? DateTime.tryParse(json['lockedUntil']) : null,
+      lockStatus: json['lockStatus'] ?? 'UNLOCKED',
       payments: pmts,
     );
   }

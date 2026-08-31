@@ -129,14 +129,24 @@ export class ProjectsService {
 
     if (!project) throw new Error('Project not found');
 
+    const now = new Date();
     const matrixUnits = project.units.map((unit, idx) => {
-      const activePurchases = unit.purchases.filter(p => p.status !== 'CANCELLED');
-      const isSubscribed = activePurchases.length > 0;
-      const status = isSubscribed ? 'SUBSCRIBED' : (unit.availableUnits <= 0 ? 'SOLD_OUT' : 'AVAILABLE');
+      const activePaidPurchases = unit.purchases.filter(p => p.status !== 'CANCELLED' && p.amountPaid > 0);
+      const activeLockPurchase = unit.purchases.find(p => p.status !== 'CANCELLED' && (p.amountPaid || 0) === 0 && (p as any).lockStatus === 'LOCKED' && (p as any).lockedUntil && new Date((p as any).lockedUntil) > now);
+
+      let status = 'AVAILABLE';
+      let reservedUntil: string | null = null;
+
+      if (unit.status === 'SOLD' || activePaidPurchases.length > 0 || unit.availableUnits <= 0) {
+        status = 'SOLD';
+      } else if (unit.status === 'RESERVED' || activeLockPurchase) {
+        status = 'RESERVED';
+        reservedUntil = (activeLockPurchase as any)?.lockedUntil ? new Date((activeLockPurchase as any).lockedUntil).toISOString() : null;
+      }
 
       return {
         id: unit.id,
-        unitCode: `UNIT-${(idx + 1).toString().padStart(2, '0')}`,
+        unitCode: unit.name.toUpperCase().startsWith('UNIT') ? unit.name : `UNIT-${String.fromCharCode(65 + (idx % 26))}${idx >= 26 ? Math.floor(idx / 26) : ''}`, // e.g. UNIT-A, UNIT-B, UNIT-C
         name: unit.name,
         unitType: unit.unitType,
         size: unit.size || '180 SQM',
@@ -146,23 +156,27 @@ export class ProjectsService {
         initialDeposit: unit.initialDeposit,
         monthlyInstalment: unit.monthlyInstalment,
         durationMonths: unit.durationMonths,
-        status,
-        reservedUntil: null,
-        activeSubscriberHash: isSubscribed ? `SUB-${unit.purchases[0]?.purchaseCode.slice(-4)}` : null,
+        status, // 'AVAILABLE', 'RESERVED', 'SOLD'
+        isAvailableForPurchase: status === 'AVAILABLE',
+        reservedUntil,
+        activeSubscriberHash: activePaidPurchases.length > 0 ? `SUB-${activePaidPurchases[0].purchaseCode.slice(-4)}` : null,
       };
     });
 
     const total = matrixUnits.length;
-    const subscribed = matrixUnits.filter(u => u.status === 'SUBSCRIBED').length;
-    const available = matrixUnits.filter(u => u.status === 'AVAILABLE').length;
+    const soldCount = matrixUnits.filter(u => u.status === 'SOLD').length;
+    const reservedCount = matrixUnits.filter(u => u.status === 'RESERVED').length;
+    const availableCount = matrixUnits.filter(u => u.status === 'AVAILABLE').length;
 
     return {
       projectId: project.id,
       projectName: project.name,
       totalUnits: total,
-      availableUnits: available,
-      subscribedUnits: subscribed,
-      soldPercentage: total > 0 ? Math.round((subscribed / total) * 100) : 0,
+      availableUnits: availableCount,
+      subscribedUnits: soldCount + reservedCount,
+      soldUnits: soldCount,
+      reservedUnits: reservedCount,
+      soldPercentage: total > 0 ? Math.round((soldCount / total) * 100) : 0,
       units: matrixUnits,
     };
   }

@@ -12,6 +12,7 @@ import 'kyc_screen.dart';
 import 'purchases_screen.dart';
 import 'inspection_booking_modal.dart';
 import '../widgets/in_app_call_modal.dart';
+import '../widgets/purchase_attestation_modal.dart';
 import '../widgets/persistent_bottom_nav.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -725,6 +726,28 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       return;
     }
 
+    // ─── 1. ENGAGEMENT GATE CHECK ───
+    try {
+      final engagementRes = await ApiClient.get('/purchases/engagement-status?propertyId=${widget.property.id}');
+      final hasEngaged = engagementRes != null && engagementRes['hasEngaged'] == true;
+      if (!hasEngaged) {
+        if (!mounted) return;
+        _showEngagementRequiredDialog(context);
+        return;
+      }
+    } catch (_) {
+      // If offline / network glitch, proceed with attestation
+    }
+
+    // ─── 2. LEGAL PRE-PURCHASE ATTESTATION MODAL ───
+    final attested = await PurchaseAttestationModal.show(
+      context,
+      title: widget.property.title,
+    );
+
+    if (!attested) return;
+
+    // ─── 3. INITIATE 30-MINUTE ATOMIC LOCK ───
     final purchase = await purchaseProvider.initiatePurchase(
       propertyId: widget.property.id,
       paymentPlanId: _selectedPlan?.id,
@@ -733,14 +756,23 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     if (!mounted) return;
 
     if (purchase != null) {
+      // Record attestation on the newly created purchase
+      try {
+        await ApiClient.post('/purchases/${purchase.id}/attest', {
+          'q1': true, 'q2': true, 'q3': true,
+          'q4': true, 'q5': true, 'q6': true,
+        });
+      } catch (_) {}
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('🎉 Purchase ${purchase.purchaseCode} created — transfer funds to your dedicated escrow account to begin.'),
+          content: Text('⏱ 30-Minute Lock Activated for ${purchase.purchaseCode}. Transfer funds to your dedicated escrow account to complete.'),
           backgroundColor: AppColors.emeraldText,
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 4),
         ),
       );
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchasesScreen()));
+      await purchaseProvider.fetchMyPurchases();
+      if (mounted) Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchasesScreen()));
     } else {
       showDialog(
         context: context,
@@ -767,5 +799,114 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         ),
       );
     }
+  }
+
+  void _showEngagementRequiredDialog(BuildContext context) {
+    final devName = widget.property.developer?.companyName ?? 'Verified Developer';
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.verified_outlined, color: AppColors.primary, size: 24),
+                SizedBox(width: 10),
+                Text('Engagement Required', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Before proceeding to purchase or reserve this property, Nigerian property protection rules require that you engage first — by booking an inspection, chatting, or calling the developer.',
+              style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
+            ),
+            const SizedBox(height: 18),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFE0F2FE),
+                child: Icon(Icons.calendar_today_rounded, color: Color(0xFF0284C7), size: 20),
+              ),
+              title: const Text('Book an Inspection', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              subtitle: const Text('Self, representative, or COREN engineer walkthrough', style: TextStyle(fontSize: 11)),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showInspectionDialog(context);
+              },
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFDCFCE7),
+                child: Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF16A34A), size: 20),
+              ),
+              title: const Text('Chat with Developer', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              subtitle: const Text('Ask questions and clarify title or payment terms', style: TextStyle(fontSize: 11)),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final auth = Provider.of<AuthProvider>(context, listen: false);
+                if (!auth.isAuthenticated) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                  return;
+                }
+                // Record engagement
+                ApiClient.post('/purchases/engagement', {
+                  'propertyId': widget.property.id,
+                  'engagementType': 'CHAT_STARTED',
+                }).catchError((_) => null);
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      developerId: widget.property.developer?.id,
+                      recipientName: devName,
+                      propertyId: widget.property.id,
+                      propertyTitle: widget.property.title,
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFFEF3C7),
+                child: Icon(Icons.phone_in_talk_rounded, color: Color(0xFFD97706), size: 20),
+              ),
+              title: const Text('Call Developer', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              subtitle: const Text('Direct in-app voice consultation', style: TextStyle(fontSize: 11)),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+              onTap: () {
+                Navigator.pop(ctx);
+                final auth = Provider.of<AuthProvider>(context, listen: false);
+                if (!auth.isAuthenticated) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                  return;
+                }
+                // Record engagement
+                ApiClient.post('/purchases/engagement', {
+                  'propertyId': widget.property.id,
+                  'engagementType': 'CALL_INITIATED',
+                }).catchError((_) => null);
+
+                InAppCallModal.show(
+                  context,
+                  entityName: devName,
+                  developerId: widget.property.developer?.id,
+                  propertyId: widget.property.id,
+                  propertyTitle: widget.property.title,
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
   }
 }

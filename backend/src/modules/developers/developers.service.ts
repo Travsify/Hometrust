@@ -621,67 +621,134 @@ export class DevelopersService {
 
     const projectUnitIds = projects.flatMap(p => p.units.map(u => u.id));
 
+    // Only show buyers who have actually made at least one payment (not just interest)
     const purchases = await prisma.purchase.findMany({
       where: {
         OR: [
           { projectUnitId: { in: projectUnitIds } },
           { property: { developerId: developer.id } },
         ],
+        status: { in: ['ACTIVE', 'COMPLETED', 'AGREEMENT_SIGNED', 'AGREEMENT_PENDING'] },
+        amountPaid: { gt: 0 }, // CRITICAL: only show buyers who have paid
       },
       include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-          },
-        },
-        property: true,
+        property: { select: { id: true, title: true, address: true, state: true, city: true } },
         projectUnit: {
-          include: { project: true },
+          include: { project: { select: { id: true, name: true } } },
         },
-        paymentPlan: true,
+        paymentPlan: { select: { name: true, durationMonths: true } },
         payments: {
           where: { status: 'SUCCESS' },
           orderBy: { createdAt: 'desc' },
+          select: { amount: true, paidAt: true, purpose: true },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    return purchases.map(p => ({
-      id: p.id,
-      purchaseCode: p.purchaseCode,
-      buyer: {
-        id: p.user.id,
-        name: `${p.user.firstName} ${p.user.lastName}`,
-        email: p.user.email,
-        phone: p.user.phone,
-      },
-      propertyTitle: p.projectUnit?.name || p.property?.title || 'Off-Plan Property',
-      projectName: p.projectUnit?.project?.name || p.property?.city || 'Estate Development',
-      unitType: p.projectUnit?.unitType || 'Residential Unit',
-      totalPrice: p.totalPrice,
-      initialDeposit: p.initialDeposit,
-      amountPaid: p.amountPaid,
-      outstandingBalance: p.outstandingBalance,
-      nextPaymentAmount: p.nextPaymentAmount,
-      nextPaymentDueDate: p.nextPaymentDueDate,
-      status: p.status,
-      agreementDocumentUrl: p.agreementDocumentUrl,
-      signatureDate: p.signatureDate,
-      paymentsCount: p.payments.length,
-      recentPayments: p.payments.slice(0, 3).map(pay => ({
-        reference: pay.paymentReference,
-        amount: pay.amount,
-        paidAt: pay.paidAt,
-        receiptNumber: pay.receiptNumber,
-      })),
-      createdAt: p.createdAt,
-    }));
+    // Return anonymized data — NO buyer name, email, or phone
+    return purchases.map((p, idx) => {
+      const progressPct = p.totalPrice > 0
+        ? Math.round((p.amountPaid / p.totalPrice) * 100)
+        : 0;
+
+      const unitLabel = p.projectUnit
+        ? `${p.projectUnit.project?.name || 'Project'} — ${p.projectUnit.name} (${p.projectUnit.unitType})`
+        : p.property?.title || 'Direct Property Sale';
+
+      const location = p.projectUnit
+        ? null
+        : `${p.property?.city}, ${p.property?.state}`;
+
+      return {
+        id: p.id,
+        purchaseCode: p.purchaseCode,
+        // Anonymized buyer reference — no PII exposed to developer
+        buyerRef: `HT-BUYER-${p.id.slice(-5).toUpperCase()}`,
+        unitName: unitLabel,
+        location,
+        paymentPlanName: p.paymentPlan?.name ?? 'Outright Purchase',
+        totalPrice: p.totalPrice,
+        initialDeposit: p.initialDeposit,
+        amountPaid: p.amountPaid,
+        outstandingBalance: p.outstandingBalance,
+        progressPercent: progressPct,
+        nextPaymentAmount: p.nextPaymentAmount,
+        nextPaymentDueDate: p.nextPaymentDueDate,
+        status: p.status,
+        paymentsCount: p.payments.length,
+        lastPaymentDate: p.payments[0]?.paidAt ?? null,
+        createdAt: p.createdAt,
+      };
+    });
   }
+
+  static async getSubscriberDetail(userId: string, purchaseId: string) {
+    const developer = await this.getDeveloperByUserId(userId);
+
+    const purchase = await prisma.purchase.findUnique({
+      where: { id: purchaseId },
+      include: {
+        property: { select: { id: true, title: true, address: true, state: true, city: true, developerId: true } },
+        projectUnit: {
+          include: {
+            project: {
+              select: { id: true, name: true, developerId: true },
+            },
+          },
+        },
+        paymentPlan: true,
+        payments: {
+          where: { status: 'SUCCESS' },
+          orderBy: { paidAt: 'desc' },
+          select: { amount: true, paidAt: true, purpose: true, paymentReference: true, receiptNumber: true },
+        },
+      },
+    });
+
+    if (!purchase) throw new Error('Purchase record not found');
+
+    // Verify this purchase belongs to this developer's property/project
+    const isOwnProperty = purchase.property?.developerId === developer.id;
+    const isOwnProject = purchase.projectUnit?.project?.developerId === developer.id;
+    if (!isOwnProperty && !isOwnProject) throw new Error('Access denied: This purchase is not for your property.');
+
+    if (!purchase.amountPaid || purchase.amountPaid <= 0) {
+      throw new Error('This buyer has not yet made any payment.');
+    }
+
+    const progressPct = purchase.totalPrice > 0
+      ? Math.round((purchase.amountPaid / purchase.totalPrice) * 100)
+      : 0;
+
+    return {
+      id: purchase.id,
+      purchaseCode: purchase.purchaseCode,
+      buyerRef: `HT-BUYER-${purchase.id.slice(-5).toUpperCase()}`,
+      unitName: purchase.projectUnit?.name ?? purchase.property?.title ?? 'Property',
+      unitType: purchase.projectUnit?.unitType ?? 'Direct Sale',
+      paymentPlanName: purchase.paymentPlan?.name ?? 'Outright Purchase',
+      totalPrice: purchase.totalPrice,
+      amountPaid: purchase.amountPaid,
+      outstandingBalance: purchase.outstandingBalance,
+      progressPercent: progressPct,
+      nextPaymentAmount: purchase.nextPaymentAmount,
+      nextPaymentDueDate: purchase.nextPaymentDueDate,
+      status: purchase.status,
+      agreementSigned: !!purchase.signatureDate,
+      signatureDate: purchase.signatureDate,
+      paymentsHistory: purchase.payments.map(pay => ({
+        reference: pay.paymentReference,
+        receipt: pay.receiptNumber,
+        amount: pay.amount,
+        purpose: pay.purpose,
+        paidAt: pay.paidAt,
+      })),
+      createdAt: purchase.createdAt,
+    };
+  }
+
+
 
   static async requestMilestoneInspection(userId: string, data: {
     projectId: string;

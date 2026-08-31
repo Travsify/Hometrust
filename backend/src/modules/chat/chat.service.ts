@@ -66,6 +66,15 @@ export class ChatService {
       });
     }
 
+    // Record engagement for the buyer
+    if (propertyId) {
+      await (prisma as any).propertyEngagement.upsert({
+        where: { userId_propertyId: { userId: user1Id, propertyId } },
+        create: { userId: user1Id, propertyId, engagementType: 'CHAT_STARTED' },
+        update: { engagementType: 'CHAT_STARTED', updatedAt: new Date() },
+      }).catch(console.error);
+    }
+
     // Attach rich property/project context
     let propertyContext: any = null;
     if (conversation.propertyId) {

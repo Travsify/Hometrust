@@ -138,5 +138,49 @@ export class PurchasesController {
       sendError(res, error.message, 400);
     }
   }
+
+  // ─── ENGAGEMENT GATE ────────────────────────────────────────────────────────
+  static async recordEngagement(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) { sendError(res, 'Unauthorized', 401); return; }
+      const result = await PurchasesService.recordEngagement({
+        userId: req.user.id,
+        propertyId: req.body.propertyId,
+        projectUnitId: req.body.projectUnitId,
+        engagementType: req.body.engagementType,
+      });
+      sendSuccess(res, result, 'Engagement recorded');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async checkEngagement(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) { sendError(res, 'Unauthorized', 401); return; }
+      const { propertyId, projectUnitId } = req.query as { propertyId?: string; projectUnitId?: string };
+      const result = await PurchasesService.checkEngagement(req.user.id, propertyId, projectUnitId);
+      sendSuccess(res, result, 'Engagement status retrieved');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  // ─── ATTESTATION ────────────────────────────────────────────────────────────
+  static async submitAttestation(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) { sendError(res, 'Unauthorized', 401); return; }
+      const { q1, q2, q3, q4, q5, q6 } = req.body;
+      const result = await PurchasesService.submitAttestation(
+        req.params.id as string,
+        req.user.id,
+        { q1: !!q1, q2: !!q2, q3: !!q3, q4: !!q4, q5: !!q5, q6: !!q6 },
+        req.ip,
+      );
+      sendSuccess(res, result, 'Attestation recorded. You may now proceed to payment.');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }
 

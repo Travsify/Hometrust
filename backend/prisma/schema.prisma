@@ -43,6 +43,7 @@ model User {
   assignedBuilds    BuildRequest[]      @relation("AssignedEngineerBuilds")
   followedDevelopers DeveloperFollower[]
   likedPosts        PostLike[]
+  propertyEngagements PropertyEngagement[]
 
   @@map("users")
 }
@@ -334,12 +335,47 @@ model Purchase {
   nextPaymentDueDate    DateTime?
   agreementDocumentUrl  String?
   signatureDate         DateTime?
+  // 30-Minute Atomic Lock
+  lockedUntil           DateTime?     // When the lock expires
+  lockStatus            String        @default("UNLOCKED") // UNLOCKED, LOCKED, EXPIRED
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
   payments              Payment[]
+  attestation           PurchaseAttestation?
 
   @@map("purchases")
+}
+
+model PropertyEngagement {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId      String?
+  projectUnitId   String?
+  engagementType  String    // INSPECTION_BOOKED, INSPECTION_DONE, CHAT_STARTED, CALL_INITIATED
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, propertyId])
+  @@unique([userId, projectUnitId])
+  @@map("property_engagements")
+}
+
+model PurchaseAttestation {
+  id          String    @id @default(uuid())
+  purchaseId  String    @unique
+  purchase    Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  userId      String
+  q1          Boolean   @default(false) // I have inspected or received info about this property
+  q2          Boolean   @default(false) // I am satisfied with condition and location
+  q3          Boolean   @default(false) // I understand the payment plan and all fees
+  q4          Boolean   @default(false) // I am purchasing of my own free will
+  q5          Boolean   @default(false) // I accept T&Cs and Hometrust Escrow Agreement
+  q6          Boolean   @default(false) // I understand funds are held in escrow until milestones
+  signedAt    DateTime  @default(now())
+  ipAddress   String?
+  @@map("purchase_attestations")
 }
 
 model Payment {

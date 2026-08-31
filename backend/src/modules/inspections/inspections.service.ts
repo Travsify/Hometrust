@@ -58,6 +58,19 @@ export class InspectionsService {
       },
     });
 
+    // Record engagement gate for purchase
+    if (params.propertyId) {
+      await (prisma as any).propertyEngagement.upsert({
+        where: { userId_propertyId: { userId: params.userId, propertyId: params.propertyId } },
+        create: {
+          userId: params.userId,
+          propertyId: params.propertyId,
+          engagementType: 'INSPECTION_BOOKED',
+        },
+        update: { engagementType: 'INSPECTION_BOOKED', updatedAt: new Date() },
+      }).catch(console.error);
+    }
+
     // Dispatch Push & Activity Audit Email
     const title = type === 'COREN_ENGINEER' 
       ? '🏛️ COREN Engineer Inspection Booked'

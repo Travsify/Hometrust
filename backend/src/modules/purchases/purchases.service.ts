@@ -11,7 +11,23 @@ export interface CreatePurchaseParams {
 
 export class PurchasesService {
   static async create(params: CreatePurchaseParams) {
-    // Enforce Single Active Property Purchase Rule
+    // ─── ENGAGEMENT GATE ─────────────────────────────────────────────────────
+    // User must have engaged (inspected/chatted/called) before purchasing
+    const engagementWhere = params.propertyId
+      ? { userId: params.userId, propertyId: params.propertyId }
+      : { userId: params.userId, projectUnitId: params.projectUnitId };
+
+    const engagement = await (prisma as any).propertyEngagement.findFirst({
+      where: engagementWhere,
+    });
+
+    if (!engagement) {
+      throw new Error(
+        'You must first inspect the property, start a chat, or call the developer before initiating a purchase. This ensures you are making an informed decision.'
+      );
+    }
+
+    // ─── SINGLE ACTIVE PURCHASE RULE ─────────────────────────────────────────
     const existingActive = await prisma.purchase.findFirst({
       where: {
         userId: params.userId,
@@ -59,6 +75,8 @@ export class PurchasesService {
         include: { paymentPlans: true },
       });
       if (!unit) throw new Error('Project unit not found');
+      if (unit.status === 'SOLD') throw new Error('This unit has already been sold and is no longer available.');
+      if (unit.status === 'RESERVED') throw new Error('This unit is currently reserved by another buyer. Please try again in a few minutes.');
 
       totalPrice = unit.price;
       initialDeposit = unit.initialDeposit;
@@ -68,6 +86,7 @@ export class PurchasesService {
     }
 
     const purchaseCode = `EV-PUR-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+    const lockedUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes from now
 
     const purchase = await prisma.purchase.create({
       data: {
@@ -82,6 +101,8 @@ export class PurchasesService {
         outstandingBalance: totalPrice,
         nextPaymentAmount,
         status: 'INITIATED',
+        lockedUntil,
+        lockStatus: 'LOCKED',
       },
       include: {
         property: true,
@@ -89,6 +110,20 @@ export class PurchasesService {
         paymentPlan: true,
       },
     });
+
+    // ─── LOCK UNIT ────────────────────────────────────────────────────────────
+    if (params.projectUnitId) {
+      await prisma.projectUnit.update({
+        where: { id: params.projectUnitId },
+        data: { status: 'RESERVED' },
+      });
+    }
+    if (params.propertyId) {
+      await prisma.property.update({
+        where: { id: params.propertyId },
+        data: { isPublished: false },
+      });
+    }
 
     const user = await prisma.user.findUnique({ where: { id: params.userId } });
     if (user) {
@@ -110,18 +145,169 @@ export class PurchasesService {
 
     await NotificationsService.createAndDispatch({
       userId: params.userId,
-      title: '🏡 Property Purchase Plan Initiated',
-      message: `Your purchase plan for ${purchase.property?.title || purchase.projectUnit?.name || 'Property'} (${purchase.purchaseCode}) has been initiated. Total: ₦${totalPrice.toLocaleString()}.`,
+      title: '⏱ 30-Minute Property Lock Active',
+      message: `Your unit lock for ${purchase.property?.title || purchase.projectUnit?.name || 'Property'} (${purchase.purchaseCode}) is active. You have 30 minutes to complete your payment. Lock expires at ${lockedUntil.toLocaleTimeString('en-NG')}.`,
       type: 'PAYMENT',
       actionDetails: [
         { label: 'Purchase Code', value: purchase.purchaseCode },
         { label: 'Total Agreed Price', value: `₦${totalPrice.toLocaleString()}` },
         { label: 'Initial Deposit Required', value: `₦${initialDeposit.toLocaleString()}` },
+        { label: 'Lock Expires At', value: lockedUntil.toISOString() },
       ],
     });
 
-    return purchase;
+    return { ...purchase, lockedUntil };
   }
+
+  // ─── ENGAGEMENT RECORDING ────────────────────────────────────────────────────
+  static async recordEngagement(params: {
+    userId: string;
+    propertyId?: string;
+    projectUnitId?: string;
+    engagementType: 'INSPECTION_BOOKED' | 'INSPECTION_DONE' | 'CHAT_STARTED' | 'CALL_INITIATED';
+  }) {
+    const where = params.propertyId
+      ? { userId_propertyId: { userId: params.userId, propertyId: params.propertyId } }
+      : { userId_projectUnitId: { userId: params.userId, projectUnitId: params.projectUnitId! } };
+
+    // Upsert: create or upgrade engagement type (INSPECTION_DONE > INSPECTION_BOOKED)
+    const existing = await (prisma as any).propertyEngagement.findFirst({
+      where: params.propertyId
+        ? { userId: params.userId, propertyId: params.propertyId }
+        : { userId: params.userId, projectUnitId: params.projectUnitId },
+    });
+
+    const typeRank: Record<string, number> = {
+      CALL_INITIATED: 1, CHAT_STARTED: 1, INSPECTION_BOOKED: 2, INSPECTION_DONE: 3,
+    };
+
+    if (existing && typeRank[existing.engagementType] >= typeRank[params.engagementType]) {
+      return existing; // Don't downgrade existing engagement
+    }
+
+    return (prisma as any).propertyEngagement.upsert({
+      where,
+      create: {
+        userId: params.userId,
+        propertyId: params.propertyId,
+        projectUnitId: params.projectUnitId,
+        engagementType: params.engagementType,
+      },
+      update: { engagementType: params.engagementType, updatedAt: new Date() },
+    });
+  }
+
+  static async checkEngagement(userId: string, propertyId?: string, projectUnitId?: string) {
+    const engagement = await (prisma as any).propertyEngagement.findFirst({
+      where: propertyId
+        ? { userId, propertyId }
+        : { userId, projectUnitId },
+    });
+    return { hasEngaged: !!engagement, engagementType: engagement?.engagementType ?? null };
+  }
+
+  // ─── PURCHASE ATTESTATION ────────────────────────────────────────────────────
+  static async submitAttestation(purchaseId: string, userId: string, answers: {
+    q1: boolean; q2: boolean; q3: boolean; q4: boolean; q5: boolean; q6: boolean;
+  }, ipAddress?: string) {
+    if (!answers.q1 || !answers.q2 || !answers.q3 || !answers.q4 || !answers.q5 || !answers.q6) {
+      throw new Error('All attestation questions must be answered Yes before proceeding with your purchase.');
+    }
+
+    const purchase = await prisma.purchase.findUnique({ where: { id: purchaseId } });
+    if (!purchase) throw new Error('Purchase not found');
+    if (purchase.userId !== userId) throw new Error('Access denied');
+
+    const attestation = await (prisma as any).purchaseAttestation.create({
+      data: { purchaseId, userId, ...answers, ipAddress: ipAddress ?? null },
+    });
+
+    // Update purchase status to AGREEMENT_PENDING after attestation
+    await prisma.purchase.update({
+      where: { id: purchaseId },
+      data: { status: 'AGREEMENT_PENDING' },
+    });
+
+    return attestation;
+  }
+
+  // ─── 30-MIN LOCK RELEASE ────────────────────────────────────────────────────
+  static async releaseLock(purchaseId: string) {
+    const purchase = await prisma.purchase.findUnique({
+      where: { id: purchaseId },
+      include: { property: true, projectUnit: true },
+    });
+    if (!purchase) return;
+
+    await prisma.purchase.update({
+      where: { id: purchaseId },
+      data: { status: 'CANCELLED', lockStatus: 'EXPIRED' },
+    });
+
+    // Restore unit availability
+    if (purchase.projectUnitId) {
+      await prisma.projectUnit.update({
+        where: { id: purchase.projectUnitId },
+        data: { status: 'AVAILABLE' },
+      });
+    }
+    if (purchase.propertyId) {
+      await prisma.property.update({
+        where: { id: purchase.propertyId },
+        data: { isPublished: true },
+      });
+    }
+
+    const unitName = purchase.projectUnit?.name || purchase.property?.title || 'the property';
+    await NotificationsService.createAndDispatch({
+      userId: purchase.userId,
+      title: '⚠️ Property Lock Expired',
+      message: `Your 30-minute reservation lock for ${unitName} (${purchase.purchaseCode}) has expired and the unit has been released. You can re-initiate your purchase anytime.`,
+      type: 'PAYMENT',
+      actionDetails: [{ label: 'Purchase Code', value: purchase.purchaseCode }],
+    });
+  }
+
+  static async releaseExpiredLocks() {
+    const now = new Date();
+    // Find locks expiring in 5 min — send warning notifications
+    const warningThreshold = new Date(now.getTime() + 5 * 60 * 1000);
+    const aboutToExpire = await prisma.purchase.findMany({
+      where: {
+        lockStatus: 'LOCKED',
+        lockedUntil: { gt: now, lte: warningThreshold },
+        amountPaid: { equals: 0 },
+      },
+      include: { property: true, projectUnit: true },
+    });
+
+    for (const p of aboutToExpire) {
+      const unitName = p.projectUnit?.name || p.property?.title || 'the property';
+      await NotificationsService.createAndDispatch({
+        userId: p.userId,
+        title: '⚠️ Lock Expiring in 5 Minutes',
+        message: `Your reservation lock for ${unitName} (${p.purchaseCode}) expires in 5 minutes. Please complete your payment now to secure your unit.`,
+        type: 'PAYMENT',
+        actionDetails: [{ label: 'Purchase Code', value: p.purchaseCode }],
+      });
+    }
+
+    // Find truly expired locks with no payment
+    const expired = await prisma.purchase.findMany({
+      where: {
+        lockStatus: 'LOCKED',
+        lockedUntil: { lte: now },
+        amountPaid: { equals: 0 },
+      },
+    });
+
+    for (const p of expired) {
+      await this.releaseLock(p.id);
+    }
+
+    return { released: expired.length, warned: aboutToExpire.length };
+  }
+
 
   static async getById(idOrCode: string) {
     const purchase = await prisma.purchase.findFirst({
