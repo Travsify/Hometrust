@@ -6,6 +6,7 @@ export interface OneSignalPushParams {
   message: string;
   data?: Record<string, any>;
   url?: string;
+  imageUrl?: string;
 }
 
 export class OneSignalService {
@@ -19,20 +20,29 @@ export class OneSignalService {
     }
 
     try {
-      const logoUrl = 'https://hometrust-backend.onrender.com/logo.png';
+      const logoUrl = 'https://estateverify-app.onrender.com/logo.png';
+      const bannerUrl = params.imageUrl || 'https://estateverify-app.onrender.com/logo.png';
+
       const payload: any = {
         app_id: appId,
         target_channel: 'push',
         include_aliases: {
           external_id: [params.userId],
         },
+        include_external_user_ids: [params.userId],
         headings: { en: params.title },
         contents: { en: params.message },
         data: params.data || {},
         priority: 10,
         ios_sound: 'default',
         large_icon: logoUrl,
+        big_picture: bannerUrl,
+        chrome_web_icon: logoUrl,
+        chrome_web_image: bannerUrl,
+        adm_big_picture: bannerUrl,
+        chrome_big_picture: bannerUrl,
         android_accent_color: 'FF059669',
+        android_visibility: 1,
         ios_attachments: {
           id1: logoUrl,
         },
@@ -66,17 +76,29 @@ export class OneSignalService {
     }
   }
 
-  static async sendBroadcast(title: string, message: string, data?: Record<string, any>): Promise<boolean> {
+  static async sendBroadcast(title: string, message: string, data?: Record<string, any>, imageUrl?: string): Promise<boolean> {
     const { appId, restApiKey } = config.onesignal;
     if (!appId || !restApiKey) return false;
 
     try {
+      const logoUrl = 'https://estateverify-app.onrender.com/logo.png';
+      const bannerUrl = imageUrl || 'https://estateverify-app.onrender.com/logo.png';
+
       const payload = {
         app_id: appId,
         included_segments: ['Subscribed Users', 'Total Subscriptions'],
         headings: { en: title },
         contents: { en: message },
         data: data || {},
+        priority: 10,
+        large_icon: logoUrl,
+        big_picture: bannerUrl,
+        chrome_web_icon: logoUrl,
+        chrome_web_image: bannerUrl,
+        android_accent_color: 'FF059669',
+        ios_attachments: {
+          id1: logoUrl,
+        },
       };
 
       const response = await fetch(this.API_URL, {
