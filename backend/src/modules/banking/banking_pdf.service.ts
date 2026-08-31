@@ -172,10 +172,10 @@ export class BankingPdfService {
 
       // Security Seal & Verification Note
       y = 500;
-      doc.rect(40, y, 515, 60).fillAndStroke('#F8FAFC', '#CBD5E1');
-      doc.fillColor('#0F172A').fontSize(8.5).font('Helvetica-Bold').text('AUTHENTICITY & ESCROW WARRANTY', 55, y + 12);
-      doc.fillColor('#475569').fontSize(8).font('Helvetica').text('This document serves as an electronic legal confirmation of funds processed through Hometrust escrow services in Nigerian Naira (NGN). Retain this receipt for tax, audit, and property allocation records.', 55, y + 26);
-      doc.text('Direct verification: https://hometrustng.com/receipts/verify | Support: finance@hometrustng.com', 55, y + 42);
+      doc.rect(40, y, 515, 65).fillAndStroke('#F8FAFC', '#CBD5E1');
+      doc.fillColor('#0F172A').fontSize(8.5).font('Helvetica-Bold').text('AUTHENTICITY & ESCROW WARRANTY', 55, y + 10);
+      doc.fillColor('#475569').fontSize(7.5).font('Helvetica').text('This document serves as an electronic legal confirmation of funds processed through Hometrust escrow services in Nigerian Naira (NGN). Hometrust is a product of Ehomes Global Inclusive Limited. Escrow custodial and payment settlement services are provided in partnership with licensed CBN-regulated financial institutions.', 55, y + 24, { width: 485 });
+      doc.text('Direct verification: https://hometrustng.com/receipts/verify | Support: support@hometrust.ng', 55, y + 48);
 
       doc.end();
       stream.on('finish', () => resolve({ filePath, fileName }));

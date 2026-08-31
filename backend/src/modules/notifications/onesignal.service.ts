@@ -19,6 +19,7 @@ export class OneSignalService {
     }
 
     try {
+      const logoUrl = 'https://hometrust-backend.onrender.com/logo.png';
       const payload: any = {
         app_id: appId,
         target_channel: 'push',
@@ -30,6 +31,11 @@ export class OneSignalService {
         data: params.data || {},
         priority: 10,
         ios_sound: 'default',
+        large_icon: logoUrl,
+        android_accent_color: 'FF059669',
+        ios_attachments: {
+          id1: logoUrl,
+        },
       };
 
       if (params.url) {

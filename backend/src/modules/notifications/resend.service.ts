@@ -1,4 +1,6 @@
+import fs from 'fs';
 import { config } from '../../config';
+import { BankingPdfService } from '../banking/banking_pdf.service';
 
 export class ResendService {
   private static apiUrl = 'https://api.resend.com/emails';
@@ -40,10 +42,9 @@ export class ResendService {
       <body>
         <div class="wrapper">
           <div class="main-card">
-            <div class="logo-header">
-              <div class="brand-badge">
-                <span class="brand-name">🛡️ HOMETRUST</span>
-              </div>
+            <div class="logo-header" style="text-align: center; margin-bottom: 20px;">
+              <img src="https://hometrust-backend.onrender.com/logo.png" alt="Hometrust" width="60" height="60" style="border-radius: 12px; margin-bottom: 8px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" />
+              <div style="font-size: 20px; font-weight: 900; letter-spacing: 2px; color: #10b981; text-transform: uppercase;">HOMETRUST</div>
             </div>
             ${bodyContent}
             <div class="divider"></div>
@@ -69,7 +70,12 @@ export class ResendService {
     `;
   }
 
-  private static async sendRaw(to: string, subject: string, htmlContent: string): Promise<boolean> {
+  private static async sendRaw(
+    to: string,
+    subject: string,
+    htmlContent: string,
+    attachments?: Array<{ filename: string; content: string }>
+  ): Promise<boolean> {
     const apiKey = config.resend.apiKey;
     if (!apiKey) {
       console.log(`[RESEND SIMULATOR] To: ${to} | Subject: "${subject}"`);
@@ -77,35 +83,36 @@ export class ResendService {
     }
 
     try {
+      const emailPayload: any = {
+        from: config.resend.fromEmail,
+        to: [to],
+        subject,
+        html: htmlContent,
+      };
+      if (attachments && attachments.length > 0) {
+        emailPayload.attachments = attachments;
+      }
+
       let response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          from: config.resend.fromEmail,
-          to: [to],
-          subject,
-          html: htmlContent,
-        }),
+        body: JSON.stringify(emailPayload),
       });
 
       let resData: any = await response.json();
 
       if (!response.ok && (resData?.message?.includes('domain') || resData?.message?.includes('not verified') || resData?.statusCode === 403)) {
+        emailPayload.from = `Hometrust <${config.resend.fallbackFrom}>`;
         response = await fetch(this.apiUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            from: `Hometrust <${config.resend.fallbackFrom}>`,
-            to: [to],
-            subject,
-            html: htmlContent,
-          }),
+          body: JSON.stringify(emailPayload),
         });
         resData = await response.json() as any;
       }
@@ -259,8 +266,30 @@ export class ResendService {
       </div>
     `;
 
+    let attachments: Array<{ filename: string; content: string }> | undefined;
+    try {
+      const pdf = await BankingPdfService.generateReceiptPdf({
+        userName: name,
+        email: to,
+        txId: reference,
+        reference: reference,
+        type: 'INFLOW',
+        amount: amount,
+        purpose: 'Escrow Wallet Credit',
+        status: 'SUCCESSFUL',
+        channel: 'Direct Bank Transfer',
+        createdAt: new Date(),
+      });
+      if (fs.existsSync(pdf.filePath)) {
+        const fileBase64 = fs.readFileSync(pdf.filePath).toString('base64');
+        attachments = [{ filename: pdf.fileName, content: fileBase64 }];
+      }
+    } catch (e: any) {
+      console.warn('[PDF RECEIPT ATTACHMENT NOTICE]', e.message);
+    }
+
     await this.sendAdminAlert('PAYMENT_RECEIVED', `Payment Received: ₦${amount.toLocaleString()}`, `User: ${name} (${to}) deposited ₦${amount.toLocaleString()}. Ref: ${reference}`);
-    return this.sendRaw(to, `Receipt: ₦${amount.toLocaleString()} Received on Hometrust`, this.getBaseHtml(title, body));
+    return this.sendRaw(to, `Receipt: ₦${amount.toLocaleString()} Received on Hometrust`, this.getBaseHtml(title, body), attachments);
   }
 
   /**
@@ -300,13 +329,37 @@ export class ResendService {
       </div>
     `;
 
+    let attachments: Array<{ filename: string; content: string }> | undefined;
+    try {
+      const pdf = await BankingPdfService.generateReceiptPdf({
+        userName: name,
+        email: to,
+        txId: details.reference,
+        reference: details.reference,
+        type: 'OUTFLOW',
+        amount: amount,
+        purpose: isDeveloper ? 'Milestone Disbursement' : 'Escrow Wallet Withdrawal',
+        status: 'DISPATCHED',
+        channel: `${details.bankName} (${details.accountNumber})`,
+        createdAt: new Date(),
+        bankName: details.bankName,
+        accountNumber: details.accountNumber,
+      });
+      if (fs.existsSync(pdf.filePath)) {
+        const fileBase64 = fs.readFileSync(pdf.filePath).toString('base64');
+        attachments = [{ filename: pdf.fileName, content: fileBase64 }];
+      }
+    } catch (e: any) {
+      console.warn('[PDF WITHDRAWAL RECEIPT ATTACHMENT NOTICE]', e.message);
+    }
+
     const adminLabel = isDeveloper ? 'Developer' : 'Buyer';
     await this.sendAdminAlert(
       'WITHDRAWAL_DISBURSED',
       `Withdrawal: ₦${amount.toLocaleString()}`,
       `${adminLabel}: ${name} (${to}) withdrew ₦${amount.toLocaleString()} to ${details.bankName} (${details.accountNumber}). Ref: ${details.reference}`
     );
-    return this.sendRaw(to, subject, this.getBaseHtml(title, body));
+    return this.sendRaw(to, subject, this.getBaseHtml(title, body), attachments);
   }
 
   /**
@@ -347,13 +400,35 @@ export class ResendService {
       </div>
     `;
 
+    let attachments: Array<{ filename: string; content: string }> | undefined;
+    try {
+      const pdf = await BankingPdfService.generateReceiptPdf({
+        userName: name,
+        email: to,
+        txId: details.reference,
+        reference: details.reference,
+        type: 'REVERSAL',
+        amount: amount,
+        purpose: `${txLabel} Reversal Refund (${details.reason})`,
+        status: 'REFUNDED',
+        channel: 'Hometrust Escrow Wallet',
+        createdAt: new Date(),
+      });
+      if (fs.existsSync(pdf.filePath)) {
+        const fileBase64 = fs.readFileSync(pdf.filePath).toString('base64');
+        attachments = [{ filename: pdf.fileName, content: fileBase64 }];
+      }
+    } catch (e: any) {
+      console.warn('[PDF REVERSAL RECEIPT ATTACHMENT NOTICE]', e.message);
+    }
+
     await this.sendAdminAlert(
       'TRANSACTION_REVERSED',
       `Reversal: ₦${amount.toLocaleString()} for ${name}`,
       `User ${name} (${to}) received reversal refund of ₦${amount.toLocaleString()}. Reason: ${details.reason}. Ref: ${details.reference}`
     );
 
-    return this.sendRaw(to, subject, this.getBaseHtml(title, body));
+    return this.sendRaw(to, subject, this.getBaseHtml(title, body), attachments);
   }
 
   /**
