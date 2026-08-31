@@ -238,8 +238,8 @@ class _PaymentSecurityScreenState extends State<PaymentSecurityScreen> {
                                     await auth.setupTransactionPin(newPin);
                                   } else {
                                     await auth.changeTransactionPin(
-                                      oldPin: usePassword ? null : oldPinCtrl.text.trim(),
-                                      password: usePassword ? passwordCtrl.text.trim() : null,
+                                      currentPin: usePassword ? null : oldPinCtrl.text.trim(),
+                                      currentPassword: usePassword ? passwordCtrl.text.trim() : null,
                                       newPin: newPin,
                                     );
                                   }
