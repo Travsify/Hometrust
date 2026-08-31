@@ -50,6 +50,18 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2"/>
+
+        <!-- ── OneSignal Push Notification Branding ─────────────────────────
+             ic_stat_onesignal_default = white-silhouette small icon shown in
+             the status bar and notification shade (Android system requirement).
+             com.onesignal.NotificationAccentColor = the brand color circle
+             shown behind the icon on Android 5+ and in notification shade. -->
+        <meta-data
+            android:name="com.onesignal.NotificationIcon"
+            android:resource="@drawable/ic_stat_onesignal_default"/>
+        <meta-data
+            android:name="com.onesignal.NotificationAccentColor"
+            android:value="FF059669"/>
     </application>
     <queries>
         <intent>
