@@ -67,7 +67,8 @@ app.get('/health', (req: Request, res: Response) => {
     status: 'online',
     platform: 'Hometrust API & Admin Console',
     tagline: 'Verify. Buy. Pay. Track.',
-    version: '1.0.0',
+    version: '1.2.0-pin',
+    features: ['PAYSTACK_DISBURSEMENT', 'PIN_BIOMETRIC_AUTH'],
     timestamp: new Date().toISOString(),
   });
 });
