@@ -21,6 +21,7 @@ import 'build_for_me_screen.dart';
 import 'support_tickets_screen.dart';
 import 'site_reels_screen.dart';
 import 'create_reel_screen.dart';
+import 'developer_public_profile_screen.dart';
 
 class DeveloperHomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -213,6 +214,28 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
             tooltip: 'Buyer Inquiries & Messages',
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const InboxScreen()));
+            },
+          ),
+          IconButton(
+            tooltip: 'View Public Instagram Profile',
+            icon: const Icon(Icons.photo_camera_front_rounded, color: Color(0xFF059669), size: 22),
+            onPressed: () {
+              final dev = _stats?['developer'] as Map<String, dynamic>?;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DeveloperPublicProfileScreen(
+                    developer: dev ?? {
+                      'id': user?.id,
+                      'userId': user?.id,
+                      'companyName': user?.developerCompanyName ?? '${user?.firstName} Developments',
+                      'logoUrl': user?.avatarUrl,
+                      'bio': dev?['about'] ?? dev?['bio'] ?? '',
+                      'isVerified': isVerified,
+                    },
+                  ),
+                ),
+              );
             },
           ),
           IconButton(
