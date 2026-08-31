@@ -14,8 +14,10 @@ router.post('/view/:id', ReelsController.recordView);
 router.post('/like/:id', requireAuth, ReelsController.toggleLike);
 router.post('/developers/:id/follow', requireAuth, ReelsController.toggleFollow);
 
-// Developer Post Publishing & Deletion
+// Developer Post Publishing, Update & Deletion
 router.post('/', requireAuth, ReelsController.createPost);
+router.patch('/:id', requireAuth, ReelsController.updatePost);
+router.put('/:id', requireAuth, ReelsController.updatePost);
 router.delete('/:id', requireAuth, ReelsController.deletePost);
 
 export const reelsRoutes = router;

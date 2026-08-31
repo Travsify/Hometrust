@@ -189,4 +189,39 @@ export class ReelsController {
       sendError(res, error.message, 400);
     }
   }
+
+  /**
+   * Update Reel
+   */
+  static async updatePost(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+
+      const developer = await prisma.developer.findUnique({
+        where: { userId: req.user.id },
+      });
+
+      if (!developer) {
+        sendError(res, 'Developer account not found', 403);
+        return;
+      }
+
+      const id = req.params.id as string;
+      const { caption, tagTitle, tagPrice, projectId } = req.body;
+
+      const updated = await ReelsService.updatePost(id, developer.id, {
+        caption,
+        tagTitle,
+        tagPrice,
+        projectId,
+      });
+
+      sendSuccess(res, updated, 'Reel updated successfully');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
 }

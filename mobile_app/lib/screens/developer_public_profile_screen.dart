@@ -272,6 +272,258 @@ class _DeveloperPublicProfileScreenState extends State<DeveloperPublicProfileScr
     );
   }
 
+  void _showPostActionsSheet(dynamic post) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final user = auth.user;
+    final dev = _fullProfile.isNotEmpty ? _fullProfile : widget.developer;
+    final devId = dev['id'] ?? widget.developer['id'];
+    final devUserId = dev['userId'] ?? widget.developer['userId'];
+    final isOwner = user != null && (user.id == devId || user.id == devUserId || (user.developerCompanyName != null && user.developerCompanyName == dev['companyName']));
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              (post['tagTitle'] ?? 'Upload Details').toString(),
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.play_circle_outline_rounded, color: Color(0xFF059669)),
+              title: const Text('View Fullscreen', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SiteReelsScreen(initialPostId: post['id'])));
+              },
+            ),
+            if (isOwner) ...[
+              ListTile(
+                leading: const Icon(Icons.edit_note_rounded, color: Color(0xFF0284C7)),
+                title: const Text('Edit Details & Price Tag', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                subtitle: const Text('Change caption, title, or tagged price', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showEditPostModal(post);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
+                title: const Text('Delete Upload', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFFDC2626))),
+                subtitle: const Text('Permanently remove this photo/video from your page', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _confirmDeletePost(post);
+                },
+              ),
+            ],
+            ListTile(
+              leading: const Icon(Icons.share_outlined, color: Color(0xFF475569)),
+              title: const Text('Share Link', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Clipboard.setData(ClipboardData(text: 'https://hometrustng.com/reels/${post['id']}'));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('🔗 Link copied to clipboard!'), backgroundColor: Color(0xFF059669)),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditPostModal(dynamic post) {
+    final captionCtrl = TextEditingController(text: post['caption'] ?? '');
+    final titleCtrl = TextEditingController(text: post['tagTitle'] ?? '');
+    final priceCtrl = TextEditingController(text: post['tagPrice'] ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 24,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Edit Upload Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                  IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                ],
+              ),
+              const Text('Update the description, project unit label, or price for this upload.', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+              const SizedBox(height: 16),
+              const Text('Title / Tag (e.g. Unit A Structural Slab)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+              const SizedBox(height: 5),
+              TextField(
+                controller: titleCtrl,
+                decoration: InputDecoration(
+                  hintText: 'e.g. 3-Bedroom Penthouse Tour',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Tagged Price (Optional)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+              const SizedBox(height: 5),
+              TextField(
+                controller: priceCtrl,
+                decoration: InputDecoration(
+                  hintText: 'e.g. ₦85,000,000',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Caption / Description', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+              const SizedBox(height: 5),
+              TextField(
+                controller: captionCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Describe this site milestone or property feature...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.all(14),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      await ApiClient.patch('/reels/${post['id']}', {
+                        'tagTitle': titleCtrl.text.trim(),
+                        'tagPrice': priceCtrl.text.trim(),
+                        'caption': captionCtrl.text.trim(),
+                      });
+                      if (context.mounted) {
+                        Navigator.pop(ctx);
+                        _loadProfile();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('✅ Upload details updated!'),
+                            backgroundColor: Color(0xFF059669),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(e.toString().replaceAll('Exception: ', '')),
+                            backgroundColor: const Color(0xFFDC2626),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F172A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeletePost(dynamic post) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_forever_rounded, color: Color(0xFFDC2626)),
+            SizedBox(width: 8),
+            Text('Delete Upload?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete "${post['tagTitle'] ?? 'this upload'}"? It will be removed from your Homegram page and the discovery feed.',
+          style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w700)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ApiClient.delete('/reels/${post['id']}');
+                if (mounted) {
+                  _loadProfile();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('🗑️ Upload deleted successfully'),
+                      backgroundColor: Color(0xFF059669),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(e.toString().replaceAll('Exception: ', '')),
+                      backgroundColor: const Color(0xFFDC2626),
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final dev = _fullProfile.isNotEmpty ? _fullProfile : widget.developer;
@@ -590,8 +842,17 @@ class _DeveloperPublicProfileScreenState extends State<DeveloperPublicProfileScr
         body: TabBarView(
           controller: _tabController,
           children: [
-            _PostsGridTab(posts: _posts, certifications: _certifications),
-            _VideosTab(posts: _posts.where((p) => p['mediaType'] == 'VIDEO').toList()),
+            _PostsGridTab(
+              posts: _posts,
+              certifications: _certifications,
+              isOwner: isOwner,
+              onPostTap: _showPostActionsSheet,
+            ),
+            _VideosTab(
+              posts: _posts.where((p) => p['mediaType'] == 'VIDEO').toList(),
+              isOwner: isOwner,
+              onPostTap: _showPostActionsSheet,
+            ),
             _ProjectsTab(projects: _projects),
             _TestimonialsTab(testimonials: _testimonials),
           ],
@@ -615,7 +876,15 @@ class _DeveloperPublicProfileScreenState extends State<DeveloperPublicProfileScr
 class _PostsGridTab extends StatelessWidget {
   final List<dynamic> posts;
   final List<dynamic> certifications;
-  const _PostsGridTab({required this.posts, required this.certifications});
+  final bool isOwner;
+  final Function(dynamic)? onPostTap;
+
+  const _PostsGridTab({
+    required this.posts,
+    required this.certifications,
+    this.isOwner = false,
+    this.onPostTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -664,12 +933,32 @@ class _PostsGridTab extends StatelessWidget {
             final thumb = (post['thumbnailUrl'] ?? post['mediaUrl'] ?? '').toString();
             final isVideo = post['mediaType'] == 'VIDEO';
             return GestureDetector(
-              onTap: () => Navigator.push(ctx, MaterialPageRoute(builder: (_) => SiteReelsScreen(initialPostId: post['id']))),
+              onTap: () {
+                if (isOwner && onPostTap != null) {
+                  onPostTap!(post);
+                } else {
+                  Navigator.push(ctx, MaterialPageRoute(builder: (_) => SiteReelsScreen(initialPostId: post['id'])));
+                }
+              },
+              onLongPress: () => onPostTap?.call(post),
               child: Stack(fit: StackFit.expand, children: [
                 thumb.isNotEmpty
                     ? Image.network(ImageHelper.resolveUrl(thumb) ?? thumb, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1E293B)))
                     : Container(color: const Color(0xFF1E293B), child: const Center(child: Icon(Icons.image_rounded, color: Colors.white24, size: 28))),
                 if (isVideo) const Positioned(top: 6, right: 6, child: Icon(Icons.play_circle_filled_rounded, color: Colors.white, size: 20)),
+                if (isOwner)
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Icon(Icons.more_horiz_rounded, color: Colors.white, size: 14),
+                    ),
+                  ),
               ]),
             );
           },
@@ -684,7 +973,14 @@ class _PostsGridTab extends StatelessWidget {
 // ── Videos Tab ────────────────────────────────────────────────────────────────
 class _VideosTab extends StatelessWidget {
   final List<dynamic> posts;
-  const _VideosTab({required this.posts});
+  final bool isOwner;
+  final Function(dynamic)? onPostTap;
+
+  const _VideosTab({
+    required this.posts,
+    this.isOwner = false,
+    this.onPostTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -699,14 +995,26 @@ class _VideosTab extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: posts.length,
-      itemBuilder: (ctx, i) => _VideoCard(post: posts[i]),
+      itemBuilder: (ctx, i) => _VideoCard(
+        post: posts[i],
+        isOwner: isOwner,
+        onPostTap: onPostTap,
+      ),
     );
   }
 }
 
 class _VideoCard extends StatefulWidget {
   final Map<String, dynamic> post;
-  const _VideoCard({required this.post});
+  final bool isOwner;
+  final Function(dynamic)? onPostTap;
+
+  const _VideoCard({
+    required this.post,
+    this.isOwner = false,
+    this.onPostTap,
+  });
+
   @override
   State<_VideoCard> createState() => _VideoCardState();
 }
@@ -756,7 +1064,18 @@ class _VideoCardState extends State<_VideoCard> {
         Padding(
           padding: const EdgeInsets.all(12),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF0F172A))),
+            Row(
+              children: [
+                Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF0F172A)))),
+                if (widget.isOwner)
+                  IconButton(
+                    icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF64748B), size: 20),
+                    onPressed: () => widget.onPostTap?.call(post),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+              ],
+            ),
             if (caption.isNotEmpty) ...[const SizedBox(height: 4), Text(caption, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.3), maxLines: 2, overflow: TextOverflow.ellipsis)],
             if (price.isNotEmpty) ...[const SizedBox(height: 6), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: const Color(0xFFECFDF5), borderRadius: BorderRadius.circular(6)), child: Text(price, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF059669))))],
             if (createdAt.isNotEmpty) ...[const SizedBox(height: 4), Text(_fmtDate(createdAt), style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)))],

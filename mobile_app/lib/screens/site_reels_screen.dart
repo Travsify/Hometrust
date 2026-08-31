@@ -3,6 +3,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/image_helper.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import 'chat_screen.dart';
 
 class SiteReelsScreen extends StatefulWidget {
@@ -268,6 +270,258 @@ class _SiteReelsScreenState extends State<SiteReelsScreen> {
     );
   }
 
+  void _showReelOptionsSheet(Map<String, dynamic> post) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final user = auth.user;
+    final dev = post['developer'] as Map<String, dynamic>? ?? {};
+    final isOwner = user != null && (
+      user.id == post['developerId'] ||
+      user.id == dev['id'] ||
+      user.id == dev['userId'] ||
+      (user.developerCompanyName != null && user.developerCompanyName == dev['companyName'])
+    );
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              (post['tagTitle'] ?? 'Reel Options').toString(),
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(height: 12),
+            if (isOwner) ...[
+              ListTile(
+                leading: const Icon(Icons.edit_note_rounded, color: Color(0xFF0284C7)),
+                title: const Text('Edit Reel Details & Price Tag', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                subtitle: const Text('Change caption, title, or tagged price', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showEditReelModal(post);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
+                title: const Text('Delete Reel', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFFDC2626))),
+                subtitle: const Text('Permanently remove this video from your page and discover feed', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _confirmDeleteReel(post);
+                },
+              ),
+            ],
+            ListTile(
+              leading: const Icon(Icons.share_outlined, color: Color(0xFF475569)),
+              title: const Text('Share Reel Link', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _sharePost(post);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditReelModal(Map<String, dynamic> post) {
+    final captionCtrl = TextEditingController(text: post['caption'] ?? '');
+    final titleCtrl = TextEditingController(text: post['tagTitle'] ?? '');
+    final priceCtrl = TextEditingController(text: post['tagPrice'] ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 24,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Edit Reel Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                  IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                ],
+              ),
+              const Text('Update the description, project unit label, or price for this reel.', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+              const SizedBox(height: 16),
+              const Text('Title / Tag (e.g. Unit A Structural Slab)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+              const SizedBox(height: 5),
+              TextField(
+                controller: titleCtrl,
+                decoration: InputDecoration(
+                  hintText: 'e.g. 3-Bedroom Penthouse Tour',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Tagged Price (Optional)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+              const SizedBox(height: 5),
+              TextField(
+                controller: priceCtrl,
+                decoration: InputDecoration(
+                  hintText: 'e.g. ₦85,000,000',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Caption / Description', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+              const SizedBox(height: 5),
+              TextField(
+                controller: captionCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Describe this site milestone or property feature...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.all(14),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      await ApiClient.patch('/reels/${post['id']}', {
+                        'tagTitle': titleCtrl.text.trim(),
+                        'tagPrice': priceCtrl.text.trim(),
+                        'caption': captionCtrl.text.trim(),
+                      });
+                      if (context.mounted) {
+                        Navigator.pop(ctx);
+                        setState(() {
+                          post['tagTitle'] = titleCtrl.text.trim();
+                          post['tagPrice'] = priceCtrl.text.trim();
+                          post['caption'] = captionCtrl.text.trim();
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('✅ Reel updated successfully!'),
+                            backgroundColor: Color(0xFF059669),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(e.toString().replaceAll('Exception: ', '')),
+                            backgroundColor: const Color(0xFFDC2626),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F172A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteReel(Map<String, dynamic> post) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_forever_rounded, color: Color(0xFFDC2626)),
+            SizedBox(width: 8),
+            Text('Delete Reel?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete "${post['tagTitle'] ?? 'this reel'}"? It will be removed from your page and the discover feed.',
+          style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w700)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ApiClient.delete('/reels/${post['id']}');
+                if (mounted) {
+                  setState(() {
+                    _posts.removeWhere((p) => p['id'] == post['id']);
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('🗑️ Reel deleted successfully'),
+                      backgroundColor: Color(0xFF059669),
+                    ),
+                  );
+                  if (_posts.isEmpty) {
+                    Navigator.pop(context);
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(e.toString().replaceAll('Exception: ', '')),
+                      backgroundColor: const Color(0xFFDC2626),
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -338,6 +592,7 @@ class _SiteReelsScreenState extends State<SiteReelsScreen> {
                   onShare: () => _sharePost(post),
                   onChat: () => _chatDeveloper(post),
                   onOpenProject: () => _openProjectOrProperty(post),
+                  onMoreOptions: () => _showReelOptionsSheet(post),
                 );
               },
             ),
@@ -445,6 +700,7 @@ class _ReelItemView extends StatefulWidget {
   final VoidCallback onShare;
   final VoidCallback onChat;
   final VoidCallback onOpenProject;
+  final VoidCallback? onMoreOptions;
 
   const _ReelItemView({
     required this.post,
@@ -455,6 +711,7 @@ class _ReelItemView extends StatefulWidget {
     required this.onShare,
     required this.onChat,
     required this.onOpenProject,
+    this.onMoreOptions,
   });
 
   @override
@@ -752,6 +1009,19 @@ class _ReelItemViewState extends State<_ReelItemView> {
                     Icon(Icons.share_rounded, color: Colors.white, size: 28),
                     SizedBox(height: 4),
                     Text('Share', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // More Options (Edit / Delete / Report)
+              InkWell(
+                onTap: widget.onMoreOptions,
+                child: const Column(
+                  children: [
+                    Icon(Icons.more_horiz_rounded, color: Colors.white, size: 28),
+                    SizedBox(height: 4),
+                    Text('More', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
                   ],
                 ),
               ),

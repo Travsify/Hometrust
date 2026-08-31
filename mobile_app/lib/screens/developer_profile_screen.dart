@@ -714,87 +714,6 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // ─── INSTAGRAM-STYLE PUBLIC PROFILE BANNER ───
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFFCB045)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFD1D1D).withValues(alpha: 0.25),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.photo_camera_front_rounded, color: Colors.white, size: 26),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Developer Homegram',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'See how buyers view your bio, video reels, site photos & testimonials.',
-                          style: TextStyle(color: Colors.white, fontSize: 11, height: 1.3),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => DeveloperPublicProfileScreen(
-                            developer: dev ?? {
-                              'id': user?.id,
-                              'userId': user?.id,
-                              'companyName': companyName,
-                              'logoUrl': logoUrl,
-                              'avatarUrl': logoUrl,
-                              'bio': about,
-                              'isVerified': isVerified,
-                              'cacNumber': cacNumber,
-                              'officeAddress': officeAddress,
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF0F172A),
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: const Text('Preview', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
-                  ),
-                ],
-              ),
-            ),
-
             // 1. CORPORATE HEADER CARD
             Container(
               padding: const EdgeInsets.all(20),
@@ -982,7 +901,7 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                             );
                           },
                           icon: const Icon(Icons.remove_red_eye_rounded, size: 16),
-                          label: const Text('View Page 📸', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                          label: const Text('View Page', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0F172A),
                             foregroundColor: Colors.white,

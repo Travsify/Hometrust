@@ -402,4 +402,40 @@ export class ReelsService {
       where: { id: postId },
     });
   }
+
+  /**
+   * Update Reel Details (caption, tagTitle, tagPrice, projectId)
+   */
+  static async updatePost(
+    postId: string,
+    developerId: string,
+    data: {
+      caption?: string;
+      tagTitle?: string;
+      tagPrice?: string;
+      projectId?: string;
+    }
+  ) {
+    const post = await prisma.developerPost.findUnique({
+      where: { id: postId },
+    });
+
+    if (!post || post.developerId !== developerId) {
+      throw new Error('Not authorized to edit this post');
+    }
+
+    return prisma.developerPost.update({
+      where: { id: postId },
+      data: {
+        ...(data.caption !== undefined && { caption: data.caption }),
+        ...(data.tagTitle !== undefined && { tagTitle: data.tagTitle }),
+        ...(data.tagPrice !== undefined && { tagPrice: data.tagPrice }),
+        ...(data.projectId !== undefined && { projectId: data.projectId }),
+      },
+      include: {
+        project: true,
+        property: true,
+      },
+    });
+  }
 }
