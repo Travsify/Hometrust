@@ -71,9 +71,13 @@ export class ReelsController {
     try {
       const tab = (req.query.tab as 'following' | 'discover') || 'discover';
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+      const developerId = req.query.developerId as string | undefined;
+      const includeExpired = req.query.includeExpired === 'true';
 
       const posts = await ReelsService.getFeed({
         userId: req.user?.id,
+        developerId,
+        includeExpired,
         tab,
         limit,
       });

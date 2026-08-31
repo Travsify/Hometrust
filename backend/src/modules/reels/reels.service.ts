@@ -107,28 +107,40 @@ export class ReelsService {
    */
   static async getFeed(params: {
     userId?: string;
+    developerId?: string;
+    includeExpired?: boolean;
     tab?: 'following' | 'discover';
     limit?: number;
     cursor?: string;
   }) {
-    const { userId, tab = 'discover', limit = 20 } = params;
+    const { userId, developerId, includeExpired = false, tab = 'discover', limit = 20 } = params;
 
     let whereClause: any = {};
 
-    if (tab === 'following' && userId) {
-      const followedDevs = await prisma.developerFollower.findMany({
-        where: { userId },
-        select: { developerId: true },
-      });
-      const followedIds = followedDevs.map(f => f.developerId);
-
-      if (followedIds.length > 0) {
-        whereClause = { developerId: { in: followedIds } };
+    if (developerId) {
+      // Developer profile view: return all reels belonging to this developer
+      whereClause.developerId = developerId;
+    } else {
+      // Public Reels Feed: filter to 24-hour window unless includeExpired is explicitly true
+      if (!includeExpired) {
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        whereClause.createdAt = { gte: twentyFourHoursAgo };
       }
-      // If user follows no developers yet, fall through to return recent posts
+
+      if (tab === 'following' && userId) {
+        const followedDevs = await prisma.developerFollower.findMany({
+          where: { userId },
+          select: { developerId: true },
+        });
+        const followedIds = followedDevs.map(f => f.developerId);
+
+        if (followedIds.length > 0) {
+          whereClause.developerId = { in: followedIds };
+        }
+      }
     }
 
-    const posts = await prisma.developerPost.findMany({
+    let posts = await prisma.developerPost.findMany({
       where: whereClause,
       take: limit,
       orderBy: { createdAt: 'desc' },

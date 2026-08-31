@@ -199,177 +199,181 @@ class _DevelopersScreenState extends State<DevelopersScreen> {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFFE2E8F0)),
           boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Company Header
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text(
-                      companyName.isNotEmpty ? companyName[0].toUpperCase() : 'D',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        companyName,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF0F172A),
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.verified_rounded, size: 12, color: Color(0xFF059669)),
-                                const SizedBox(width: 4),
-                                Text(
-                                  cacNumber,
-                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '$activeProjects Active Projects',
-                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-            const Divider(height: 1, color: Color(0xFFF1F5F9)),
-            const SizedBox(height: 12),
-
-            // Registered Office Address
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF64748B)),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    address,
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF475569), height: 1.35),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // IN-APP ACTION BUTTONS (CALL IN-APP & CHAT IN-APP)
-            Row(
-              children: [
-                // 1. Chat In-App
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      final auth = Provider.of<AuthProvider>(context, listen: false);
-                      if (!auth.isAuthenticated) {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-                        return;
-                      }
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChatScreen(
-                            developerId: dev['id'],
-                            recipientId: dev['userId'],
-                            recipientName: companyName,
-                            recipientRole: 'Verified Developer Representative',
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: AppColors.primary),
-                    label: const Text(
-                      'Chat In-App',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.primary),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      side: const BorderSide(color: AppColors.primary, width: 1.2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // 2. Call In-App (Encrypted Relay - No Phone Numbers Displayed)
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      final auth = Provider.of<AuthProvider>(context, listen: false);
-                      if (!auth.isAuthenticated) {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-                        return;
-                      }
-                      InAppCallModal.show(
-                        context,
-                        entityName: companyName,
-                        entityRole: 'Verified Developer Representative',
-                        developerId: dev['id'],
-                        recipientId: dev['userId'],
-                      );
-                    },
-                    icon: const Icon(Icons.phone_in_talk_rounded, size: 16, color: Colors.white),
-                    label: const Text(
-                      'Call In-App',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF059669),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-              ],
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Company Header
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        companyName.isNotEmpty ? companyName[0].toUpperCase() : 'D',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          companyName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF0F172A),
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.verified_rounded, size: 12, color: Color(0xFF059669)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    cacNumber,
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '$activeProjects Active Projects',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 14),
+              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              const SizedBox(height: 12),
+
+              // Address
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF64748B)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      address,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF475569), height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // View Profile hint
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.person_rounded, size: 13, color: Color(0xFF94A3B8)),
+                  SizedBox(width: 4),
+                  Text('Tap card to view full developer profile', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontStyle: FontStyle.italic)),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // IN-APP ACTION BUTTONS
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        final auth = Provider.of<AuthProvider>(context, listen: false);
+                        if (!auth.isAuthenticated) {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                          return;
+                        }
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatScreen(
+                              developerId: dev['id'],
+                              recipientId: dev['userId'],
+                              recipientName: companyName,
+                              recipientRole: 'Verified Developer Representative',
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: AppColors.primary),
+                      label: const Text('Chat In-App', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.primary)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        side: const BorderSide(color: AppColors.primary, width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        final auth = Provider.of<AuthProvider>(context, listen: false);
+                        if (!auth.isAuthenticated) {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                          return;
+                        }
+                        InAppCallModal.show(
+                          context,
+                          entityName: companyName,
+                          entityRole: 'Verified Developer Representative',
+                          developerId: dev['id'],
+                          recipientId: dev['userId'],
+                        );
+                      },
+                      icon: const Icon(Icons.phone_in_talk_rounded, size: 16, color: Colors.white),
+                      label: const Text('Call In-App', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF059669),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
-    ); // GestureDetector
+    );
   }
 }
