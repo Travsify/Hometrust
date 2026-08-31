@@ -17,7 +17,7 @@ export interface CreateVerificationRequestParams {
 
 export class VerificationsService {
   static async create(params: CreateVerificationRequestParams) {
-    const verificationCode = `EV-VER-${Math.floor(100000 + Math.random() * 900000)}`;
+    const verificationCode = `HT-VER-${Math.floor(100000 + Math.random() * 900000)}`;
     const feeAmount = params.urgency === 'EXPRESS' ? 45000 : 25000;
 
     const request = await prisma.verificationRequest.create({

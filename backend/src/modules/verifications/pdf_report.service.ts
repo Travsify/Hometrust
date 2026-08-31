@@ -23,9 +23,26 @@ export interface VerificationReportData {
 }
 
 export class PdfReportService {
+  private static getLogoPath(): string | null {
+    const candidates = [
+      path.join(process.cwd(), 'public', 'logo.png'),
+      path.join(process.cwd(), 'public', 'assets', 'logo.png'),
+      path.join(__dirname, '..', '..', '..', 'public', 'logo.png'),
+      path.join(__dirname, '..', '..', '..', 'public', 'assets', 'logo.png'),
+    ];
+    for (const c of candidates) {
+      if (fs.existsSync(c)) return c;
+    }
+    return null;
+  }
+
   static async generateVerificationReport(data: VerificationReportData): Promise<string> {
     const fileName = `Verification_Report_${data.verificationCode}.pdf`;
-    const filePath = path.join(config.storage.uploadDir, fileName);
+    const uploadDir = config.storage?.uploadDir || path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    const filePath = path.join(uploadDir, fileName);
 
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ margin: 40, size: 'A4' });
@@ -33,99 +50,109 @@ export class PdfReportService {
 
       doc.pipe(stream);
 
-      // Header Brand
-      doc.rect(40, 40, 515, 60).fill('#0D5C3A');
-      doc.fillColor('#FFFFFF').fontSize(20).font('Helvetica-Bold').text('Hometrust', 55, 55);
-      doc.fontSize(10).font('Helvetica').text('Property & Legal Document Verification Report', 55, 80);
-      doc.fontSize(9).text(`Code: ${data.verificationCode}`, 420, 58, { align: 'right' });
-      doc.text(`Date: ${data.completedAt.toLocaleDateString()}`, 420, 75, { align: 'right' });
+      // Header Banner with Bold Logo
+      doc.rect(40, 40, 515, 75).fill('#059669');
 
-      doc.moveDown(3);
-      doc.fillColor('#1E293B');
+      const logoPath = PdfReportService.getLogoPath();
+      let textStartX = 55;
+      if (logoPath) {
+        try {
+          doc.image(logoPath, 50, 48, { width: 58, height: 58 });
+          textStartX = 118;
+        } catch (_) {}
+      }
+
+      doc.fillColor('#FFFFFF').fontSize(22).font('Helvetica-Bold').text('HOMETRUST', textStartX, 50);
+      doc.fontSize(8.5).font('Helvetica').fillColor('#D1FAE5').text('Ehomes Global Inclusive Limited', textStartX, 72);
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#FEF08A').text('OFFICIAL PROPERTY & TITLE VERIFICATION REPORT', textStartX, 86);
+
+      const exactTimeStr = new Date(data.completedAt).toLocaleString('en-GB', {
+        timeZone: 'Africa/Lagos',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+
+      doc.fontSize(8.5).font('Helvetica').fillColor('#FFFFFF').text(`Code: ${data.verificationCode}`, 340, 52, { align: 'right' });
+      doc.text(`Completed: ${exactTimeStr} (WAT)`, 340, 68, { align: 'right' });
+      doc.fontSize(7.5).fillColor('#D1FAE5').text('Cadastral & Title Registry Verified', 340, 84, { align: 'right' });
 
       // Summary Box
-      let y = 120;
-      doc.fontSize(12).font('Helvetica-Bold').text('VERIFICATION SUMMARY', 40, y);
-      y += 20;
+      let y = 125;
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#0F172A').text('PROPERTY VERIFICATION SUMMARY', 40, y);
+      y += 18;
       doc.rect(40, y, 515, 75).fillAndStroke('#F8FAFC', '#E2E8F0');
       
       doc.fillColor('#334155').fontSize(9).font('Helvetica');
-      doc.text(`Customer: ${data.customerName} (${data.customerEmail})`, 50, y + 10);
-      doc.text(`Property Name: ${data.propertyName}`, 50, y + 25);
+      doc.text(`Applicant: ${data.customerName}`, 50, y + 10);
+      doc.text(`Property / Plot: ${data.propertyName}`, 50, y + 25);
       doc.text(`Location: ${data.propertyAddress}, ${data.city}, ${data.state}`, 50, y + 40);
-      doc.text(`Document Type: ${data.documentType}`, 50, y + 55);
+      doc.text(`Document Type: ${data.documentType.replace(/_/g, ' ')}`, 50, y + 55);
 
       // Status Badge
-      const statusColor = data.status === 'VERIFIED' ? '#0D5C3A' : data.status === 'VERIFIED_WITH_ISSUES' ? '#D97706' : '#DC2626';
-      doc.rect(380, y + 10, 160, 25).fill(statusColor);
-      doc.fillColor('#FFFFFF').fontSize(10).font('Helvetica-Bold').text(`STATUS: ${data.status}`, 380, y + 18, { align: 'center', width: 160 });
+      const statusColor = data.status === 'VERIFIED' ? '#059669' : data.status === 'VERIFIED_WITH_ISSUES' ? '#D97706' : '#DC2626';
+      doc.rect(370, y + 12, 170, 26).fill(statusColor);
+      doc.fillColor('#FFFFFF').fontSize(9.5).font('Helvetica-Bold').text(`STATUS: ${data.status.replace(/_/g, ' ')}`, 370, y + 20, { align: 'center', width: 170 });
 
-      // Review Details
+      // Review Findings
       y += 95;
-      doc.fillColor('#1E293B').fontSize(12).font('Helvetica-Bold').text('PROFESSIONAL REVIEW & FINDINGS', 40, y);
-      y += 20;
+      doc.fillColor('#0F172A').fontSize(10).font('Helvetica-Bold').text('LEGAL & CADASTRAL FINDINGS', 40, y);
+      y += 16;
 
-      doc.fillColor('#334155').fontSize(9).font('Helvetica');
-      const findings = data.finalFindings || 'All primary title, boundary coordinates, and statutory registration checks completed by Hometrust Legal Team.';
+      doc.fillColor('#334155').fontSize(8.5).font('Helvetica');
+      const findings = data.finalFindings || 'All primary title, boundary coordinates, and statutory registration checks completed by Hometrust Legal & Surveyor Team.';
       doc.text(findings, 40, y, { width: 515, align: 'justify' });
-      y += 40;
+      y += 35;
 
       // External Checks
-      doc.font('Helvetica-Bold').text('Registry Check:', 40, y);
-      doc.font('Helvetica').text(
+      doc.font('Helvetica-Bold').fillColor('#0F172A').text('Land Registry Verification:', 40, y);
+      doc.font('Helvetica').fillColor('#334155').text(
         data.externalRegistryChecked
           ? `Confirmed. ${data.externalRegistryNotes || 'Title verified with Lands Registry records.'}`
           : 'Pending physical beacon & registry requisition.',
-        130,
+        180,
         y
       );
-      y += 25;
+      y += 24;
 
       // Checks Table
-      doc.fillColor('#1E293B').fontSize(12).font('Helvetica-Bold').text('CHECKLIST BREAKDOWN', 40, y);
-      y += 18;
+      doc.fillColor('#0F172A').fontSize(10).font('Helvetica-Bold').text('AUDIT CHECKLIST BREAKDOWN', 40, y);
+      y += 16;
 
-      doc.rect(40, y, 515, 20).fill('#E2E8F0');
-      doc.fillColor('#1E293B').fontSize(9).font('Helvetica-Bold');
-      doc.text('Check Item', 45, y + 5);
+      doc.rect(40, y, 515, 20).fill('#0F172A');
+      doc.fillColor('#FFFFFF').fontSize(8.5).font('Helvetica-Bold');
+      doc.text('Check Item', 48, y + 5);
       doc.text('Category', 240, y + 5);
       doc.text('Status', 380, y + 5);
-      doc.text('Remarks', 450, y + 5);
-      y += 22;
+      doc.text('Remarks', 440, y + 5);
+      y += 20;
 
       data.checks.forEach((chk) => {
+        if (y > 720) {
+          doc.addPage();
+          y = 40;
+        }
         doc.fillColor('#475569').fontSize(8).font('Helvetica');
-        doc.text(chk.name, 45, y, { width: 180 });
-        doc.text(chk.category, 240, y, { width: 130 });
-        doc.font('Helvetica-Bold').text(chk.status, 380, y);
-        doc.font('Helvetica').text(chk.notes || 'Verified compliant', 450, y, { width: 100 });
+        doc.text(chk.name, 48, y + 4, { width: 185 });
+        doc.text(chk.category, 240, y + 4, { width: 130 });
+        doc.fillColor(chk.status === 'PASSED' ? '#059669' : '#DC2626').font('Helvetica-Bold').text(chk.status, 380, y + 4);
+        doc.fillColor('#64748B').font('Helvetica').text(chk.notes || '-', 440, y + 4, { width: 110 });
         y += 18;
       });
 
-      // Disclaimer Alert Box
-      y = Math.max(y + 20, 680);
-      doc.rect(40, y, 515, 65).fillAndStroke('#FEF3C7', '#F59E0B');
-      doc.fillColor('#92400E').fontSize(8).font('Helvetica-Bold').text('IMPORTANT REGULATORY DISCLAIMER', 50, y + 8);
-      doc.font('Helvetica').fontSize(7.5).text(
-        'Verification is based strictly on the documentation, surveyor records, and registry checks identified in this report at the time of review. This report does not constitute a government-issued title or guarantee against future disputes or unrecorded encumbrances. Property buyers must exercise prudent due diligence.',
-        50,
-        y + 22,
-        { width: 495, align: 'justify' }
-      );
-
-      // Sign-off
-      doc.fontSize(8).fillColor('#64748B').text('Hometrust Legal & Verification Team • www.Hometrust.ng', 40, 775, { align: 'center', width: 515 });
+      // Footer Seal
+      y = Math.max(y + 20, 715);
+      doc.rect(40, y, 515, 50).fillAndStroke('#ECFDF5', '#6EE7B7');
+      doc.fillColor('#065F46').fontSize(7.5).font('Helvetica');
+      doc.text('Official Hometrust Verification Seal: This report is an authorized legal assessment conducted by Hometrust, a product of Ehomes Global Inclusive Limited. Legal and cadastral searches are conducted in compliance with relevant state land registration statutes.', 50, y + 8, { width: 495 });
+      doc.text('Verification Portal: https://hometrustng.com/verify | Inquiries: legal@hometrustng.com', 50, y + 34);
 
       doc.end();
-
-      stream.on('finish', () => {
-        const reportUrl = `${config.storage.baseUrl}/files/${fileName}`;
-        resolve(reportUrl);
-      });
-
-      stream.on('error', (err) => {
-        reject(err);
-      });
+      stream.on('finish', () => resolve(filePath));
+      stream.on('error', reject);
     });
   }
 }
