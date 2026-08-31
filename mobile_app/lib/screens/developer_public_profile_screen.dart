@@ -6,9 +6,11 @@ import '../core/network/api_client.dart';
 import '../core/utils/image_helper.dart';
 import '../core/constants/colors.dart';
 import '../providers/auth_provider.dart';
+import 'package:flutter/services.dart';
 import 'chat_screen.dart';
 import 'login_screen.dart';
 import 'site_reels_screen.dart';
+import 'create_reel_screen.dart';
 import '../widgets/in_app_call_modal.dart';
 
 class DeveloperPublicProfileScreen extends StatefulWidget {
@@ -153,6 +155,123 @@ class _DeveloperPublicProfileScreenState extends State<DeveloperPublicProfileScr
     }
   }
 
+  void _showEditBioModal(BuildContext context, Map<String, dynamic> dev) {
+    final bioCtrl = TextEditingController(text: dev['bio'] ?? dev['about'] ?? dev['description'] ?? '');
+    final websiteCtrl = TextEditingController(text: dev['website'] ?? '');
+    final addressCtrl = TextEditingController(text: dev['officeAddress'] ?? dev['businessAddress'] ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 24,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Edit Bio & Public Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                  IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                ],
+              ),
+              const Text('This information appears on your Instagram-style public profile for buyers to see.', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+              const SizedBox(height: 16),
+              const Text('Bio / Company Introduction', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+              const SizedBox(height: 5),
+              TextField(
+                controller: bioCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Tell buyers about your projects, experience, and development mission...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.all(14),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Office Address', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+              const SizedBox(height: 5),
+              TextField(
+                controller: addressCtrl,
+                decoration: InputDecoration(
+                  hintText: 'e.g. 14 Admiralty Way, Lekki Phase 1, Lagos',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Website URL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+              const SizedBox(height: 5),
+              TextField(
+                controller: websiteCtrl,
+                decoration: InputDecoration(
+                  hintText: 'https://yourcompany.ng',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      await ApiClient.put('/users/profile', {
+                        'about': bioCtrl.text.trim(),
+                        'bio': bioCtrl.text.trim(),
+                        'officeAddress': addressCtrl.text.trim(),
+                        'businessAddress': addressCtrl.text.trim(),
+                        'website': websiteCtrl.text.trim(),
+                      });
+                      if (context.mounted) {
+                        Navigator.pop(ctx);
+                        _loadProfile();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('✨ Bio & profile details updated!'),
+                            backgroundColor: Color(0xFF059669),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(e.toString().replaceAll('Exception: ', '')),
+                            backgroundColor: const Color(0xFFDC2626),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F172A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final dev = _fullProfile.isNotEmpty ? _fullProfile : widget.developer;
@@ -261,51 +380,141 @@ class _DeveloperPublicProfileScreenState extends State<DeveloperPublicProfileScr
                         const SizedBox(height: 12),
 
                         // Action buttons
-                        Row(children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: _toggleFollow,
-                              child: Container(
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: _isFollowing ? Colors.white : const Color(0xFF059669),
-                                  border: Border.all(color: _isFollowing ? const Color(0xFFE2E8F0) : const Color(0xFF059669)),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    _isFollowing ? 'Following' : 'Follow',
-                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: _isFollowing ? const Color(0xFF0F172A) : Colors.white),
+                        Builder(
+                          builder: (context) {
+                            final auth = Provider.of<AuthProvider>(context);
+                            final user = auth.user;
+                            final devId = dev['id'] ?? widget.developer['id'];
+                            final devUserId = dev['userId'] ?? widget.developer['userId'];
+                            final isOwner = user != null && (user.id == devId || user.id == devUserId || (user.developerCompanyName != null && user.developerCompanyName == companyName));
+
+                            if (isOwner) {
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => _showEditBioModal(context, dev),
+                                      child: Container(
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Center(
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.edit_note_rounded, size: 16, color: Color(0xFF0F172A)),
+                                              SizedBox(width: 4),
+                                              Text('Edit Bio & Info', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Color(0xFF0F172A))),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (_) => const CreateReelScreen()),
+                                        ).then((_) => _loadProfile());
+                                      },
+                                      child: Container(
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF059669),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Center(
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.video_call_rounded, size: 16, color: Colors.white),
+                                              SizedBox(width: 4),
+                                              Text('Upload Reel', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.white)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () {
+                                      Clipboard.setData(ClipboardData(text: 'https://hometrustng.com/developers/${dev['id']}'));
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('🔗 Profile link copied to clipboard! Share with buyers on WhatsApp & Instagram.'),
+                                          backgroundColor: Color(0xFF059669),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      ),
+                                      child: const Center(child: Icon(Icons.share_rounded, size: 16, color: Color(0xFF0F172A))),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+
+                            return Row(children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: _toggleFollow,
+                                  child: Container(
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: _isFollowing ? Colors.white : const Color(0xFF059669),
+                                      border: Border.all(color: _isFollowing ? const Color(0xFFE2E8F0) : const Color(0xFF059669)),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        _isFollowing ? 'Following' : 'Follow',
+                                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: _isFollowing ? const Color(0xFF0F172A) : Colors.white),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                final auth = Provider.of<AuthProvider>(context, listen: false);
-                                if (!auth.isAuthenticated) { Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen())); return; }
-                                Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(developerId: dev['id'], recipientId: dev['userId'], recipientName: companyName, recipientRole: 'Verified Developer')));
-                              },
-                              child: Container(
-                                height: 36,
-                                decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFE2E8F0)), borderRadius: BorderRadius.circular(8)),
-                                child: const Center(child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.chat_bubble_outline_rounded, size: 14, color: Color(0xFF0F172A)), SizedBox(width: 4), Text('Chat', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF0F172A)))])),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    final auth = Provider.of<AuthProvider>(context, listen: false);
+                                    if (!auth.isAuthenticated) { Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen())); return; }
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(developerId: dev['id'], recipientId: dev['userId'], recipientName: companyName, recipientRole: 'Verified Developer')));
+                                  },
+                                  child: Container(
+                                    height: 36,
+                                    decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFE2E8F0)), borderRadius: BorderRadius.circular(8)),
+                                    child: const Center(child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.chat_bubble_outline_rounded, size: 14, color: Color(0xFF0F172A)), SizedBox(width: 4), Text('Chat', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF0F172A)))])),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () {
-                              final auth = Provider.of<AuthProvider>(context, listen: false);
-                              if (!auth.isAuthenticated) { Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen())); return; }
-                              InAppCallModal.show(context, entityName: companyName, entityRole: 'Verified Developer', developerId: dev['id'], recipientId: dev['userId']);
-                            },
-                            child: Container(width: 36, height: 36, decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(8)), child: const Center(child: Icon(Icons.phone_rounded, size: 18, color: Colors.white))),
-                          ),
-                        ]),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  final auth = Provider.of<AuthProvider>(context, listen: false);
+                                  if (!auth.isAuthenticated) { Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen())); return; }
+                                  InAppCallModal.show(context, entityName: companyName, entityRole: 'Verified Developer', developerId: dev['id'], recipientId: dev['userId']);
+                                },
+                                child: Container(width: 36, height: 36, decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(8)), child: const Center(child: Icon(Icons.phone_rounded, size: 18, color: Colors.white))),
+                              ),
+                            ]);
+                          },
+                        ),
                         const SizedBox(height: 14),
                       ],
                     ),
