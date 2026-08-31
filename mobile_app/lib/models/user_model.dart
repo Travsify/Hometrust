@@ -13,6 +13,7 @@ class UserModel {
   final String? virtualAccountName;
   final double virtualAccountBalance;
   final String? developerCompanyName;
+  final bool hasTransactionPin;
 
   UserModel({
     required this.id,
@@ -29,6 +30,7 @@ class UserModel {
     this.virtualAccountName,
     this.virtualAccountBalance = 0.0,
     this.developerCompanyName,
+    this.hasTransactionPin = false,
   });
 
   String get fullName => '$firstName $lastName';
@@ -71,6 +73,7 @@ class UserModel {
       virtualAccountName: accName,
       virtualAccountBalance: balance,
       developerCompanyName: developer?['companyName'],
+      hasTransactionPin: json['hasTransactionPin'] == true,
     );
   }
 
@@ -90,6 +93,7 @@ class UserModel {
       'virtualAccountName': virtualAccountName,
       'virtualAccountBalance': virtualAccountBalance,
       'developerCompanyName': developerCompanyName,
+      'hasTransactionPin': hasTransactionPin,
     };
   }
 }

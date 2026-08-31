@@ -16,6 +16,7 @@ import 'wallet_screen.dart';
 import 'inbox_screen.dart';
 import 'build_for_me_screen.dart';
 import 'support_tickets_screen.dart';
+import '../widgets/transaction_security_modal.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -857,6 +858,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 return;
                               }
 
+                              // ── Prompt 6-Digit Payment PIN or Biometrics Confirmation ──
+                              final authResult = await TransactionSecurityModal.show(
+                                context,
+                                title: 'Authorize Withdrawal',
+                                subtitle: 'Confirm payout of ${CurrencyFormatter.format(rawAmount)} to $accName (${selectedBankName ?? 'Bank'}).',
+                                amount: rawAmount,
+                                recipient: accName,
+                              );
+
+                              if (authResult == null || !authResult.authorized) {
+                                return;
+                              }
+
                               setModalState(() {
                                 isWithdrawing = true;
                                 modalError = null;
@@ -869,6 +883,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   'bankName': selectedBankName,
                                   'accountNumber': accNum,
                                   'accountName': accName,
+                                  if (authResult.pin != null) 'pin': authResult.pin,
+                                  'biometricAuth': authResult.isBiometric,
                                 });
 
                                 if (context.mounted) {
@@ -1126,6 +1142,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         context,
                         MaterialPageRoute(builder: (_) => const KycScreen()),
                       ).then((_) => _fetchAccount());
+                    },
+                  ),
+                  const Divider(height: 1, color: AppColors.cardBorder),
+                  _buildMenuItem(
+                    icon: Icons.shield_outlined,
+                    title: 'Payment PIN & Biometrics 🔒',
+                    subtitle: auth.hasTransactionPin
+                        ? '6-digit PIN & Biometrics active'
+                        : 'Set up 6-digit payment PIN to secure withdrawals',
+                    trailing: auth.hasTransactionPin
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFF10B981), width: 0.8),
+                            ),
+                            child: const Text(
+                              'ACTIVE',
+                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF059669)),
+                            ),
+                          )
+                        : Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD97706).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFD97706), width: 0.8),
+                            ),
+                            child: const Text(
+                              'SETUP',
+                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFFD97706)),
+                            ),
+                          ),
+                    onTap: () async {
+                      final result = await TransactionSecurityModal.show(
+                        context,
+                        title: auth.hasTransactionPin ? 'Verify / Change Payment PIN' : 'Create 6-Digit Payment PIN',
+                        forcePinOnly: true,
+                      );
+                      if (result != null && result.authorized && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('6-Digit Payment PIN is active & securing your account 🔒'),
+                            backgroundColor: Color(0xFF059669),
+                          ),
+                        );
+                      }
                     },
                   ),
                   const Divider(height: 1, color: AppColors.cardBorder),

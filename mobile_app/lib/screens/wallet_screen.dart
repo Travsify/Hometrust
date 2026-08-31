@@ -12,6 +12,7 @@ import '../core/network/api_client.dart';
 import '../core/utils/currency_formatter.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/persistent_bottom_nav.dart';
+import '../widgets/transaction_security_modal.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -576,6 +577,20 @@ class _WalletScreenState extends State<WalletScreen> {
                                 return;
                               }
 
+                              // ── Prompt 6-Digit Payment PIN or Biometrics Confirmation ──
+                              final authResult = await TransactionSecurityModal.show(
+                                context,
+                                title: 'Authorize Withdrawal',
+                                subtitle: 'Confirm payout of ${CurrencyFormatter.format(rawAmount)} to $accName (${_selectedBankName ?? 'Bank'}).',
+                                amount: rawAmount,
+                                recipient: accName,
+                              );
+
+                              if (authResult == null || !authResult.authorized) {
+                                // User cancelled or did not complete PIN/biometric verification
+                                return;
+                              }
+
                               setModalState(() {
                                 isWithdrawing = true;
                                 modalError = null;
@@ -588,6 +603,8 @@ class _WalletScreenState extends State<WalletScreen> {
                                   'bankName': _selectedBankName,
                                   'accountNumber': accNum,
                                   'accountName': accName,
+                                  if (authResult.pin != null) 'pin': authResult.pin,
+                                  'biometricAuth': authResult.isBiometric,
                                 });
 
                                 if (ctx.mounted) Navigator.pop(ctx);

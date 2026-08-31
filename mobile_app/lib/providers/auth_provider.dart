@@ -374,6 +374,91 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  bool get hasTransactionPin => _user?.hasTransactionPin == true;
+
+  /// Setup a 6-digit payment PIN
+  Future<bool> setupTransactionPin(String pin) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final res = await ApiClient.post('/auth/pin/setup', {'pin': pin.trim()});
+      await refreshUser();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Change 6-digit payment PIN
+  Future<bool> changeTransactionPin({
+    String? currentPin,
+    String? currentPassword,
+    required String newPin,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await ApiClient.post('/auth/pin/change', {
+        if (currentPin != null) 'currentPin': currentPin.trim(),
+        if (currentPassword != null) 'currentPassword': currentPassword,
+        'newPin': newPin.trim(),
+      });
+      await refreshUser();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Verify 6-digit payment PIN
+  Future<bool> verifyTransactionPin(String pin) async {
+    try {
+      final res = await ApiClient.post('/auth/pin/verify', {'pin': pin.trim()});
+      return res != null;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Authenticate for transactions with Device Biometrics (Fingerprint / Face ID)
+  Future<bool> authenticateTransactionWithBiometrics({String reason = 'Confirm transaction with biometrics'}) async {
+    try {
+      final bool canAuthenticateWithBiometrics = await _localAuth.canCheckBiometrics;
+      final bool canAuthenticate = canAuthenticateWithBiometrics || await _localAuth.isDeviceSupported();
+
+      if (!canAuthenticate) return false;
+
+      final bool didAuthenticate = await _localAuth.authenticate(
+        localizedReason: reason,
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+        ),
+      );
+
+      return didAuthenticate;
+    } catch (e) {
+      debugPrint('[BIOMETRIC TRANSACTION ERROR] $e');
+      return false;
+    }
+  }
+
   Future<void> refreshUser() async {
     if (_token != null) {
       try {
