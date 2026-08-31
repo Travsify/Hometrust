@@ -1236,97 +1236,21 @@ export class BankingService {
               }),
             ]);
 
-  static async requestWithdrawal(params: {
-    developerId?: string;
-    userId?: string;
-    amount: number;
-    bankCode: string;
-    bankName: string;
-    accountNumber: string;
-    accountName: string;
-  }) {
-    if (params.amount < 1000) {
-      throw new Error('Minimum withdrawal amount is ₦1,000');
-    }
+            account.balance += amount;
 
-    let account = await this.getVirtualAccount(params.userId, params.developerId);
-    if (!account && params.userId) {
-      const user = await prisma.user.findUnique({
-        where: { id: params.userId },
-        include: { developer: true, virtualAccounts: true },
-      });
-      if (user?.virtualAccounts?.[0]) {
-        account = user.virtualAccounts[0] as any;
-      } else if (user?.developer?.id) {
-        account = await prisma.virtualAccount.findFirst({
-          where: { developerId: user.developer.id },
-          include: { developer: true, user: true },
-        }) as any;
-      }
-    }
-
-    if (!account || Number(account.balance) < params.amount) {
-      throw new Error('Insufficient escrow wallet balance for withdrawal');
-    }
-
-    const fee = 50; // Standard ₦50 NIP transfer fee
-    const netAmount = Math.max(0, params.amount - fee);
-    const ref = `HT-WD-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
-    // ── Resolve user details before any mutation ──────────────────────────────
-    const targetUserId = params.userId || account.userId;
-    let targetUser: any = null;
-    if (targetUserId) {
-      targetUser = await prisma.user.findUnique({
-        where: { id: targetUserId },
-        include: { developer: true },
-      });
-    } else if (account.developerId) {
-      const dev = await prisma.developer.findUnique({
-        where: { id: account.developerId },
-        include: { user: true },
-      });
-      targetUser = dev?.user;
-    }
-
-    const recipientEmail = targetUser?.email || account.developer?.email || account.user?.email || '';
-    const recipientName = targetUser
-      ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
-      : (account.developer?.companyName || params.accountName || 'Account Holder');
-    const notifyUserId = targetUser?.id || targetUserId || account.userId;
-
-    // ── Step 1: Call the payment gateway FIRST before touching wallet ─────────
-    console.log(`[WITHDRAWAL] Initiating payout of ₦${netAmount} to ${params.accountNumber} (${params.bankCode}) ref=${ref}`);
-
-    let gatewayStatus: 'SUCCESS' | 'PROCESSING' | 'FAILED' = 'FAILED';
-    let externalRef = ref;
-    let providerLabel = 'GATEWAY';
-    let failureMsg = '';
-
-    try {
-      const payoutRes = await FlutterwaveClient.transfer({
-        accountNumber: params.accountNumber,
-        bankCode: params.bankCode,
-        amount: netAmount,
-        recipientName: params.accountName,
-        reference: ref,
-        narration: `Hometrust Escrow Settlement ${ref}`,
-      });
-
-      providerLabel = 'FLUTTERWAVE';
-      const gwStatus = (payoutRes.data as any)?.status || '';
-
-      if (payoutRes.status === true) {
-        if (['successful', 'success', 'new'].includes(gwStatus.toLowerCase())) {
-          gatewayStatus = 'SUCCESS';
-        } else {
-          // Flutterwave queued it — will confirm via webhook
-          gatewayStatus = 'PROCESSING';
+            NotificationsService.createAndDispatch({
+              userId: user.id,
+              title: '💰 Escrow Wallet Credited',
+              message: `Your deposit of ₦${amount.toLocaleString()} via bank transfer has been synced & credited to your escrow wallet.`,
+              type: 'PAYMENT',
+              actionDetails: [
+                { label: 'Amount Credited', value: `₦${amount.toLocaleString()}` },
+                { label: 'Payment Reference', value: txRef },
+                { label: 'Status', value: 'Confirmed & Cleared' },
+              ],
+            }).catch(() => {});
+          }
         }
-        externalRef = String(payoutRes.data?.reference || payoutRes.data?.id || ref);
-      } else {
-        gatewayStatus = 'FAILED';
-        failureMsg = payoutRes.message || 'Payout rejected by Flutterwave';
       }
     } catch (e: any) {
       console.warn('[SYNC FLW TXS WARNING]', e.message);
