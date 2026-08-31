@@ -138,8 +138,21 @@ export class BankingPdfService {
       doc.rect(40, 40, 515, 65).fill('#059669');
       doc.fillColor('#FFFFFF').fontSize(22).font('Helvetica-Bold').text('HOMETRUST', 55, 52);
       doc.fontSize(9).font('Helvetica').text('OFFICIAL ESCROW PAYMENT RECEIPT', 55, 78);
-      doc.fontSize(8.5).font('Helvetica').text(`Receipt No: ${data.reference}`, 360, 55, { align: 'right' });
-      doc.text(`Issued: ${new Date(data.createdAt).toLocaleString()}`, 360, 72, { align: 'right' });
+      doc.fontSize(8.5).font('Helvetica').text(`Receipt No: ${data.reference}`, 340, 55, { align: 'right' });
+      
+      const txDate = new Date(data.createdAt);
+      const exactTimeStr = txDate.toLocaleString('en-GB', {
+        timeZone: 'Africa/Lagos',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      });
+
+      doc.text(`Issued: ${exactTimeStr} (WAT)`, 340, 72, { align: 'right' });
 
       // Receipt Box
       let y = 130;
@@ -150,28 +163,31 @@ export class BankingPdfService {
       doc.fillColor('#065F46').fontSize(10).font('Helvetica-Bold').text('TOTAL TRANSACTION AMOUNT (NGN)', 75, y + 30);
       doc.fontSize(18).fillColor('#059669').text(`NGN ${Number(data.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 75, y + 46);
 
-      // Detail Rows
+      // Detail Rows (Account Holder Email omitted for privacy)
       let rowY = y + 95;
+      const isWithdrawal = data.type === 'DEBIT' || (data.purpose || '').toUpperCase().includes('WITHDRAWAL') || (data.purpose || '').toUpperCase().includes('PAYOUT');
+
       const details = [
-        { label: 'Transaction Status', value: 'SUCCESSFUL & VERIFIED', isGreen: true },
+        { label: 'Transaction Status', value: 'SUCCESSFUL & SETTLED', isGreen: true },
         { label: 'Currency / Denomination', value: 'Nigerian Naira (NGN)' },
         { label: 'Transaction Reference', value: data.reference },
         { label: 'Payment Type / Purpose', value: data.purpose || data.type },
-        { label: 'Account Holder / Customer', value: `${data.userName} (${data.email})` },
+        { label: 'Account Holder / Customer', value: data.userName },
+        ...(isWithdrawal ? [{ label: 'Fixed Transfer Fee', value: 'NGN 100.00' }] : []),
         { label: 'Payment Channel', value: data.channel || 'Direct NUBAN Bank Transfer' },
-        { label: 'Settlement Date', value: new Date(data.createdAt).toUTCString() },
+        { label: 'Exact Transaction Time', value: `${exactTimeStr} (WAT)` },
         { label: 'Escrow Security Status', value: 'Guaranteed by CBN Licensed Partner Bank' },
       ];
 
-      for (const d of details) {
+      for (const d of details as any[]) {
         doc.fillColor('#64748B').fontSize(9).font('Helvetica').text(d.label, 75, rowY);
-        doc.fillColor(d.isGreen ? '#059669' : '#0F172A').font('Helvetica-Bold').text(d.value, 260, rowY);
-        doc.moveTo(75, rowY + 16).lineTo(515, rowY + 16).strokeColor('#F1F5F9').stroke();
-        rowY += 28;
+        doc.fillColor(d.isGreen ? '#059669' : '#0F172A').font('Helvetica-Bold').text(d.value, 240, rowY);
+        doc.moveTo(75, rowY + 14).lineTo(515, rowY + 14).strokeColor('#F1F5F9').stroke();
+        rowY += 24;
       }
 
       // Security Seal & Verification Note
-      y = 500;
+      y = 490;
       doc.rect(40, y, 515, 65).fillAndStroke('#F8FAFC', '#CBD5E1');
       doc.fillColor('#0F172A').fontSize(8.5).font('Helvetica-Bold').text('AUTHENTICITY & ESCROW WARRANTY', 55, y + 10);
       doc.fillColor('#475569').fontSize(7.5).font('Helvetica').text('This document serves as an electronic legal confirmation of funds processed through Hometrust escrow services in Nigerian Naira (NGN). Hometrust is a product of Ehomes Global Inclusive Limited. Escrow custodial and payment settlement services are provided in partnership with licensed CBN-regulated financial institutions.', 55, y + 24, { width: 485 });

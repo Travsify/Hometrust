@@ -548,8 +548,23 @@ class _WalletScreenState extends State<WalletScreen> {
                       ),
                     ),
                   ],
-
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Transfer & Settlement Fee:', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                        Text('₦100.00', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
                   // Submit Button
                   SizedBox(

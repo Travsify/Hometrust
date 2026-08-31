@@ -669,7 +669,7 @@ export class BankingService {
       throw new Error('Insufficient escrow wallet balance for withdrawal');
     }
 
-    const fee = 50;
+    const fee = 100;
     const netAmount = Math.max(0, params.amount - fee);
     const ref = `HT-WD-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
