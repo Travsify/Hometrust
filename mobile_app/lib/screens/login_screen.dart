@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/purchase_provider.dart';
 import 'forgot_password_screen.dart';
 import 'login_otp_screen.dart';
+import 'navigation_wrapper.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -422,8 +423,21 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final success = await auth.biometricLogin();
     if (success && mounted) {
-      Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
-      Navigator.pop(context);
+      _handleSuccessfulLogin();
+    }
+  }
+
+  void _handleSuccessfulLogin() {
+    if (!mounted) return;
+    Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context, true);
+    } else {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const NavigationWrapper()),
+        (route) => false,
+      );
     }
   }
 
@@ -792,12 +806,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   );
                                   if (verified == true && mounted) {
-                                    Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
-                                    Navigator.pop(context);
+                                    _handleSuccessfulLogin();
                                   }
                                 } else if (loginRes['success'] == true) {
-                                  Provider.of<PurchaseProvider>(context, listen: false).fetchMyPurchases();
-                                  Navigator.pop(context);
+                                  _handleSuccessfulLogin();
                                 }
                               },
                         style: ElevatedButton.styleFrom(

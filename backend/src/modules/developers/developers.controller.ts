@@ -25,9 +25,9 @@ export class DevelopersController {
     }
   }
 
-  static async getById(req: Request, res: Response): Promise<void> {
+  static async getById(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const developer = await DevelopersService.getById(req.params.id as string);
+      const developer = await DevelopersService.getById(req.params.id as string, req.user?.id);
       sendSuccess(res, developer, 'Developer details retrieved');
     } catch (error: any) {
       sendError(res, error.message, 404);

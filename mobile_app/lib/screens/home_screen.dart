@@ -148,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchStories() async {
     try {
-      final res = await ApiClient.get('/reels/stories');
+      final res = await ApiClient.get('/reels/stories?onlyFollowed=true');
       if (mounted) {
         final list = res is List ? res : (res?['data'] is List ? res['data'] : []);
         setState(() => _developerStories = list);
@@ -693,46 +693,110 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 10),
 
-        SizedBox(
-          height: 96,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: (isDeveloper ? 1 : 0) + _developerStories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
-            itemBuilder: (ctx, index) {
-              if (isDeveloper && index == 0) {
-                // Developer Add Story Button
-                return InkWell(
-                  onTap: () async {
-                    final res = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const CreateReelScreen()),
-                    );
-                    if (res == true) _fetchStories();
-                  },
+        if (!isDeveloper && _developerStories.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF059669).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.video_library_rounded, color: Color(0xFF059669), size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
                   child: Column(
-                    children: [
-                      Container(
-                        width: 62,
-                        height: 62,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0F172A),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFF10B981), width: 2),
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.add_a_photo_rounded, color: Color(0xFF34D399), size: 24),
-                        ),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Follow Developers for Live Stories',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: Color(0xFF0F172A)),
                       ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        'Post Story',
-                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                      SizedBox(height: 2),
+                      Text(
+                        'Live milestone progress from developers you follow will appear here.',
+                        style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B), height: 1.3),
                       ),
                     ],
                   ),
-                );
-              }
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const DevelopersScreen()),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F172A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Explore', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+          )
+        else
+          SizedBox(
+            height: 96,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: (isDeveloper ? 1 : 0) + _developerStories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 14),
+              itemBuilder: (ctx, index) {
+                if (isDeveloper && index == 0) {
+                  // Developer Add Story Button
+                  return InkWell(
+                    onTap: () async {
+                      final res = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CreateReelScreen()),
+                      );
+                      if (res == true) _fetchStories();
+                    },
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 62,
+                          height: 62,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F172A),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFF10B981), width: 2),
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.add_a_photo_rounded, color: Color(0xFF34D399), size: 24),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        const Text(
+                          'Post Story',
+                          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
               final storyIdx = isDeveloper ? (index - 1) : index;
               final story = _developerStories[storyIdx];

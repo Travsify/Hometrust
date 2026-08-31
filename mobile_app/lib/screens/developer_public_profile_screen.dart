@@ -32,6 +32,7 @@ class _DeveloperPublicProfileScreenState extends State<DeveloperPublicProfileScr
 
   bool _isLoading = true;
   bool _isFollowing = false;
+  int _followersCount = 0;
 
   @override
   void initState() {
@@ -90,6 +91,7 @@ class _DeveloperPublicProfileScreenState extends State<DeveloperPublicProfileScr
           _certifications = certs;
           _testimonials = testimonialsRaw;
           _isFollowing = profile['isFollowing'] == true;
+          _followersCount = (profile['followersCount'] is int) ? profile['followersCount'] as int : 0;
           _isLoading = false;
         });
       }
@@ -99,11 +101,56 @@ class _DeveloperPublicProfileScreenState extends State<DeveloperPublicProfileScr
   }
 
   Future<void> _toggleFollow() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+
     final devId = widget.developer['id'] ?? '';
+    if (devId.isEmpty) return;
+
+    final newStatus = !_isFollowing;
+    final companyName = _fullProfile['companyName'] ?? widget.developer['companyName'] ?? 'Developer';
+
+    // Optimistic UI state update
+    setState(() {
+      _isFollowing = newStatus;
+      _followersCount = (_followersCount + (newStatus ? 1 : -1)).clamp(0, 9999999);
+    });
+
     try {
-      await ApiClient.post('/developers/$devId/follow', {});
-      setState(() => _isFollowing = !_isFollowing);
-    } catch (_) {}
+      final res = await ApiClient.post('/developers/$devId/follow', {});
+      if (res is Map && res['isFollowing'] != null && mounted) {
+        setState(() {
+          _isFollowing = res['isFollowing'] == true;
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(newStatus ? '✅ You are now following $companyName' : 'Unfollowed $companyName'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF059669),
+          ),
+        );
+      }
+    } catch (e) {
+      // Revert optimistic state on error
+      if (mounted) {
+        setState(() {
+          _isFollowing = !newStatus;
+          _followersCount = (_followersCount + (!newStatus ? 1 : -1)).clamp(0, 9999999);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update follow status: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -185,8 +232,8 @@ class _DeveloperPublicProfileScreenState extends State<DeveloperPublicProfileScr
                                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                 children: [
                                   _stat(_posts.length.toString(), 'Posts'),
+                                  _stat(_followersCount.toString(), 'Followers'),
                                   _stat(_projects.length.toString(), 'Projects'),
-                                  _stat(_testimonials.length.toString(), 'Reviews'),
                                 ],
                               ),
                             ),

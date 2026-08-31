@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { DevelopersController } from './developers.controller';
-import { authenticate, requireRoles } from '../../middlewares/auth.middleware';
+import { authenticate, optionalAuth, requireRoles } from '../../middlewares/auth.middleware';
+import { ReelsController } from '../reels/reels.controller';
 
 const router = Router();
 
@@ -20,8 +21,11 @@ router.post('/validate-boq', authenticate as any, DevelopersController.validateB
 router.get('/jv-lands', DevelopersController.getJvLandListings as any);
 router.post('/subscribers/:purchaseId/remind', authenticate as any, DevelopersController.sendBuyerReminder as any);
 
+// Follow / Unfollow developer
+router.post('/:id/follow', authenticate as any, ReelsController.toggleFollow as any);
+
 // Specific developer detail & Admin verification
-router.get('/:id', DevelopersController.getById);
+router.get('/:id', optionalAuth as any, DevelopersController.getById as any);
 router.patch('/:id/verify', authenticate as any, requireRoles('ADMIN', 'SUPER_ADMIN', 'VERIFICATION_MANAGER') as any, DevelopersController.verify as any);
 
 export const developerRoutes = router;

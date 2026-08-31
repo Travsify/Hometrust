@@ -89,11 +89,12 @@ export class ReelsController {
   }
 
   /**
-   * Get Active Stories (7-day window or top verified developers)
+   * Get Active Stories (Supports followed developers only)
    */
   static async getStories(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const stories = await ReelsService.getStories(req.user?.id);
+      const onlyFollowed = req.query.onlyFollowed === 'true' || req.query.following === 'true';
+      const stories = await ReelsService.getStories(req.user?.id, onlyFollowed);
       sendSuccess(res, stories, 'Stories retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message, 400);

@@ -50,21 +50,36 @@ export class DevelopersService {
     };
   }
 
-  static async getById(id: string) {
-    const developer = await prisma.developer.findUnique({
-      where: { id },
-      include: {
-        directors: true,
-        documents: true,
-        properties: {
-          where: { isPublished: true },
-          take: 10,
+  static async getById(id: string, userId?: string) {
+    const [developer, followersCount, followerRecord] = await Promise.all([
+      prisma.developer.findUnique({
+        where: { id },
+        include: {
+          directors: true,
+          documents: true,
+          properties: {
+            where: { isPublished: true },
+            take: 10,
+          },
+          projects: {
+            take: 10,
+          },
         },
-        projects: {
-          take: 10,
-        },
-      },
-    });
+      }),
+      prisma.developerFollower.count({
+        where: { developerId: id },
+      }),
+      userId
+        ? prisma.developerFollower.findUnique({
+            where: {
+              developerId_userId: {
+                developerId: id,
+                userId,
+              },
+            },
+          })
+        : null,
+    ]);
 
     if (!developer) {
       throw new Error('Developer not found');
@@ -72,6 +87,8 @@ export class DevelopersService {
 
     return {
       ...developer,
+      followersCount,
+      isFollowing: !!followerRecord,
       verifiedCategories: developer.verifiedCategories ? JSON.parse(developer.verifiedCategories) : [],
       properties: developer.properties.map(p => ({
         ...p,

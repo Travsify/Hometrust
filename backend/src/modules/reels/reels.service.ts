@@ -210,17 +210,34 @@ export class ReelsService {
   }
 
   /**
-   * Get Active Stories (7-day window or top verified developers)
+   * Get Active Stories (Filtered to Followed Developers for Dashboard)
    */
-  static async getStories(userId?: string) {
+  static async getStories(userId?: string, onlyFollowed: boolean = false) {
+    let whereClause: any = {};
+
+    if (userId) {
+      const followedDevs = await prisma.developerFollower.findMany({
+        where: { userId },
+        select: { developerId: true },
+      });
+      const followedIds = followedDevs.map(f => f.developerId);
+
+      if (followedIds.length > 0) {
+        whereClause.developerId = { in: followedIds };
+      } else if (onlyFollowed) {
+        return [];
+      }
+    } else if (onlyFollowed) {
+      return [];
+    }
+
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    whereClause.createdAt = { gte: sevenDaysAgo };
 
     // Find recent posts grouped by developer
     const recentPosts = await prisma.developerPost.findMany({
-      where: {
-        createdAt: { gte: sevenDaysAgo },
-      },
+      where: whereClause,
       orderBy: { createdAt: 'desc' },
       include: {
         developer: {
@@ -256,7 +273,7 @@ export class ReelsService {
     }
 
     // If fewer than 4 stories, supplement with top verified developers
-    if (devMap.size < 4) {
+    if (devMap.size < 4 && !onlyFollowed) {
       const topDevs = await prisma.developer.findMany({
         where: {
           isVerified: true,
