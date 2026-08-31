@@ -230,7 +230,8 @@ export class FlutterwaveClient {
   }
 
   /**
-   * 3. Payout / Transfer from Escrow to Developer verified account
+   * 3. Payout / Transfer from Escrow to Developer/Buyer verified account
+   * Uses Paystack as primary processor (funded account balance), with Flutterwave as fallback.
    */
   static async transfer(params: {
     amount: number;
@@ -240,12 +241,79 @@ export class FlutterwaveClient {
     reference: string;
     narration?: string;
   }): Promise<FlutterwaveTransferResponse> {
+    // ── 1. Paystack Transfer (PRIMARY: funded balance) ───────────────────────
+    const paystackKey = (process.env.PAYSTACK_SECRET_KEY || '').trim();
+    if (paystackKey) {
+      try {
+        console.log(`[PAYOUT] Initiating Paystack transfer of ₦${params.amount} to ${params.accountNumber} (${params.bankCode})...`);
+        const recipRes = await fetch('https://api.paystack.co/transferrecipient', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${paystackKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'nuban',
+            name: params.recipientName || 'Hometrust Beneficiary',
+            account_number: params.accountNumber.trim(),
+            bank_code: params.bankCode.trim(),
+            currency: 'NGN',
+          }),
+        });
+        const recipData: any = await recipRes.json();
+        console.log(`[PAYSTACK RECIPIENT RESPONSE]`, recipRes.status, recipData);
+
+        if (recipData?.status && recipData?.data?.recipient_code) {
+          const recipientCode = recipData.data.recipient_code;
+          const psTransferRes = await fetch('https://api.paystack.co/transfer', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${paystackKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              source: 'balance',
+              amount: Math.round(params.amount * 100),
+              recipient: recipientCode,
+              reason: params.narration || 'Hometrust Escrow Settlement',
+              reference: params.reference,
+            }),
+          });
+          const psTransData: any = await psTransferRes.json();
+          console.log(`[PAYSTACK TRANSFER RESPONSE]`, psTransferRes.status, psTransData);
+
+          if (psTransData?.status && psTransData?.data) {
+            const rawStatus = (psTransData.data.status || '').toLowerCase();
+            return {
+              status: true,
+              message: psTransData.message || 'Transfer initiated successfully via Paystack',
+              data: {
+                id: psTransData.data.id || psTransData.data.transfer_code || `ps_tx_${Date.now()}`,
+                reference: params.reference,
+                amount: params.amount,
+                currency: 'NGN',
+                status: rawStatus === 'success' ? 'successful' : rawStatus,
+                fee: 50,
+              },
+            };
+          } else if (psTransData?.message) {
+            console.warn(`[PAYSTACK TRANSFER REJECTED]`, psTransData.message);
+          }
+        } else if (recipData?.message) {
+          console.warn(`[PAYSTACK RECIPIENT REJECTED]`, recipData.message);
+        }
+      } catch (err: any) {
+        console.warn(`[PAYSTACK TRANSFER ERROR]`, err.message);
+      }
+    }
+
+    // ── 2. Flutterwave Transfer (FALLBACK) ──────────────────────────────────
     const { secretKey, baseUrl } = await this.getCredentials();
     const flwBankCode = this.normalizeBankCodeForFlutterwave(params.bankCode);
 
     if (secretKey) {
       try {
-        console.log(`[PAYOUT] Initiating Flutterwave payout of ₦${params.amount} to ${params.accountNumber} (${flwBankCode}, orig: ${params.bankCode})...`);
+        console.log(`[PAYOUT FALLBACK] Initiating Flutterwave payout of ₦${params.amount} to ${params.accountNumber} (${flwBankCode})...`);
         const response = await fetch(`${baseUrl}/transfers`, {
           method: 'POST',
           headers: {
@@ -285,68 +353,10 @@ export class FlutterwaveClient {
       }
     }
 
-    // Paystack Payout Fallback
-    const paystackKey = (process.env.PAYSTACK_SECRET_KEY || '').trim();
-    if (paystackKey) {
-      try {
-        console.log(`[PAYOUT FALLBACK] Attempting Paystack transfer for ${params.accountNumber}...`);
-        const recipRes = await fetch('https://api.paystack.co/transferrecipient', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${paystackKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            type: 'nuban',
-            name: params.recipientName || 'Hometrust Beneficiary',
-            account_number: params.accountNumber,
-            bank_code: params.bankCode,
-            currency: 'NGN',
-          }),
-        });
-        const recipData: any = await recipRes.json();
-        if (recipData?.status && recipData?.data?.recipient_code) {
-          const recipientCode = recipData.data.recipient_code;
-          const psTransferRes = await fetch('https://api.paystack.co/transfer', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${paystackKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              source: 'balance',
-              amount: Math.round(params.amount * 100),
-              recipient: recipientCode,
-              reason: params.narration || 'Hometrust Escrow Settlement',
-              reference: params.reference,
-            }),
-          });
-          const psTransData: any = await psTransferRes.json();
-          console.log(`[PAYSTACK TRANSFER RESPONSE]`, psTransData);
-          if (psTransData?.status && psTransData?.data) {
-            return {
-              status: true,
-              message: psTransData.message || 'Transfer queued via Paystack',
-              data: {
-                id: psTransData.data.id || `ps_tx_${Date.now()}`,
-                reference: params.reference,
-                amount: params.amount,
-                currency: 'NGN',
-                status: psTransData.data.status || 'success',
-                fee: 50,
-              },
-            };
-          }
-        }
-      } catch (err: any) {
-        console.warn(`[PAYSTACK TRANSFER FALLBACK] Notice:`, err.message);
-      }
-    }
-
     // If both gateways failed to disburse, return failure with reason
     return {
       status: false,
-      message: 'Settlement gateways (Flutterwave & Paystack) could not disburse transfer. Please ensure payout balance is available on payment processor.',
+      message: 'Settlement gateways (Paystack & Flutterwave) could not disburse transfer. Please ensure payout balance is available on your payment processor.',
     };
   }
 
