@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,15 +20,22 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
   final _titleCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
   final _reqCtrl = TextEditingController();
-  
+
+  // Physical Delivery Controllers
+  final _recipientNameCtrl = TextEditingController();
+  final _recipientPhoneCtrl = TextEditingController();
+  final _deliveryAddressCtrl = TextEditingController();
+  final _landmarkCtrl = TextEditingController();
+
   String _selectedCategory = 'SALE_AGREEMENT';
+  String _deliveryOption = 'DIGITAL_ONLY'; // DIGITAL_ONLY, LOCAL_COURIER, INTERSTATE_COURIER, INTERNATIONAL
   double _feePercentage = 3.0;
   double _agreedAmount = 0.0;
-  double _calculatedFee = 0.0;
-  
+  double _calculatedDraftFee = 0.0;
+
   bool _loadingQuote = false;
   bool _submitting = false;
-  
+
   Map<String, dynamic>? _virtualAccount;
   bool _loadingAccount = true;
 
@@ -64,11 +72,31 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
     },
   ];
 
+  double get _deliveryFee {
+    switch (_deliveryOption) {
+      case 'LOCAL_COURIER':
+        return 4500.0;
+      case 'INTERSTATE_COURIER':
+        return 8500.0;
+      case 'INTERNATIONAL':
+        return 45000.0;
+      default:
+        return 0.0;
+    }
+  }
+
+  double get _totalFee => _calculatedDraftFee + _deliveryFee;
+
   @override
   void initState() {
     super.initState();
     _fetchFeeSettings();
     _fetchUserVirtualAccount();
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.currentUser != null) {
+      _recipientNameCtrl.text = auth.currentUser!.fullName ?? '';
+      _recipientPhoneCtrl.text = auth.currentUser!.phoneNumber ?? '';
+    }
   }
 
   @override
@@ -76,6 +104,10 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
     _titleCtrl.dispose();
     _amountCtrl.dispose();
     _reqCtrl.dispose();
+    _recipientNameCtrl.dispose();
+    _recipientPhoneCtrl.dispose();
+    _deliveryAddressCtrl.dispose();
+    _landmarkCtrl.dispose();
     super.dispose();
   }
 
@@ -101,6 +133,11 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
           _virtualAccount = res['data'];
           _loadingAccount = false;
         });
+      } else if (res is Map<String, dynamic>) {
+        setState(() {
+          _virtualAccount = res;
+          _loadingAccount = false;
+        });
       } else {
         setState(() => _loadingAccount = false);
       }
@@ -114,16 +151,15 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
     final amount = double.tryParse(clean) ?? 0.0;
     setState(() {
       _agreedAmount = amount;
-      _calculatedFee = (_agreedAmount * _feePercentage) / 100.0;
+      _calculatedDraftFee = (_agreedAmount * _feePercentage) / 100.0;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final user = auth.user;
     final walletBalance = (_virtualAccount?['balance'] as num?)?.toDouble() ?? 0.0;
-    final isSufficient = walletBalance >= _calculatedFee && _calculatedFee > 0;
+    final isSufficient = walletBalance >= _totalFee && _totalFee > 0;
 
     return Scaffold(
       bottomNavigationBar: const PersistentBottomNav(),
@@ -154,7 +190,7 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: Colors.black.withOpacity(0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -168,9 +204,9 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                          color: const Color(0xFF10B981).withOpacity(0.2),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
+                          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.5)),
                         ),
                         child: Text(
                           '${_feePercentage.toStringAsFixed(1)}% STATUTORY LEGAL FEE',
@@ -178,18 +214,18 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
                         ),
                       ),
                       const Spacer(),
-                      const Icon(Icons.gavel_rounded, color: Color(0xFF38BDF8), size: 18),
+                      const Icon(Icons.gavel_rounded, color: Color(0xFF34D399), size: 18),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   const Text(
-                    'Certified Property Conveyancing & Title Drafting',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800, height: 1.2),
+                    'Certified Solicitor Drafting & Sealed Deeds',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'All agreements are drafted by licensed Nigerian real estate solicitors (NBA certified), incorporating full root-of-title vetting, indemnity clauses, and Governor\'s Consent covenants.',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, height: 1.4),
+                  Text(
+                    'Statutory 3% conveyancing drafting fee paid atomically via your Hometrust Dedicated Wallet. Receive digital PDF and embossed hard copies.',
+                    style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12, height: 1.4),
                   ),
                 ],
               ),
@@ -197,9 +233,9 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
 
             const SizedBox(height: 20),
 
-            // 2. FORM FIELDS
+            // 2. FORM CONTAINER
             Container(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -208,8 +244,8 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // A. Document Category
-                  const Text('1. SELECT DOCUMENT CATEGORY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5)),
+                  // A. Select Agreement Category
+                  const Text('1. SELECT AGREEMENT CATEGORY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5)),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -222,14 +258,11 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
                       child: DropdownButton<String>(
                         value: _selectedCategory,
                         isExpanded: true,
-                        icon: const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF0F172A)),
-                        items: _categories.map((c) {
-                          return DropdownMenuItem(
-                            value: c['id'],
-                            child: Text(
-                              c['name']!,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                            ),
+                        icon: const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF475569)),
+                        items: _categories.map((cat) {
+                          return DropdownMenuItem<String>(
+                            value: cat['id'],
+                            child: Text(cat['name']!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
                           );
                         }).toList(),
                         onChanged: (val) {
@@ -238,60 +271,44 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _categories.firstWhere((c) => c['id'] == _selectedCategory)['desc']!,
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.3),
-                  ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // B. Document / Property Title
-                  const Text('2. PROPERTY OR AGREEMENT TITLE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5)),
+                  // B. Title / Subject of Agreement
+                  const Text('2. AGREEMENT TITLE / PROPERTY DESCRIPTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _titleCtrl,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
                     decoration: InputDecoration(
-                      hintText: 'e.g. 4-Bedroom Semi-Detached Duplex in Lekki Phase 1',
+                      hintText: 'e.g. Deed of Assignment for Plot 14, Oceanview Estate',
                       hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                       filled: true,
                       fillColor: const Color(0xFFF8FAFC),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5)),
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // C. Agreed Property Transaction Value (The Core Calculator!)
-                  const Text('3. TOTAL AGREED TRANSACTION AMOUNT (₦)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5)),
-                  const SizedBox(height: 4),
-                  const Text('Enter the total property sale or contract price agreed upon between buyer and seller.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                  // C. Agreed Transaction Consideration Amount
+                  const Text('3. TOTAL TRANSACTION AMOUNT (₦)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _amountCtrl,
                     keyboardType: TextInputType.number,
                     onChanged: _onAmountChanged,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: 0.5),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                     decoration: InputDecoration(
-                      prefixIcon: const Padding(
-                        padding: EdgeInsets.only(left: 14, right: 8),
-                        child: Center(
-                          widthFactor: 0.0,
-                          child: Text('₦', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF10B981))),
-                        ),
-                      ),
-                      hintText: 'e.g. 30,000,000',
-                      hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                      prefixText: '₦ ',
+                      prefixStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF059669)),
+                      hintText: 'e.g. 50,000,000',
+                      hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
                       filled: true,
                       fillColor: const Color(0xFFF8FAFC),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5)),
                     ),
                   ),
 
@@ -321,10 +338,10 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Hometrust Legal Fee (${_feePercentage.toStringAsFixed(1)}%):', style: const TextStyle(fontSize: 13, color: Color(0xFF065F46), fontWeight: FontWeight.w700)),
+                            Text('Hometrust Legal Drafting (${_feePercentage.toStringAsFixed(1)}%):', style: const TextStyle(fontSize: 13, color: Color(0xFF065F46), fontWeight: FontWeight.w700)),
                             Text(
-                              _calculatedFee > 0 ? CurrencyFormatter.format(_calculatedFee) : '₦0.00',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF059669)),
+                              _calculatedDraftFee > 0 ? CurrencyFormatter.format(_calculatedDraftFee) : '₦0.00',
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF059669)),
                             ),
                           ],
                         ),
@@ -334,8 +351,122 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
 
                   const SizedBox(height: 20),
 
-                  // E. Instructions & Specific Clauses
-                  const Text('4. PARTIES DETAILS & SPECIFIC CLAUSES', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5)),
+                  // E. DELIVERY METHOD SELECTOR
+                  const Text('4. DELIVERY & FULFILLMENT FORMAT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5)),
+                  const SizedBox(height: 8),
+                  Column(
+                    children: [
+                      _buildDeliveryRadioTile(
+                        id: 'DIGITAL_ONLY',
+                        title: 'Digital Vault Only (Instant & Free)',
+                        subtitle: 'Download high-res execution PDF directly in-app.',
+                        price: '₦0',
+                        icon: Icons.picture_as_pdf_rounded,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildDeliveryRadioTile(
+                        id: 'LOCAL_COURIER',
+                        title: 'Local Doorstep Delivery (Lagos / Abuja)',
+                        subtitle: 'Sealed tamper-evident pouch + wet-signed deeds (24hr dispatch).',
+                        price: '+₦4,500',
+                        icon: Icons.local_shipping_rounded,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildDeliveryRadioTile(
+                        id: 'INTERSTATE_COURIER',
+                        title: 'Nationwide Inter-State Delivery (36 States)',
+                        subtitle: 'Tracked courier with OTP handover (48–72 hrs).',
+                        price: '+₦8,500',
+                        icon: Icons.markunread_mailbox_rounded,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildDeliveryRadioTile(
+                        id: 'INTERNATIONAL',
+                        title: 'International Diaspora Delivery (UK / US / CA / UAE)',
+                        subtitle: 'DHL Express Worldwide priority courier (3–5 business days).',
+                        price: '+₦45,000',
+                        icon: Icons.flight_takeoff_rounded,
+                      ),
+                    ],
+                  ),
+
+                  if (_deliveryOption != 'DIGITAL_ONLY') ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.location_on_rounded, size: 16, color: Color(0xFF059669)),
+                              SizedBox(width: 6),
+                              Text(
+                                'Delivery Address for Sealed Hard Copies',
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Color(0xFF059669)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _recipientNameCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Recipient Full Name',
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              isDense: true,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            controller: _recipientPhoneCtrl,
+                            keyboardType: TextInputType.phone,
+                            decoration: InputDecoration(
+                              labelText: 'Recipient Phone Number (For Dispatch Rider)',
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              isDense: true,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            controller: _deliveryAddressCtrl,
+                            maxLines: 2,
+                            decoration: InputDecoration(
+                              labelText: 'Complete Street Address, Area & City',
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              isDense: true,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            controller: _landmarkCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Nearest Landmark / Building Gate (Optional)',
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              isDense: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 20),
+
+                  // F. Instructions & Specific Clauses
+                  const Text('5. PARTIES DETAILS & SPECIFIC CLAUSES', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _reqCtrl,
@@ -348,14 +479,12 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
                       fillColor: const Color(0xFFF8FAFC),
                       contentPadding: const EdgeInsets.all(14),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5)),
                     ),
                   ),
 
                   const SizedBox(height: 24),
 
-                  // F. DEDICATED WALLET BALANCE PREVIEW
+                  // G. DEDICATED WALLET BALANCE PREVIEW
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -386,7 +515,7 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
                             ),
                           ],
                         ),
-                        if (!isSufficient && _calculatedFee > 0)
+                        if (!isSufficient && _totalFee > 0)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
@@ -418,13 +547,74 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
                       child: Text(
                         _submitting
                             ? 'Processing Legal Order...'
-                            : _calculatedFee > 0
-                                ? 'Pay & Submit Order (${CurrencyFormatter.format(_calculatedFee)})'
+                            : _totalFee > 0
+                                ? 'Pay & Submit Order (${CurrencyFormatter.format(_totalFee)})'
                                 : 'Enter Transaction Amount to Proceed',
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14),
                       ),
                     ),
                   ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeliveryRadioTile({
+    required String id,
+    required String title,
+    required String subtitle,
+    required String price,
+    required IconData icon,
+  }) {
+    final isSelected = _deliveryOption == id;
+    return GestureDetector(
+      onTap: () => setState(() => _deliveryOption = id),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF059669) : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: isSelected ? const Color(0xFF059669) : const Color(0xFF64748B), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: isSelected ? const Color(0xFF059669) : const Color(0xFF0F172A),
+                        ),
+                      ),
+                      Text(
+                        price,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: isSelected ? const Color(0xFF059669) : const Color(0xFF475569),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B))),
                 ],
               ),
             ),
@@ -456,6 +646,23 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
       return;
     }
 
+    if (_deliveryOption != 'DIGITAL_ONLY' && _deliveryAddressCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please provide a complete physical delivery address')),
+      );
+      return;
+    }
+
+    String? deliveryAddressJson;
+    if (_deliveryOption != 'DIGITAL_ONLY') {
+      deliveryAddressJson = jsonEncode({
+        'recipientName': _recipientNameCtrl.text.trim(),
+        'recipientPhone': _recipientPhoneCtrl.text.trim(),
+        'streetAddress': _deliveryAddressCtrl.text.trim(),
+        'landmark': _landmarkCtrl.text.trim(),
+      });
+    }
+
     setState(() => _submitting = true);
 
     try {
@@ -465,6 +672,9 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
         'title': _titleCtrl.text.trim(),
         'requirements': _reqCtrl.text.trim(),
         'agreedAmount': _agreedAmount,
+        'deliveryOption': _deliveryOption,
+        'deliveryAddress': deliveryAddressJson,
+        'deliveryFee': _deliveryFee,
       });
 
       final requestId = res['data']?['id'] ?? res['id'];
@@ -473,7 +683,7 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
       }
 
       // 2. Pay via Dedicated Wallet
-      final payRes = await ApiClient.post('/legal/$requestId/pay-wallet', {});
+      await ApiClient.post('/legal/$requestId/pay-wallet', {});
 
       setState(() => _submitting = false);
 
@@ -533,7 +743,7 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Your Hometrust dedicated wallet has ${CurrencyFormatter.format(walletBalance)}, but this 3% legal drafting order requires ${CurrencyFormatter.format(_calculatedFee)}.',
+              'Your Hometrust dedicated wallet has ${CurrencyFormatter.format(walletBalance)}, but this legal drafting & delivery order requires ${CurrencyFormatter.format(_totalFee)}.',
               style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
             ),
             const SizedBox(height: 16),
@@ -619,6 +829,7 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
   }
 
   void _showSuccessDialog(Map<String, dynamic> req) {
+    final isPhysical = _deliveryOption != 'DIGITAL_ONLY';
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -638,7 +849,9 @@ class _LegalRequestScreenState extends State<LegalRequestScreen> {
             Text('Order Reference: ${req['requestCode'] ?? 'HT-LEG-ORD'}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Text(
-              'Your legal drafting fee of ${CurrencyFormatter.format(_calculatedFee)} (3% of ${CurrencyFormatter.format(_agreedAmount)}) was successfully paid from your dedicated wallet.\n\nOur certified conveyancing solicitors are currently preparing your execution documents.',
+              'Your legal drafting fee of ${CurrencyFormatter.format(_totalFee)} was successfully paid from your dedicated wallet.
+
+${isPhysical ? "Once signed and sealed, hard copies will be dispatched to your doorstep with courier PIN verification." : "Our certified solicitors are drafting your documents."}',
               style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
             ),
           ],

@@ -65,6 +65,13 @@ class VerificationRequestModel {
   final String? assignedTo;
   final String? finalFindings;
   final String? reportUrl;
+  final String deliveryOption;
+  final String? deliveryAddress;
+  final double deliveryFee;
+  final String deliveryStatus;
+  final String? courierPartner;
+  final String? waybillNumber;
+  final String? deliveryOtp;
   final List<VerificationDocModel> documents;
   final List<VerificationCheckModel> checks;
 
@@ -83,6 +90,13 @@ class VerificationRequestModel {
     this.assignedTo,
     this.finalFindings,
     this.reportUrl,
+    this.deliveryOption = 'DIGITAL_ONLY',
+    this.deliveryAddress,
+    this.deliveryFee = 0.0,
+    this.deliveryStatus = 'PENDING',
+    this.courierPartner,
+    this.waybillNumber,
+    this.deliveryOtp,
     required this.documents,
     required this.checks,
   });
@@ -113,6 +127,13 @@ class VerificationRequestModel {
       assignedTo: json['assignedTo'],
       finalFindings: json['finalFindings'],
       reportUrl: json['reportUrl'],
+      deliveryOption: json['deliveryOption'] ?? 'DIGITAL_ONLY',
+      deliveryAddress: json['deliveryAddress'],
+      deliveryFee: (json['deliveryFee'] as num?)?.toDouble() ?? 0.0,
+      deliveryStatus: json['deliveryStatus'] ?? 'PENDING',
+      courierPartner: json['courierPartner'],
+      waybillNumber: json['waybillNumber'],
+      deliveryOtp: json['deliveryOtp'],
       documents: docs,
       checks: chks,
     );

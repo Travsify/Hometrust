@@ -38,6 +38,9 @@ class VerificationProvider with ChangeNotifier {
     required String city,
     required String documentType,
     String urgency = 'STANDARD',
+    String deliveryOption = 'DIGITAL_ONLY',
+    String? deliveryAddress,
+    double deliveryFee = 0.0,
     required String fileName,
     Uint8List? fileBytes,
   }) async {
@@ -62,10 +65,13 @@ class VerificationProvider with ChangeNotifier {
             'city': city.trim(),
             'documentType': documentType,
             'urgency': urgency,
+            'deliveryOption': deliveryOption,
+            'deliveryAddress': deliveryAddress ?? '',
+            'deliveryFee': deliveryFee.toString(),
           },
         );
       } else {
-        // Fallback JSON (no file attached — shouldn't happen in UI, but safe)
+        // Fallback JSON
         res = await ApiClient.post('/verifications', {
           'propertyName': propertyName.trim(),
           'propertyAddress': propertyAddress.trim(),
@@ -73,6 +79,9 @@ class VerificationProvider with ChangeNotifier {
           'city': city.trim(),
           'documentType': documentType,
           'urgency': urgency,
+          'deliveryOption': deliveryOption,
+          'deliveryAddress': deliveryAddress,
+          'deliveryFee': deliveryFee,
         });
       }
 
@@ -86,6 +95,25 @@ class VerificationProvider with ChangeNotifier {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
       return null;
+    }
+  }
+
+  Future<bool> payVerificationWithWallet(String requestId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await ApiClient.post('/verifications/$requestId/pay-wallet', {});
+      await fetchMyRequests();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
     }
   }
 }
