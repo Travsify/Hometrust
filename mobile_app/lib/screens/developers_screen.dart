@@ -7,6 +7,7 @@ import '../widgets/in_app_call_modal.dart';
 import '../widgets/persistent_bottom_nav.dart';
 import 'chat_screen.dart';
 import 'login_screen.dart';
+import 'developer_public_profile_screen.dart';
 
 class DevelopersScreen extends StatefulWidget {
   const DevelopersScreen({super.key});
@@ -186,13 +187,18 @@ class _DevelopersScreenState extends State<DevelopersScreen> {
     final address = dev['officeAddress'] ?? 'Registered Commercial Office, Nigeria';
     final activeProjects = dev['activeProjectsCount'] ?? 1;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => DeveloperPublicProfileScreen(developer: dev)),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
@@ -364,6 +370,6 @@ class _DevelopersScreenState extends State<DevelopersScreen> {
           ],
         ),
       ),
-    );
+    ); // GestureDetector
   }
 }
