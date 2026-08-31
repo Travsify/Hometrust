@@ -64,11 +64,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final alreadyPrompted = prefs.getBool('ht_notif_prompted') ?? false;
       if (alreadyPrompted) return;
 
-      // Check current OS notification opt-in status
-      final isOptedIn = OneSignal.Notifications.optedIn ?? false;
-
-      // Only prompt if permission has not yet been granted
-      if (isOptedIn) {
+      // Check current OS notification opt-in status via OneSignal v5 bool getter
+      // OneSignal.Notifications.permission is true if the user already granted notifications
+      final alreadyGranted = OneSignal.Notifications.permission;
+      if (alreadyGranted) {
         await prefs.setBool('ht_notif_prompted', true);
         return;
       }

@@ -1127,6 +1127,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
                     ],
                   ),
                 ],
+              ),
             ],
           ),
           const SizedBox(height: 12),
