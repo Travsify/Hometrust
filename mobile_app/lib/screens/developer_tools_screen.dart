@@ -1,3 +1,4 @@
+import '../core/network/api_client.dart';
 import 'package:flutter/material.dart';
 import '../widgets/persistent_bottom_nav.dart';
 import 'land_radar_screen.dart';
@@ -17,116 +18,201 @@ class DeveloperToolsScreen extends StatefulWidget {
 }
 
 class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
-  void _showMilestoneInspectionModal() {
+  void _showMilestoneInspectionModal() async {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
     String selectedStage = 'Stage 2: Structural Framing & Lintels';
+    List<dynamic> projects = [];
+    String? selectedProjectId;
+    String? selectedMilestoneId;
+
+    try {
+      final res = await ApiClient.get('/developers/my-projects');
+      if (res is List && res.isNotEmpty) {
+        projects = res;
+        selectedProjectId = projects[0]['id'];
+        if (projects[0]['milestones'] is List && (projects[0]['milestones'] as List).isNotEmpty) {
+          selectedMilestoneId = projects[0]['milestones'][0]['id'];
+        }
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 24,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Request Milestone Inspection', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
-                  IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
-                ],
+        bool isSubmitting = false;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              const SizedBox(height: 4),
-              const Text(
-                'Schedule a physical site inspection by certified Hometrust COREN structural engineers to sign off your milestone and unlock escrow funds.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: selectedStage,
-                decoration: InputDecoration(
-                  labelText: 'Construction Milestone Stage',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                items: [
-                  'Stage 1: Substructure & Foundation (20%)',
-                  'Stage 2: Structural Framing & Lintels (25%)',
-                  'Stage 3: Roofing & Parapet Walls (20%)',
-                  'Stage 4: Plumbing, Electrical & MEP (15%)',
-                  'Stage 5: Plastering, Tiling & Finishing (15%)',
-                  'Stage 6: Final Snagging & Handover (5%)',
-                ].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12)))).toList(),
-                onChanged: (val) => selectedStage = val!,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: nameCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Site Engineer / Resident Contact Person',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneCtrl,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: 'Site Contact Phone Number',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: notesCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Site Access Instructions / Gate Pass Notes',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (nameCtrl.text.isEmpty || phoneCtrl.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please enter site engineer contact details')),
-                      );
-                      return;
-                    }
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Milestone inspection scheduled! Hometrust engineering team assigned.'),
-                        backgroundColor: Color(0xFF059669),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Request Milestone Inspection', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                        IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Schedule a physical site inspection by certified Hometrust COREN structural engineers to sign off your milestone and unlock escrow funds.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                    const SizedBox(height: 16),
+                    if (projects.isNotEmpty) ...[
+                      DropdownButtonFormField<String>(
+                        value: selectedProjectId,
+                        decoration: InputDecoration(
+                          labelText: 'Select Estate Project',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: projects.map<DropdownMenuItem<String>>((p) {
+                          return DropdownMenuItem<String>(
+                            value: p['id'].toString(),
+                            child: Text(p['name'] ?? 'Project', style: const TextStyle(fontSize: 12)),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setModalState(() {
+                            selectedProjectId = val;
+                            final match = projects.firstWhere((p) => p['id'] == val, orElse: () => null);
+                            if (match != null && match['milestones'] is List && (match['milestones'] as List).isNotEmpty) {
+                              selectedMilestoneId = match['milestones'][0]['id'];
+                            }
+                          });
+                        },
                       ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF059669),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Schedule Certified Inspection', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                      const SizedBox(height: 12),
+                    ],
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedStage,
+                      decoration: InputDecoration(
+                        labelText: 'Construction Milestone Stage',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      items: [
+                        'Stage 1: Substructure & Foundation (20%)',
+                        'Stage 2: Structural Framing & Lintels (25%)',
+                        'Stage 3: Roofing & Parapet Walls (20%)',
+                        'Stage 4: Plumbing, Electrical & MEP (15%)',
+                        'Stage 5: Plastering, Tiling & Finishing (15%)',
+                        'Stage 6: Final Snagging & Handover (5%)',
+                      ].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12)))).toList(),
+                      onChanged: (val) => selectedStage = val!,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Site Engineer / Resident Contact Person',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Site Contact Phone Number',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: notesCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Site Access Instructions / Gate Pass Notes',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                if (nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Please enter site engineer contact details')),
+                                  );
+                                  return;
+                                }
+
+                                if (selectedProjectId == null || selectedMilestoneId == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Please create an estate project first before requesting inspection.')),
+                                  );
+                                  return;
+                                }
+
+                                setModalState(() => isSubmitting = true);
+                                try {
+                                  await ApiClient.post('/developers/request-milestone-inspection', {
+                                    'projectId': selectedProjectId,
+                                    'milestoneId': selectedMilestoneId,
+                                    'preferredDate': DateTime.now().add(const Duration(days: 2)).toIso8601String().split('T')[0],
+                                    'preferredTime': '10:00 AM',
+                                    'siteContactName': nameCtrl.text.trim(),
+                                    'siteContactPhone': phoneCtrl.text.trim(),
+                                    'notes': '$selectedStage. ${notesCtrl.text.trim()}',
+                                  });
+
+                                  if (context.mounted) {
+                                    Navigator.pop(ctx);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('🎉 Milestone inspection scheduled! Hometrust COREN engineering team assigned.'),
+                                        backgroundColor: Color(0xFF059669),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  setModalState(() => isSubmitting = false);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(e.toString().replaceAll('Exception: ', '')),
+                                        backgroundColor: const Color(0xFFDC2626),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF059669),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: isSubmitting
+                            ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text('Schedule Certified Inspection', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

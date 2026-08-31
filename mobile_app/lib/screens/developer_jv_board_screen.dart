@@ -44,75 +44,108 @@ class _DeveloperJvBoardScreenState extends State<DeveloperJvBoardScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 24,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Submit Joint Venture Proposal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-                  IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
-                ],
+        bool isSubmitting = false;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Land: ${jv['title']}',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
               ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: devTypeCtrl,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Proposed Development Typology',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: offerCtrl,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Sharing Ratio & Development Terms',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('JV proposal submitted! Hometrust Legal & Escrow team will review and coordinate the agreement.'),
-                        backgroundColor: Color(0xFF059669),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Submit Joint Venture Proposal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                        IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Land: ${jv['title']}',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: devTypeCtrl,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        labelText: 'Proposed Development Typology',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF059669),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Send Formal Proposal', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: offerCtrl,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        labelText: 'Sharing Ratio & Development Terms',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                setModalState(() => isSubmitting = true);
+                                try {
+                                  await ApiClient.post('/support/tickets', {
+                                    'subject': 'JV Proposal: ${jv['title']}',
+                                    'category': 'LEGAL',
+                                    'priority': 'HIGH',
+                                    'message': 'Proposed Development Typology:\n${devTypeCtrl.text.trim()}\n\nProposed Sharing Terms:\n${offerCtrl.text.trim()}\n\nLocation: ${jv['location']}\nLand Size: ${jv['size']}',
+                                  });
+
+                                  if (context.mounted) {
+                                    Navigator.pop(ctx);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('🎉 JV proposal submitted! Hometrust Legal & Escrow team will review and coordinate the agreement.'),
+                                        backgroundColor: Color(0xFF059669),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  setModalState(() => isSubmitting = false);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(e.toString().replaceAll('Exception: ', '')),
+                                        backgroundColor: const Color(0xFFDC2626),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF059669),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: isSubmitting
+                            ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text('Send Formal Proposal', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
