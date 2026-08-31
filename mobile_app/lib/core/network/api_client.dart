@@ -67,110 +67,92 @@ class ApiClient {
     }
   }
 
+  /// Wakes up the Render backend if it returned a non-JSON response (cold start).
+  static Future<void> _wakeUpBackend() async {
+    try {
+      await http.get(
+        Uri.parse('https://estateverify-app.onrender.com/health'),
+        headers: {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 30));
+      // Wait extra second for boot to stabilize
+      await Future.delayed(const Duration(seconds: 2));
+    } catch (_) {}
+  }
+
+  static bool _isHtmlResponse(String body) {
+    final t = body.trim().toLowerCase();
+    return t.startsWith('<!doctype') || t.startsWith('<html');
+  }
+
   static Future<dynamic> get(String endpoint) async {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     final headers = await _headers();
-    final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 20));
+    var response = await http.get(url, headers: headers).timeout(const Duration(seconds: 30));
+    if (_isHtmlResponse(response.body)) {
+      await _wakeUpBackend();
+      response = await http.get(url, headers: headers).timeout(const Duration(seconds: 30));
+    }
     return _handleResponse(response, endpoint: endpoint);
   }
 
   static Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     final headers = await _headers();
-    final response = await http
+    var response = await http
         .post(url, headers: headers, body: jsonEncode(body))
-        .timeout(const Duration(seconds: 20));
+        .timeout(const Duration(seconds: 30));
+    if (_isHtmlResponse(response.body)) {
+      await _wakeUpBackend();
+      response = await http
+          .post(url, headers: headers, body: jsonEncode(body))
+          .timeout(const Duration(seconds: 30));
+    }
     return _handleResponse(response, endpoint: endpoint);
   }
 
   static Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     final headers = await _headers();
-    final response = await http
+    var response = await http
         .put(url, headers: headers, body: jsonEncode(body))
-        .timeout(const Duration(seconds: 20));
+        .timeout(const Duration(seconds: 30));
+    if (_isHtmlResponse(response.body)) {
+      await _wakeUpBackend();
+      response = await http
+          .put(url, headers: headers, body: jsonEncode(body))
+          .timeout(const Duration(seconds: 30));
+    }
     return _handleResponse(response, endpoint: endpoint);
   }
 
   static Future<dynamic> patch(String endpoint, Map<String, dynamic> body) async {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     final headers = await _headers();
-    final response = await http
+    var response = await http
         .patch(url, headers: headers, body: jsonEncode(body))
-        .timeout(const Duration(seconds: 20));
+        .timeout(const Duration(seconds: 30));
+    if (_isHtmlResponse(response.body)) {
+      await _wakeUpBackend();
+      response = await http
+          .patch(url, headers: headers, body: jsonEncode(body))
+          .timeout(const Duration(seconds: 30));
+    }
     return _handleResponse(response);
   }
 
   static Future<dynamic> delete(String endpoint) async {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     final headers = await _headers();
-    final response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 20));
+    var response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 30));
+    if (_isHtmlResponse(response.body)) {
+      await _wakeUpBackend();
+      response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 30));
+    }
     return _handleResponse(response);
   }
 
-  /// Direct cloud upload to Supabase Storage with instant permanent CDN URL.
-  static Future<Map<String, dynamic>> uploadToSupabase({
-    required Uint8List fileBytes,
-    required String fileName,
-    String? folder,
-  }) async {
-    const supabaseUrl = 'https://towshylvowvmhvhzghoh.supabase.co';
-    const anonKey = 'sb_publishable_-7svy3hEA47G7KLAxVV7mg_LlevL4eX';
-    const bucket = 'estateverify-documents';
-
-    final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final cleanName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-    final folderPath = folder ?? 'uploads/${DateTime.now().year}/${DateTime.now().month.toString().padLeft(2, '0')}';
-    final storagePath = '$folderPath/${timestamp}_$cleanName';
-
-    String mimeType = 'application/octet-stream';
-    if (['jpg', 'jpeg'].contains(ext)) {
-      mimeType = 'image/jpeg';
-    } else if (ext == 'png') {
-      mimeType = 'image/png';
-    } else if (ext == 'webp') {
-      mimeType = 'image/webp';
-    } else if (ext == 'gif') {
-      mimeType = 'image/gif';
-    } else if (ext == 'pdf') {
-      mimeType = 'application/pdf';
-    } else if (ext == 'mp4' || ext == 'm4v') {
-      mimeType = 'video/mp4';
-    } else if (ext == 'mov') {
-      mimeType = 'video/quicktime';
-    }
-
-    final url = Uri.parse('$supabaseUrl/storage/v1/object/$bucket/$storagePath');
-    final response = await http.post(
-      url,
-      headers: {
-        'apikey': anonKey,
-        'Authorization': 'Bearer $anonKey',
-        'Content-Type': mimeType,
-      },
-      body: fileBytes,
-    ).timeout(const Duration(seconds: 45));
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final publicUrl = '$supabaseUrl/storage/v1/object/public/$bucket/$storagePath';
-      return {
-        'fileUrl': publicUrl,
-        'fileName': fileName,
-        'storedName': storagePath,
-        'fileSize': fileBytes.length,
-        'mimeType': mimeType,
-      };
-    } else {
-      throw Exception('Supabase upload returned ${response.statusCode}');
-    }
-  }
-
-  /// Upload a file as multipart form data.
-  /// [fileBytes] — raw bytes of the file.
-  /// [fileName] — original file name with extension (e.g. "deed.pdf").
-  /// [fieldName] — multipart field name expected by the backend (default: "file").
-  /// [extraFields] — additional text fields to include in the request.
+  /// Upload a file via backend multipart endpoint (authenticated, Supabase service-role key).
+  /// Retries once if Render backend was cold-starting.
   static Future<dynamic> uploadFile(
     String endpoint, {
     required Uint8List fileBytes,
@@ -178,17 +160,6 @@ class ApiClient {
     String fieldName = 'file',
     Map<String, String> extraFields = const {},
   }) async {
-    // 1. Try direct Supabase Cloud upload for speed & zero proxy dependencies
-    try {
-      final directResult = await uploadToSupabase(
-        fileBytes: fileBytes,
-        fileName: fileName,
-      );
-      return directResult;
-    } catch (_) {
-      // 2. Fallback to backend /storage/upload endpoint if direct upload had issues
-    }
-
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     final authHeaders = await _headers(includeContentType: false);
 
@@ -214,21 +185,31 @@ class ApiClient {
       mediaType = MediaType('application', 'pdf');
     }
 
-    final request = http.MultipartRequest('POST', url)
-      ..headers.addAll(authHeaders)
-      ..files.add(http.MultipartFile.fromBytes(
-        fieldName,
-        fileBytes,
-        filename: fileName,
-        contentType: mediaType,
-      ));
-
-    for (final entry in extraFields.entries) {
-      request.fields[entry.key] = entry.value;
+    http.MultipartRequest _buildRequest() {
+      final req = http.MultipartRequest('POST', url)
+        ..headers.addAll(authHeaders)
+        ..files.add(http.MultipartFile.fromBytes(
+          fieldName,
+          fileBytes,
+          filename: fileName,
+          contentType: mediaType,
+        ));
+      for (final entry in extraFields.entries) {
+        req.fields[entry.key] = entry.value;
+      }
+      return req;
     }
 
-    final streamed = await request.send().timeout(const Duration(seconds: 120));
-    final response = await http.Response.fromStream(streamed);
-    return _handleResponse(response);
+    var streamed = await _buildRequest().send().timeout(const Duration(seconds: 120));
+    var response = await http.Response.fromStream(streamed);
+
+    // If Render returned an HTML cold-start page, wake it up and retry once
+    if (_isHtmlResponse(response.body)) {
+      await _wakeUpBackend();
+      streamed = await _buildRequest().send().timeout(const Duration(seconds: 120));
+      response = await http.Response.fromStream(streamed);
+    }
+
+    return _handleResponse(response, endpoint: endpoint);
   }
 }

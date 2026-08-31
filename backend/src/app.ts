@@ -24,6 +24,7 @@ import { materialsRoutes } from './modules/materials/materials.routes';
 import supportRoutes from './modules/support/support.routes';
 import { buildRoutes } from './modules/build/build.routes';
 import { reelsRoutes } from './modules/reels/reels.routes';
+import { userRoutes } from './modules/users/users.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -92,6 +93,7 @@ app.use(`${apiPrefix}/materials`, materialsRoutes);
 app.use(`${apiPrefix}/support`, supportRoutes);
 app.use(`${apiPrefix}/build`, buildRoutes);
 app.use(`${apiPrefix}/reels`, reelsRoutes);
+app.use(`${apiPrefix}/users`, userRoutes);
 
 // Fallback to Admin Dashboard SPA if public/index.html exists
 app.get('*', (req: Request, res: Response, next) => {
