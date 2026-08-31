@@ -621,94 +621,11 @@ export class BankingService {
       throw new Error('Insufficient escrow wallet balance for withdrawal');
     }
 
-    const fee = 50; // Standard ₦50 NIP transfer fee
+    const fee = 50;
     const netAmount = Math.max(0, params.amount - fee);
     const ref = `HT-WD-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-    // Deduct balance
-    await prisma.virtualAccount.update({
-      where: { id: account.id },
-      data: { balance: { decrement: params.amount } },
-    });
-
-    const withdrawal = await prisma.withdrawal.create({
-      data: {
-        developerId: params.developerId || account.developerId,
-        userId: params.userId || account.userId,
-        amount: params.amount,
-        fee,
-        netAmount,
-        bankCode: params.bankCode,
-        bankName: params.bankName,
-        accountNumber: params.accountNumber,
-        accountName: params.accountName,
-        reference: ref,
-        status: 'PENDING',
-      },
-    });
-
-    console.log(`[WITHDRAWAL] Routing payout via Flutterwave for user ${account.accountName}...`);
-    const usedProvider = 'FLUTTERWAVE';
-    let withdrawalStatus = 'SUCCESS';
-    let externalRef = ref;
-    let failureMsg = '';
-
-    try {
-      const payoutRes = await FlutterwaveClient.transfer({
-        accountNumber: params.accountNumber,
-        bankCode: params.bankCode,
-        amount: netAmount,
-        reference: ref,
-        narration: `Hometrust Escrow Settlement ${ref}`,
-      });
-      if (payoutRes && payoutRes.status) {
-        withdrawalStatus = 'SUCCESS';
-        externalRef = String(payoutRes.data?.reference || payoutRes.data?.id || ref);
-      } else {
-        withdrawalStatus = 'FAILED';
-        failureMsg = payoutRes?.message || 'Payout transfer failed on settlement gateway';
-      }
-    } catch (e: any) {
-      console.warn(`[WITHDRAWAL] Payout transfer error: ${e.message}`);
-      withdrawalStatus = 'FAILED';
-      failureMsg = e.message;
-    }
-
-    if (withdrawalStatus === 'FAILED') {
-      await prisma.withdrawal.update({
-        where: { id: withdrawal.id },
-        data: {
-          status: 'FAILED',
-          failureReason: failureMsg,
-          fincraPayoutId: `${usedProvider}:${externalRef}`,
-        },
-      });
-
-      // Execute automated reversal & refund with full notification & audit dispatch
-      await this.processReversalAndRefund({
-        userId: params.userId || account.userId,
-        amount: params.amount,
-        reason: failureMsg || 'Settlement gateway rejected outbound transfer',
-        reference: ref,
-        originalTxType: 'WITHDRAWAL',
-        bankName: params.bankName,
-        accountNumber: params.accountNumber,
-      });
-
-      throw new Error(
-        `Disbursement could not be completed by settlement gateway: ${failureMsg}. Your wallet balance of ₦${params.amount.toLocaleString()} has been fully refunded.`
-      );
-    }
-
-    await prisma.withdrawal.update({
-      where: { id: withdrawal.id },
-      data: {
-        status: withdrawalStatus,
-        fincraPayoutId: `${usedProvider}:${externalRef}`,
-      },
-    });
-
-    // Send Withdrawal Dispatched Email
+    // ── Resolve recipient user before any mutation ─────────────────────────────
     const targetUserId = params.userId || account.userId;
     let targetUser: any = null;
     if (targetUserId) {
@@ -724,11 +641,118 @@ export class BankingService {
       targetUser = dev?.user;
     }
 
-    const recipientEmail = targetUser?.email || account.developer?.email || account.user?.email || '';
+    const recipientEmail = targetUser?.email || (account as any).developer?.email || (account as any).user?.email || '';
     const recipientName = targetUser
       ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
-      : (account.developer?.companyName || params.accountName || 'Account Holder');
-    const userRole = targetUser?.role || (account.developer ? 'DEVELOPER' : 'BUYER');
+      : ((account as any).developer?.companyName || params.accountName || 'Account Holder');
+    const userRole = targetUser?.role || ((account as any).developer ? 'DEVELOPER' : 'BUYER');
+    const notifyUserId = targetUser?.id || targetUserId || account.userId;
+
+    // ── STEP 1: Call gateway FIRST — do NOT touch wallet until accepted ────────
+    console.log(`[WITHDRAWAL] Calling gateway for ₦${netAmount} → ${params.accountNumber} (${params.bankCode}) ref=${ref}`);
+
+    let gatewayStatus: 'INSTANT' | 'PROCESSING' | 'FAILED' = 'FAILED';
+    let externalRef = ref;
+    let providerLabel = 'FLUTTERWAVE';
+    let failureMsg = '';
+
+    try {
+      const payoutRes = await FlutterwaveClient.transfer({
+        accountNumber: params.accountNumber,
+        bankCode: params.bankCode,
+        amount: netAmount,
+        recipientName: params.accountName,
+        reference: ref,
+        narration: `Hometrust Escrow Payout ${ref}`,
+      });
+
+      const gwRawStatus = ((payoutRes.data as any)?.status || '').toLowerCase();
+      console.log(`[WITHDRAWAL] Gateway response: status=${payoutRes.status} gwStatus=${gwRawStatus} msg=${payoutRes.message}`);
+
+      if (payoutRes.status === true) {
+        externalRef = String(payoutRes.data?.reference || payoutRes.data?.id || ref);
+        // "new" means queued by Flutterwave — webhook will confirm later
+        // "successful"/"success" means instant settlement
+        if (['successful', 'success'].includes(gwRawStatus)) {
+          gatewayStatus = 'INSTANT';
+        } else {
+          // new / pending / otp / queued — Paystack or FLW will webhook back
+          gatewayStatus = 'PROCESSING';
+        }
+      } else {
+        gatewayStatus = 'FAILED';
+        failureMsg = payoutRes.message || 'Transfer rejected by settlement gateway';
+      }
+    } catch (e: any) {
+      console.error(`[WITHDRAWAL] Gateway error: ${e.message}`);
+      gatewayStatus = 'FAILED';
+      failureMsg = e.message || 'Network error calling settlement gateway';
+    }
+
+    // Hard failure — wallet untouched, throw clean error
+    if (gatewayStatus === 'FAILED') {
+      throw new Error(
+        `Transfer could not be initiated: ${failureMsg}. No funds have been deducted from your wallet — please try again.`
+      );
+    }
+
+    // ── STEP 2: Gateway accepted — NOW deduct wallet and record ───────────────
+    await prisma.virtualAccount.update({
+      where: { id: account.id },
+      data: { balance: { decrement: params.amount } },
+    });
+
+    const dbStatus = gatewayStatus === 'INSTANT' ? 'SUCCESS' : 'PROCESSING';
+
+    const withdrawal = await prisma.withdrawal.create({
+      data: {
+        developerId: params.developerId || (account as any).developerId,
+        userId: params.userId || account.userId,
+        amount: params.amount,
+        fee,
+        netAmount,
+        bankCode: params.bankCode,
+        bankName: params.bankName,
+        accountNumber: params.accountNumber,
+        accountName: params.accountName,
+        reference: ref,
+        status: dbStatus,
+        fincraPayoutId: `${providerLabel}:${externalRef}`,
+      },
+    });
+
+    // ── STEP 3: Notify with accurate status message ────────────────────────────
+    const isInstant = gatewayStatus === 'INSTANT';
+    const notifTitle = isInstant ? '✅ Withdrawal Successful' : '⏳ Withdrawal Processing';
+    const notifMsg = isInstant
+      ? `₦${netAmount.toLocaleString()} has been sent to ${params.accountName} at ${params.bankName} (${params.accountNumber}). Ref: ${ref}`
+      : `Your withdrawal of ₦${netAmount.toLocaleString()} to ${params.bankName} (${params.accountNumber}) is being processed by the bank. You will get a push notification the moment funds arrive. Ref: ${ref}`;
+
+    if (notifyUserId) {
+      NotificationsService.createAndDispatch({
+        userId: notifyUserId,
+        title: notifTitle,
+        message: notifMsg,
+        type: 'PAYMENT',
+        actionDetails: [
+          { label: 'Amount Requested', value: `₦${params.amount.toLocaleString()}` },
+          { label: 'Transfer Fee', value: `₦${fee.toLocaleString()}` },
+          { label: 'Net Amount', value: `₦${netAmount.toLocaleString()}` },
+          { label: 'Destination Bank', value: params.bankName },
+          { label: 'Account Number', value: params.accountNumber },
+          { label: 'Beneficiary', value: params.accountName },
+          { label: 'Reference', value: ref },
+          { label: 'Status', value: isInstant ? 'Sent ✅' : 'Processing ⏳' },
+        ],
+      }).catch(console.warn);
+
+      OneSignalService.sendPushToUser({
+        userId: notifyUserId,
+        title: notifTitle,
+        message: notifMsg,
+        data: { type: 'WITHDRAWAL', reference: ref, amount: netAmount, status: dbStatus },
+      }).catch(console.warn);
+    }
 
     if (recipientEmail) {
       ResendService.sendWithdrawalDispatchedEmail(recipientEmail, recipientName, netAmount, {
@@ -739,28 +763,117 @@ export class BankingService {
       }).catch(console.warn);
     }
 
-    const notifyUserId = targetUser?.id || targetUserId || account.userId;
-    if (notifyUserId) {
-      await NotificationsService.createAndDispatch({
-        userId: notifyUserId,
-        title: '💸 Escrow Withdrawal Dispatched',
-        message: `Your withdrawal of ₦${netAmount.toLocaleString()} to ${params.bankName} (${params.accountNumber}) has been successfully processed & dispatched.`,
-        type: 'PAYMENT',
-        actionDetails: [
-          { label: 'Amount Requested', value: `₦${params.amount.toLocaleString()}` },
-          { label: 'NIP Transfer Fee', value: `₦${fee.toLocaleString()}` },
-          { label: 'Net Disbursed', value: `₦${netAmount.toLocaleString()}` },
-          { label: 'Destination Bank', value: params.bankName },
-          { label: 'Account Number', value: params.accountNumber },
-          { label: 'Beneficiary', value: params.accountName },
-          { label: 'Reference', value: ref },
-          { label: 'Status', value: withdrawalStatus },
-        ],
-      }).catch(console.warn);
-    }
-
     return withdrawal;
   }
+
+  /**
+   * Handle Paystack transfer.success / transfer.failed / transfer.reversed webhooks.
+   * Called from BankingController.webhook() when event starts with "transfer."
+   */
+  static async handleTransferWebhook(event: string, data: any): Promise<void> {
+    const reference: string = data?.reference || data?.transfer_code || '';
+    const paystackStatus = (data?.status || '').toLowerCase();
+
+    console.log(`[TRANSFER WEBHOOK] event=${event} ref=${reference} status=${paystackStatus}`);
+
+    if (!reference) return;
+
+    const withdrawal = await prisma.withdrawal.findFirst({
+      where: { reference },
+      include: {
+        user: true,
+        developer: { include: { user: true } },
+      },
+    });
+
+    if (!withdrawal) {
+      console.warn(`[TRANSFER WEBHOOK] No withdrawal record found for ref=${reference}`);
+      return;
+    }
+
+    // Resolve notify target
+    const devUser = (withdrawal.developer as any)?.user;
+    const targetUser: any = withdrawal.user || devUser;
+    const notifyUserId: string | null = targetUser?.id || null;
+    const recipientEmail: string = targetUser?.email || '';
+    const recipientName: string = targetUser
+      ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
+      : withdrawal.accountName;
+
+    const isSuccess = event === 'transfer.success' || paystackStatus === 'success' || paystackStatus === 'successful';
+    const isFailed = event === 'transfer.failed' || event === 'transfer.reversed'
+      || paystackStatus === 'failed' || paystackStatus === 'reversed';
+
+    if (isSuccess && withdrawal.status !== 'SUCCESS') {
+      // ── Confirmed: money landed ─────────────────────────────────────────────
+      await prisma.withdrawal.update({
+        where: { id: withdrawal.id },
+        data: {
+          status: 'SUCCESS',
+          fincraPayoutId: `PAYSTACK_WH:${data?.transfer_code || reference}`,
+        },
+      });
+
+      console.log(`[TRANSFER WEBHOOK] ✅ CONFIRMED ₦${withdrawal.netAmount} → ${withdrawal.accountNumber}`);
+
+      if (notifyUserId) {
+        NotificationsService.createAndDispatch({
+          userId: notifyUserId,
+          title: '✅ Funds Delivered to Bank',
+          message: `₦${withdrawal.netAmount.toLocaleString()} has been successfully delivered to ${withdrawal.accountName} at ${withdrawal.bankName} (${withdrawal.accountNumber}). Ref: ${reference}`,
+          type: 'PAYMENT',
+          actionDetails: [
+            { label: 'Amount Delivered', value: `₦${withdrawal.netAmount.toLocaleString()}` },
+            { label: 'Recipient', value: withdrawal.accountName },
+            { label: 'Bank', value: withdrawal.bankName },
+            { label: 'Account', value: withdrawal.accountNumber },
+            { label: 'Reference', value: reference },
+            { label: 'Status', value: '✅ Delivered' },
+          ],
+        }).catch(console.warn);
+
+        OneSignalService.sendPushToUser({
+          userId: notifyUserId,
+          title: '✅ Funds Delivered',
+          message: `₦${withdrawal.netAmount.toLocaleString()} sent to ${withdrawal.accountName} at ${withdrawal.bankName} — confirmed!`,
+          data: { type: 'WITHDRAWAL_CONFIRMED', reference, amount: withdrawal.netAmount },
+        }).catch(console.warn);
+      }
+
+      if (recipientEmail) {
+        ResendService.sendWithdrawalDispatchedEmail(recipientEmail, recipientName, withdrawal.netAmount, {
+          bankName: withdrawal.bankName,
+          accountNumber: withdrawal.accountNumber,
+          reference,
+          userRole: 'USER',
+        }).catch(console.warn);
+      }
+
+    } else if (isFailed && withdrawal.status !== 'FAILED') {
+      // ── Failed: reverse the deduction ──────────────────────────────────────
+      const failReason = data?.reason || data?.gateway_response || `Transfer ${event} at payment gateway`;
+
+      await prisma.withdrawal.update({
+        where: { id: withdrawal.id },
+        data: { status: 'FAILED', failureReason: failReason },
+      });
+
+      console.log(`[TRANSFER WEBHOOK] ❌ FAILED ₦${withdrawal.amount} ref=${reference} reason=${failReason}`);
+
+      if (withdrawal.userId) {
+        await this.processReversalAndRefund({
+          userId: withdrawal.userId,
+          amount: withdrawal.amount,
+          reason: failReason,
+          reference,
+          originalTxType: 'WITHDRAWAL',
+          bankName: withdrawal.bankName,
+          accountNumber: withdrawal.accountNumber,
+        });
+      }
+    }
+  }
+
 
   /**
    * Universal Reversal & Refund Engine
@@ -1123,21 +1236,97 @@ export class BankingService {
               }),
             ]);
 
-            account.balance += amount;
+  static async requestWithdrawal(params: {
+    developerId?: string;
+    userId?: string;
+    amount: number;
+    bankCode: string;
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+  }) {
+    if (params.amount < 1000) {
+      throw new Error('Minimum withdrawal amount is ₦1,000');
+    }
 
-            NotificationsService.createAndDispatch({
-              userId: user.id,
-              title: '💰 Escrow Wallet Credited',
-              message: `Your deposit of ₦${amount.toLocaleString()} via bank transfer has been synced & credited to your escrow wallet.`,
-              type: 'PAYMENT',
-              actionDetails: [
-                { label: 'Amount Credited', value: `₦${amount.toLocaleString()}` },
-                { label: 'Payment Reference', value: txRef },
-                { label: 'Status', value: 'Confirmed & Cleared' },
-              ],
-            }).catch(() => {});
-          }
+    let account = await this.getVirtualAccount(params.userId, params.developerId);
+    if (!account && params.userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: params.userId },
+        include: { developer: true, virtualAccounts: true },
+      });
+      if (user?.virtualAccounts?.[0]) {
+        account = user.virtualAccounts[0] as any;
+      } else if (user?.developer?.id) {
+        account = await prisma.virtualAccount.findFirst({
+          where: { developerId: user.developer.id },
+          include: { developer: true, user: true },
+        }) as any;
+      }
+    }
+
+    if (!account || Number(account.balance) < params.amount) {
+      throw new Error('Insufficient escrow wallet balance for withdrawal');
+    }
+
+    const fee = 50; // Standard ₦50 NIP transfer fee
+    const netAmount = Math.max(0, params.amount - fee);
+    const ref = `HT-WD-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    // ── Resolve user details before any mutation ──────────────────────────────
+    const targetUserId = params.userId || account.userId;
+    let targetUser: any = null;
+    if (targetUserId) {
+      targetUser = await prisma.user.findUnique({
+        where: { id: targetUserId },
+        include: { developer: true },
+      });
+    } else if (account.developerId) {
+      const dev = await prisma.developer.findUnique({
+        where: { id: account.developerId },
+        include: { user: true },
+      });
+      targetUser = dev?.user;
+    }
+
+    const recipientEmail = targetUser?.email || account.developer?.email || account.user?.email || '';
+    const recipientName = targetUser
+      ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
+      : (account.developer?.companyName || params.accountName || 'Account Holder');
+    const notifyUserId = targetUser?.id || targetUserId || account.userId;
+
+    // ── Step 1: Call the payment gateway FIRST before touching wallet ─────────
+    console.log(`[WITHDRAWAL] Initiating payout of ₦${netAmount} to ${params.accountNumber} (${params.bankCode}) ref=${ref}`);
+
+    let gatewayStatus: 'SUCCESS' | 'PROCESSING' | 'FAILED' = 'FAILED';
+    let externalRef = ref;
+    let providerLabel = 'GATEWAY';
+    let failureMsg = '';
+
+    try {
+      const payoutRes = await FlutterwaveClient.transfer({
+        accountNumber: params.accountNumber,
+        bankCode: params.bankCode,
+        amount: netAmount,
+        recipientName: params.accountName,
+        reference: ref,
+        narration: `Hometrust Escrow Settlement ${ref}`,
+      });
+
+      providerLabel = 'FLUTTERWAVE';
+      const gwStatus = (payoutRes.data as any)?.status || '';
+
+      if (payoutRes.status === true) {
+        if (['successful', 'success', 'new'].includes(gwStatus.toLowerCase())) {
+          gatewayStatus = 'SUCCESS';
+        } else {
+          // Flutterwave queued it — will confirm via webhook
+          gatewayStatus = 'PROCESSING';
         }
+        externalRef = String(payoutRes.data?.reference || payoutRes.data?.id || ref);
+      } else {
+        gatewayStatus = 'FAILED';
+        failureMsg = payoutRes.message || 'Payout rejected by Flutterwave';
       }
     } catch (e: any) {
       console.warn('[SYNC FLW TXS WARNING]', e.message);
@@ -1265,15 +1454,20 @@ export class BankingService {
     const eventType = event.event || event.type || event['event.type'] || '';
     const data = event.data || event;
 
-    // ── Handle Reversals / Failed Transfers from Webhook ─────────────────────
+    // ── Route ALL Paystack/Flutterwave transfer events through dedicated handler ─
+    // Handles: transfer.success, transfer.failed, transfer.reversed
+    if (eventType.startsWith('transfer.') || eventType === 'transfer') {
+      await this.handleTransferWebhook(eventType, data);
+      return { success: true };
+    }
+
+    // ── Handle Reversals / Failed Transfers from older Flutterwave webhook format ─
     const isReversal =
-      eventType.includes('transfer.failed') ||
-      eventType.includes('transfer.reversed') ||
-      eventType.includes('refund') ||
-      eventType.includes('reversed');
+      eventType.includes('reversed') ||
+      eventType.includes('refund');
 
     if (isReversal) {
-      console.log(`[WEBHOOK] Processing reversal event: ${eventType}`);
+      console.log(`[WEBHOOK] Processing legacy reversal event: ${eventType}`);
       const transferRef = data.reference || data.tx_ref || data.id;
       const withdrawal = await prisma.withdrawal.findFirst({
         where: {
@@ -1284,7 +1478,7 @@ export class BankingService {
         },
       });
 
-      if (withdrawal && withdrawal.userId) {
+      if (withdrawal && withdrawal.userId && withdrawal.status !== 'FAILED') {
         await this.processReversalAndRefund({
           userId: withdrawal.userId,
           amount: withdrawal.amount,
@@ -1295,6 +1489,7 @@ export class BankingService {
       }
       return { success: true };
     }
+
 
     const isCollection =
       eventType.includes('charge.success') ||
