@@ -26,6 +26,9 @@ export class LegalController {
         title: req.body.title,
         requirements: req.body.requirements,
         agreedAmount: req.body.agreedAmount ? parseFloat(req.body.agreedAmount) : undefined,
+        deliveryOption: req.body.deliveryOption,
+        deliveryAddress: req.body.deliveryAddress,
+        deliveryFee: req.body.deliveryFee ? parseFloat(req.body.deliveryFee) : 0,
         supportingDocuments: req.body.supportingDocuments,
       });
       sendSuccess(res, result, 'Legal document request created', 201);
@@ -108,4 +111,27 @@ export class LegalController {
       sendError(res, error.message, 400);
     }
   }
+
+  static async dispatchCourier(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await LegalService.dispatchCourier(req.params.id as string, req.body, req.user);
+      sendSuccess(res, result, 'Hard copy legal deed marked as dispatched');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async confirmDelivery(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await LegalService.confirmDelivery(req.params.id as string, req.body);
+      sendSuccess(res, result, 'Legal document delivery confirmed successfully');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
 }

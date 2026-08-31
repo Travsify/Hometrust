@@ -394,6 +394,16 @@ model VerificationRequest {
   externalRegistryNotes String?
   finalFindings         String?
   reportUrl             String?
+  // Physical Hard Copy Doorstep Delivery
+  deliveryOption        String                  @default("DIGITAL_ONLY") // DIGITAL_ONLY, LOCAL_COURIER, INTERSTATE_COURIER, INTERNATIONAL
+  deliveryAddress       String?                 // JSON string of address & recipient contact
+  deliveryFee           Float                   @default(0)
+  deliveryStatus        String                  @default("PENDING") // PENDING, PACKAGED, DISPATCHED, OUT_FOR_DELIVERY, DELIVERED
+  courierPartner        String?                 // e.g. "DHL Express", "GIG Logistics"
+  waybillNumber         String?                 // Courier tracking code
+  deliveryOtp           String?                 // 4-digit handover confirmation PIN
+  dispatchedAt          DateTime?
+  deliveredAt           DateTime?
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
 
@@ -450,6 +460,16 @@ model LegalRequest {
   draftDocumentUrl      String?
   finalDocumentUrl      String?
   customerFeedback      String?
+  // Physical Hard Copy Doorstep Delivery
+  deliveryOption        String        @default("DIGITAL_ONLY") // DIGITAL_ONLY, LOCAL_COURIER, INTERSTATE_COURIER, INTERNATIONAL
+  deliveryAddress       String?       // JSON string of address & recipient contact
+  deliveryFee           Float         @default(0)
+  deliveryStatus        String        @default("PENDING") // PENDING, PACKAGED, DISPATCHED, OUT_FOR_DELIVERY, DELIVERED
+  courierPartner        String?       // e.g. "DHL Express", "GIG Logistics"
+  waybillNumber         String?       // Courier tracking code
+  deliveryOtp           String?       // 4-digit handover confirmation PIN
+  dispatchedAt          DateTime?
+  deliveredAt           DateTime?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 

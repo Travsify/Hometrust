@@ -69,6 +69,9 @@ export class VerificationsController {
         city: req.body.city,
         documentType: req.body.documentType,
         urgency: req.body.urgency,
+        deliveryOption: req.body.deliveryOption,
+        deliveryAddress: req.body.deliveryAddress,
+        deliveryFee: req.body.deliveryFee ? parseFloat(req.body.deliveryFee) : 0,
         documents,
       });
 
@@ -144,6 +147,29 @@ export class VerificationsController {
         return;
       }
       sendSuccess(res, result, 'Verification fee paid successfully');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+
+  static async dispatchCourier(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await VerificationsService.dispatchCourier(req.params.id as string, req.body, req.user);
+      sendSuccess(res, result, 'Hard copies marked as dispatched');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
+  static async confirmDelivery(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await VerificationsService.confirmDelivery(req.params.id as string, req.body);
+      sendSuccess(res, result, 'Delivery confirmed successfully');
     } catch (error: any) {
       sendError(res, error.message, 400);
     }
