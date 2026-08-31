@@ -217,7 +217,7 @@ class _DeveloperHomeScreenState extends State<DeveloperHomeScreen> {
             },
           ),
           IconButton(
-            tooltip: 'View Public Instagram Profile',
+            tooltip: 'View Developer Homegram',
             icon: const Icon(Icons.photo_camera_front_rounded, color: Color(0xFF059669), size: 22),
             onPressed: () {
               final dev = _stats?['developer'] as Map<String, dynamic>?;

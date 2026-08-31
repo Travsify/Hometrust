@@ -749,7 +749,7 @@ class _DeveloperProfileScreenState extends State<DeveloperProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Public Instagram Profile',
+                          'Developer Homegram',
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14),
                         ),
                         SizedBox(height: 2),

@@ -187,7 +187,7 @@ class _DeveloperPublicProfileScreenState extends State<DeveloperPublicProfileScr
                   IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
                 ],
               ),
-              const Text('This information appears on your Instagram-style public profile for buyers to see.', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+              const Text('This information appears on your Homegram public profile for buyers to see.', style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
               const SizedBox(height: 16),
               const Text('Bio / Company Introduction', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
               const SizedBox(height: 5),
@@ -448,7 +448,7 @@ class _DeveloperPublicProfileScreenState extends State<DeveloperPublicProfileScr
                                       Clipboard.setData(ClipboardData(text: 'https://hometrustng.com/developers/${dev['id']}'));
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
-                                          content: Text('🔗 Profile link copied to clipboard! Share with buyers on WhatsApp & Instagram.'),
+                                          content: Text('🔗 Profile link copied to clipboard! Share with prospective buyers.'),
                                           backgroundColor: Color(0xFF059669),
                                         ),
                                       );
