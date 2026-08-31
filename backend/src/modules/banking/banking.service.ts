@@ -665,13 +665,14 @@ export class BankingService {
       }
     }
 
-    if (!account || Number(account.balance) < params.amount) {
-      throw new Error('Insufficient escrow wallet balance for withdrawal');
-    }
-
     const fee = 100;
-    const netAmount = Math.max(0, params.amount - fee);
+    const transferAmount = params.amount;
+    const totalDebited = transferAmount + fee;
     const ref = `HT-WD-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    if (!account || Number(account.balance) < totalDebited) {
+      throw new Error(`Insufficient wallet balance. Total required: ₦${totalDebited.toLocaleString()} (₦${transferAmount.toLocaleString()} transfer + ₦${fee} sender processing fee)`);
+    }
 
     // ── Resolve recipient user before any mutation ─────────────────────────────
     const targetUserId = params.userId || account.userId;
@@ -713,7 +714,7 @@ export class BankingService {
     const notifyUserId = targetUser?.id || targetUserId || account.userId;
 
     // ── STEP 1: Call gateway FIRST — do NOT touch wallet until accepted ────────
-    console.log(`[WITHDRAWAL] Calling gateway for ₦${netAmount} → ${params.accountNumber} (${params.bankCode}) ref=${ref}`);
+    console.log(`[WITHDRAWAL] Calling gateway for ₦${transferAmount} (full amount to beneficiary) → ${params.accountNumber} (${params.bankCode}) ref=${ref}`);
 
     let gatewayStatus: 'INSTANT' | 'PROCESSING' | 'FAILED' = 'FAILED';
     let externalRef = ref;
@@ -724,7 +725,7 @@ export class BankingService {
       const payoutRes = await FlutterwaveClient.transfer({
         accountNumber: params.accountNumber,
         bankCode: params.bankCode,
-        amount: netAmount,
+        amount: transferAmount,
         recipientName: params.accountName,
         reference: ref,
         narration: `Hometrust Escrow Payout ${ref}`,
@@ -764,9 +765,10 @@ export class BankingService {
     }
 
     // ── STEP 2: Gateway accepted — NOW deduct wallet and record ───────────────
+    // The sender is charged the transfer amount + ₦100 fee. Receiver gets 100% of transferAmount.
     await prisma.virtualAccount.update({
       where: { id: account.id },
-      data: { balance: { decrement: params.amount } },
+      data: { balance: { decrement: totalDebited } },
     });
 
     const dbStatus = gatewayStatus === 'INSTANT' ? 'SUCCESS' : 'PROCESSING';
@@ -775,9 +777,9 @@ export class BankingService {
       data: {
         developerId: params.developerId || (account as any).developerId,
         userId: params.userId || account.userId,
-        amount: params.amount,
+        amount: transferAmount,
         fee,
-        netAmount,
+        netAmount: transferAmount,
         bankCode: params.bankCode,
         bankName: params.bankName,
         accountNumber: params.accountNumber,
@@ -792,8 +794,8 @@ export class BankingService {
     const isInstant = gatewayStatus === 'INSTANT';
     const notifTitle = isInstant ? '✅ Withdrawal Successful' : '⏳ Withdrawal Processing';
     const notifMsg = isInstant
-      ? `₦${netAmount.toLocaleString()} has been sent to ${params.accountName} at ${params.bankName} (${params.accountNumber}). Ref: ${ref}`
-      : `Your withdrawal of ₦${netAmount.toLocaleString()} to ${params.bankName} (${params.accountNumber}) is being processed by the bank. You will get a push notification the moment funds arrive. Ref: ${ref}`;
+      ? `₦${transferAmount.toLocaleString()} has been sent to ${params.accountName} at ${params.bankName} (${params.accountNumber}). Ref: ${ref}`
+      : `Your withdrawal of ₦${transferAmount.toLocaleString()} to ${params.bankName} (${params.accountNumber}) is being processed by the bank. You will get a push notification the moment funds arrive. Ref: ${ref}`;
 
     if (notifyUserId) {
       NotificationsService.createAndDispatch({
@@ -802,9 +804,9 @@ export class BankingService {
         message: notifMsg,
         type: 'PAYMENT',
         actionDetails: [
-          { label: 'Amount Requested', value: `₦${params.amount.toLocaleString()}` },
-          { label: 'Transfer Fee', value: `₦${fee.toLocaleString()}` },
-          { label: 'Net Amount', value: `₦${netAmount.toLocaleString()}` },
+          { label: 'Amount Delivered to Beneficiary', value: `₦${transferAmount.toLocaleString()}` },
+          { label: 'Platform Transfer Fee', value: `₦${fee.toLocaleString()} (Sender)` },
+          { label: 'Total Debited from Wallet', value: `₦${totalDebited.toLocaleString()}` },
           { label: 'Destination Bank', value: params.bankName },
           { label: 'Account Number', value: params.accountNumber },
           { label: 'Beneficiary', value: params.accountName },
@@ -817,12 +819,12 @@ export class BankingService {
         userId: notifyUserId,
         title: notifTitle,
         message: notifMsg,
-        data: { type: 'WITHDRAWAL', reference: ref, amount: netAmount, status: dbStatus },
+        data: { type: 'WITHDRAWAL', reference: ref, amount: transferAmount, status: dbStatus },
       }).catch(console.warn);
     }
 
     if (recipientEmail) {
-      ResendService.sendWithdrawalDispatchedEmail(recipientEmail, recipientName, netAmount, {
+      ResendService.sendWithdrawalDispatchedEmail(recipientEmail, recipientName, transferAmount, {
         bankName: params.bankName,
         accountNumber: params.accountNumber,
         reference: ref,
@@ -928,9 +930,10 @@ export class BankingService {
       console.log(`[TRANSFER WEBHOOK] ❌ FAILED ₦${withdrawal.amount} ref=${reference} reason=${failReason}`);
 
       if (withdrawal.userId) {
+        const refundTotal = withdrawal.amount + (withdrawal.fee || 0);
         await this.processReversalAndRefund({
           userId: withdrawal.userId,
-          amount: withdrawal.amount,
+          amount: refundTotal,
           reason: failReason,
           reference,
           originalTxType: 'WITHDRAWAL',
