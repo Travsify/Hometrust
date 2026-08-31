@@ -266,4 +266,120 @@ export class VerificationsService {
 
     return updated;
   }
+
+  /**
+   * Pay Verification Fee from Dedicated Virtual Account Wallet
+   */
+  static async payWithWallet(requestId: string, userId: string) {
+    const request = await prisma.verificationRequest.findUnique({
+      where: { id: requestId },
+      include: { user: true },
+    });
+
+    if (!request) {
+      throw new Error('Verification request not found');
+    }
+
+    if (request.userId !== userId) {
+      throw new Error('Unauthorized access to this verification request');
+    }
+
+    if (request.isPaid) {
+      return { success: true, message: 'Verification fee has already been paid.', request };
+    }
+
+    // Find User's Dedicated Virtual Account
+    const virtualAccount = await prisma.virtualAccount.findFirst({
+      where: { userId },
+    });
+
+    const currentBalance = virtualAccount?.balance || 0;
+    const requiredAmount = request.feeAmount;
+
+    if (!virtualAccount || currentBalance < requiredAmount) {
+      return {
+        success: false,
+        code: 'INSUFFICIENT_FUNDS',
+        requiredAmount,
+        currentBalance,
+        deficit: Math.max(0, requiredAmount - currentBalance),
+        virtualAccount: virtualAccount
+          ? {
+              accountNumber: virtualAccount.accountNumber,
+              bankName: virtualAccount.bankName,
+              accountName: virtualAccount.accountName,
+            }
+          : null,
+      };
+    }
+
+    const payRef = `HT-VER-PAY-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // Atomic transaction: debit wallet, mark paid, record ledger entry
+    const [updatedAccount, updatedRequest] = await prisma.$transaction([
+      prisma.virtualAccount.update({
+        where: { id: virtualAccount.id },
+        data: {
+          balance: { decrement: requiredAmount },
+        },
+      }),
+      prisma.verificationRequest.update({
+        where: { id: requestId },
+        data: {
+          isPaid: true,
+          status: 'LEGAL_REVIEW',
+        },
+      }),
+      prisma.payment.create({
+        data: {
+          userId,
+          verificationRequestId: request.id,
+          amount: requiredAmount,
+          currency: 'NGN',
+          purpose: 'VERIFICATION_FEE',
+          paystackChannel: 'wallet_transfer',
+          paymentReference: `HT-PAY-VER-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+          receiptNumber: `HT-RCP-VER-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+          status: 'SUCCESS',
+          totalAmount: requiredAmount,
+          paidAt: new Date(),
+        },
+      }),
+    ]);
+
+    await AuditService.log({
+      adminId: userId,
+      adminEmail: request.user.email,
+      action: 'VERIFICATION_FEE_PAID',
+      entityType: 'VERIFICATION_REQUEST',
+      entityId: request.id,
+      details: {
+        code: request.verificationCode,
+        amount: requiredAmount,
+        urgency: request.urgency,
+        newBalance: updatedAccount.balance,
+      },
+    });
+
+    await NotificationsService.createAndDispatch({
+      userId,
+      title: `Payment Confirmed: ${request.propertyName}`,
+      message: `₦${requiredAmount.toLocaleString()} paid for ${request.urgency} title verification (${request.verificationCode}).`,
+      type: 'PAYMENT',
+      actionDetails: [
+        { label: 'Verification Code', value: request.verificationCode },
+        { label: 'Amount Paid', value: `₦${requiredAmount.toLocaleString()}` },
+        { label: 'Urgency Tier', value: request.urgency },
+        { label: 'Status', value: 'In Legal Review ⏳' },
+      ],
+    }).catch(console.warn);
+
+    return {
+      success: true,
+      message: 'Verification fee paid successfully from wallet.',
+      request: updatedRequest,
+      balance: updatedAccount.balance,
+    };
+  }
+
 }

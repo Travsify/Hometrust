@@ -131,4 +131,22 @@ export class VerificationsController {
       sendError(res, error.message, 400);
     }
   }
+
+  static async payWithWallet(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+      const result = await VerificationsService.payWithWallet(req.params.id as string, req.user.id);
+      if (!result.success && result.code === 'INSUFFICIENT_FUNDS') {
+        sendError(res, 'Insufficient funds in dedicated wallet', 402, result);
+        return;
+      }
+      sendSuccess(res, result, 'Verification fee paid successfully');
+    } catch (error: any) {
+      sendError(res, error.message, 400);
+    }
+  }
+
 }
