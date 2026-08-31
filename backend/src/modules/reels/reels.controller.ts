@@ -16,13 +16,18 @@ export class ReelsController {
         return;
       }
 
-      // Find developer record for user or provision profile
+      // Enforce: ONLY verified developers or administrators can publish reels
       let developer = await prisma.developer.findUnique({
         where: { userId: req.user.id },
       });
 
       if (!developer) {
-        developer = await DevelopersService.getDeveloperByUserId(req.user.id);
+        if (req.user.role === 'DEVELOPER' || req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN') {
+          developer = await DevelopersService.getDeveloperByUserId(req.user.id);
+        } else {
+          sendError(res, 'Access denied: Only verified property developers can publish reels', 403);
+          return;
+        }
       }
 
       const {

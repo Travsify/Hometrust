@@ -57,7 +57,7 @@ class InspectionBookingModal extends StatefulWidget {
 }
 
 class _InspectionBookingModalState extends State<InspectionBookingModal> {
-  // Options: 'SELF', 'COREN', 'GEOFENCED_VIDEO'
+  // Options: 'SELF', 'COREN', 'GEOFENCED_VIDEO', 'GO_LIVE'
   String _selectedOption = 'SELF';
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 2));
   String _selectedTime = '10:00 AM – 12:00 PM';
@@ -145,7 +145,9 @@ class _InspectionBookingModalState extends State<InspectionBookingModal> {
             ? 'SELF_OR_REPRESENTATIVE'
             : _selectedOption == 'COREN'
                 ? 'COREN_ENGINEER'
-                : 'GEOFENCED_VIDEO',
+                : _selectedOption == 'GO_LIVE'
+                    ? 'GO_LIVE_STREAM'
+                    : 'GEOFENCED_VIDEO',
         'preferredDate': '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}',
         'preferredTime': _selectedTime,
         'attendeeName': _visitorNameCtrl.text.trim(),
@@ -204,7 +206,9 @@ class _InspectionBookingModalState extends State<InspectionBookingModal> {
                   ? 'COREN Engineer Dispatched'
                   : _selectedOption == 'GEOFENCED_VIDEO'
                       ? 'Video Walkthrough Requested'
-                      : 'Site Gate Pass Generated!',
+                      : _selectedOption == 'GO_LIVE'
+                          ? '🔴 "Go Live" Inspection Booked!'
+                          : 'Site Gate Pass Generated!',
               textAlign: TextAlign.center,
               style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF0F172A)),
             ),
@@ -214,7 +218,9 @@ class _InspectionBookingModalState extends State<InspectionBookingModal> {
                   ? 'An accredited COREN structural engineer has been assigned to physically inspect the property/milestone. You will receive a stamped engineering compliance report in-app.'
                   : _selectedOption == 'GEOFENCED_VIDEO'
                       ? 'The developer has been notified to record and upload an on-site 360° walkthrough video within the 150m GPS geofence boundary.'
-                      : 'Your official site access pass is confirmed. Show this gate pass code to the security/site engineer upon arrival.',
+                      : _selectedOption == 'GO_LIVE'
+                          ? 'The developer has been notified and will go live on-site on your scheduled date. You will receive a push alert when the live stream starts. Your milestone escrow funds are released only upon your final approval within the 5-day window.'
+                          : 'Your official site access pass is confirmed. Show this gate pass code to the security/site engineer upon arrival.',
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), height: 1.4),
             ),
@@ -358,10 +364,46 @@ class _InspectionBookingModalState extends State<InspectionBookingModal> {
               badgeColor: const Color(0xFF8B5CF6),
               description: 'Developer must record a live walkthrough video locked inside the site GPS geofence (150m radius) with live timestamp.',
             ),
+            const SizedBox(height: 10),
+
+            // 4. Go Live Interactive Broadcast (NEW)
+            _buildOptionCard(
+              id: 'GO_LIVE',
+              icon: Icons.live_tv_rounded,
+              title: 'Interactive "Go Live" Broadcast',
+              badge: '🔴 LIVE',
+              badgeColor: const Color(0xFFEF4444),
+              description: 'Developer goes live on-site at a scheduled time. You watch in real-time, ask questions, and direct the developer to show any part of the building. Milestone escrow released only on your final approval (5-day window).',
+              isHighlighted: true,
+            ),
             const SizedBox(height: 20),
 
+            // Final Arbiter Note
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF9C3),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline_rounded, color: Color(0xFFD97706), size: 16),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Regardless of inspection method, milestone escrow funds are released only when YOU confirm satisfaction. You have a 5-day review window after any inspection.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF92400E), height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+
             // Dynamic Form based on Selection
-            if (_selectedOption != 'GEOFENCED_VIDEO') ...[
+            if (_selectedOption != 'GEOFENCED_VIDEO' && _selectedOption != 'GO_LIVE') ...[
               // Date & Time Selectors
               Row(
                 children: [
@@ -532,7 +574,11 @@ class _InspectionBookingModalState extends State<InspectionBookingModal> {
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : _handleBookInspection,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _selectedOption == 'COREN' ? const Color(0xFF2563EB) : AppColors.primary,
+                  backgroundColor: _selectedOption == 'COREN'
+                      ? const Color(0xFF2563EB)
+                      : _selectedOption == 'GO_LIVE'
+                          ? const Color(0xFFDC2626)
+                          : AppColors.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
@@ -546,7 +592,9 @@ class _InspectionBookingModalState extends State<InspectionBookingModal> {
                                 ? Icons.payment_rounded
                                 : _selectedOption == 'GEOFENCED_VIDEO'
                                     ? Icons.send_rounded
-                                    : Icons.confirmation_number_rounded,
+                                    : _selectedOption == 'GO_LIVE'
+                                        ? Icons.live_tv_rounded
+                                        : Icons.confirmation_number_rounded,
                             color: Colors.white,
                             size: 18,
                           ),
@@ -556,7 +604,9 @@ class _InspectionBookingModalState extends State<InspectionBookingModal> {
                                 ? 'Pay ₦25,000 & Assign COREN Engineer'
                                 : _selectedOption == 'GEOFENCED_VIDEO'
                                     ? 'Request Live Video (Free)'
-                                    : 'Confirm Free Site Gate Pass (₦0)',
+                                    : _selectedOption == 'GO_LIVE'
+                                        ? 'Schedule "Go Live" Inspection (Free)'
+                                        : 'Confirm Free Site Gate Pass (₦0)',
                             style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13.5, color: Colors.white),
                           ),
                         ],
@@ -576,6 +626,7 @@ class _InspectionBookingModalState extends State<InspectionBookingModal> {
     required String badge,
     required Color badgeColor,
     required String description,
+    bool isHighlighted = false,
   }) {
     final isSelected = _selectedOption == id;
 
@@ -585,11 +636,11 @@ class _InspectionBookingModalState extends State<InspectionBookingModal> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isSelected ? badgeColor.withValues(alpha: 0.04) : const Color(0xFFF8FAFC),
+          color: isSelected ? badgeColor.withValues(alpha: 0.06) : (isHighlighted ? const Color(0xFFFFF1F2) : const Color(0xFFF8FAFC)),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? badgeColor : const Color(0xFFE2E8F0),
-            width: isSelected ? 2 : 1,
+            color: isSelected ? badgeColor : (isHighlighted ? const Color(0xFFFCA5A5) : const Color(0xFFE2E8F0)),
+            width: isSelected ? 2 : (isHighlighted ? 1.5 : 1),
           ),
         ),
         child: Row(
@@ -612,7 +663,10 @@ class _InspectionBookingModalState extends State<InspectionBookingModal> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF334155))),
+                      Expanded(
+                        child: Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF334155))),
+                      ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
@@ -634,3 +688,4 @@ class _InspectionBookingModalState extends State<InspectionBookingModal> {
     );
   }
 }
+

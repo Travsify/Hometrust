@@ -21,6 +21,8 @@ import 'inbox_screen.dart';
 import 'build_for_me_screen.dart';
 import '../core/network/api_client.dart';
 import '../core/utils/image_helper.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'site_reels_screen.dart';
 import 'create_reel_screen.dart';
 
@@ -50,7 +52,99 @@ class _HomeScreenState extends State<HomeScreen> {
         purchaseProvider.clear();
       }
       _fetchStories();
+      _checkNotificationPermission();
     });
+  }
+
+  /// Shows a branded in-app dialog prompting authenticated users to enable push
+  /// notifications if they haven't already. Only shown once per install session.
+  Future<void> _checkNotificationPermission() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final alreadyPrompted = prefs.getBool('ht_notif_prompted') ?? false;
+      if (alreadyPrompted) return;
+
+      // Check current OS notification opt-in status
+      final isOptedIn = OneSignal.Notifications.optedIn ?? false;
+
+      // Only prompt if permission has not yet been granted
+      if (isOptedIn) {
+        await prefs.setBool('ht_notif_prompted', true);
+        return;
+      }
+
+      if (!mounted) return;
+      await prefs.setBool('ht_notif_prompted', true);
+
+      // Show styled in-app prompt after a brief delay
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF059669).withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.notifications_active_rounded, color: Color(0xFF059669), size: 34),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Stay in the Loop 🔔',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Enable notifications to receive instant alerts on payment receipts, project milestones, new messages, and property updates — so you never miss a thing.',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.5),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                // Allow Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.of(ctx).pop();
+                      await OneSignal.Notifications.requestPermission(true);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF059669),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Allow Notifications', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Maybe Later
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Maybe Later', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (_) {
+      // Silently ignore — notification prompt is non-critical
+    }
   }
 
   Future<void> _fetchStories() async {

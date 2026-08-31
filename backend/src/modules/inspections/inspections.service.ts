@@ -7,7 +7,7 @@ export interface CreateInspectionParams {
   propertyId?: string;
   projectId?: string;
   milestoneId?: string;
-  inspectionType?: 'SELF_OR_REPRESENTATIVE' | 'COREN_ENGINEER' | 'GEOFENCED_VIDEO';
+  inspectionType?: 'SELF_OR_REPRESENTATIVE' | 'COREN_ENGINEER' | 'GEOFENCED_VIDEO' | 'GO_LIVE_STREAM';
   scope?: 'PRE_PURCHASE' | 'MILESTONE_VERIFICATION';
   preferredDate: string;
   preferredTime: string;
@@ -26,7 +26,9 @@ export class InspectionsService {
     const scope = params.scope || (params.milestoneId ? 'MILESTONE_VERIFICATION' : 'PRE_PURCHASE');
     const fee = type === 'COREN_ENGINEER' ? 25000 : 0;
     const paymentStatus = type === 'COREN_ENGINEER' ? (params.paymentReference ? 'PAID' : 'PENDING') : 'WAIVED';
-    const gatePassCode = `HT-PASS-${Math.floor(100000 + Math.random() * 900000)}`;
+    const gatePassCode = type === 'GO_LIVE_STREAM'
+      ? `HT-LIVE-${Math.floor(100000 + Math.random() * 900000)}`
+      : `HT-PASS-${Math.floor(100000 + Math.random() * 900000)}`;
 
     const inspection = await prisma.inspection.create({
       data: {
@@ -47,7 +49,7 @@ export class InspectionsService {
         paymentStatus,
         paymentReference: params.paymentReference || null,
         gatePassCode,
-        status: type === 'COREN_ENGINEER' ? 'ASSIGNED' : 'REQUESTED',
+        status: type === 'COREN_ENGINEER' ? 'ASSIGNED' : (type === 'GO_LIVE_STREAM' ? 'SCHEDULED' : 'REQUESTED'),
         notes: params.notes || null,
       },
       include: {
@@ -56,18 +58,22 @@ export class InspectionsService {
       },
     });
 
-    // Dispatch Push & Activity Audit Email with Device + IP
+    // Dispatch Push & Activity Audit Email
     const title = type === 'COREN_ENGINEER' 
       ? '🏛️ COREN Engineer Inspection Booked'
       : type === 'GEOFENCED_VIDEO'
         ? '📹 Geofenced Video Inspection Requested'
-        : '🎟️ Site Inspection Pass Generated';
+        : type === 'GO_LIVE_STREAM'
+          ? '🔴 Interactive "Go Live" Inspection Scheduled'
+          : '🎟️ Site Inspection Pass Generated';
 
     const message = type === 'COREN_ENGINEER'
       ? `An accredited COREN structural engineer has been scheduled for inspection on ${params.preferredDate} (${params.preferredTime}).`
       : type === 'GEOFENCED_VIDEO'
         ? `Your request for a live geofenced site walkthrough video has been dispatched to the project developer.`
-        : `Your site access pass (${gatePassCode}) is ready for ${params.attendeeName || params.representativeName} on ${params.preferredDate}.`;
+        : type === 'GO_LIVE_STREAM'
+          ? `The developer will go live on-site on ${params.preferredDate} (${params.preferredTime}). You can watch live, interact, and inspect milestones. Escrow funds will be released within the 5-day window only upon your final satisfaction.`
+          : `Your site access pass (${gatePassCode}) is ready for ${params.attendeeName || params.representativeName} on ${params.preferredDate}.`;
 
     await NotificationsService.createAndDispatch({
       userId: params.userId,
@@ -75,12 +81,30 @@ export class InspectionsService {
       message,
       type: 'INSPECTION',
       actionDetails: [
-        { label: 'Inspection Type', value: type },
+        { label: 'Inspection Mode', value: type === 'GO_LIVE_STREAM' ? 'Live Interactive Broadcast (Go Live)' : type },
         { label: 'Date & Time', value: `${params.preferredDate} (${params.preferredTime})` },
-        { label: 'Gate Pass Code', value: gatePassCode },
-        { label: 'Attendee', value: params.attendeeName || params.representativeName || 'Buyer' },
+        { label: 'Gate Pass / Room Code', value: gatePassCode },
+        { label: 'Final Arbiter Guarantee', value: 'Buyer Approval Required (5-Day Escrow Release Window)' },
       ],
     });
+
+    // If Go Live stream is booked on a project, notify project developer
+    if (type === 'GO_LIVE_STREAM' && inspection.project?.developerId) {
+      prisma.developer.findUnique({
+        where: { id: inspection.project.developerId },
+        select: { userId: true },
+      }).then((dev) => {
+        if (dev?.userId) {
+          NotificationsService.createAndDispatch({
+            userId: dev.userId,
+            title: `🔴 Scheduled "Go Live" Inspection: ${inspection.project?.name || 'Project'}`,
+            message: `A buyer has requested an interactive live on-site inspection for ${params.preferredDate} at ${params.preferredTime}. Prepare to go live from the building site!`,
+            type: 'MILESTONE',
+            linkUrl: `/projects/${params.projectId}/live`,
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+    }
 
     return inspection;
   }

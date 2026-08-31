@@ -3,6 +3,7 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { config } from '../../config';
 import { prisma } from '../../utils/prisma';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -227,6 +228,15 @@ export class SocketService {
 
           // Deliver incoming call to recipient's device
           this.io?.to(`user_${recipientId}`).emit('incoming_call', callPayload);
+
+          // Dispatch high-priority Push Notification to ring recipient's phone even if app is backgrounded
+          NotificationsService.createAndDispatch({
+            userId: recipientId,
+            title: `📞 Incoming Voice Call: ${callPayload.callerName}`,
+            message: propertyTitle ? `Inquiry regarding: ${propertyTitle}` : 'Tap to answer in Hometrust',
+            type: 'CHAT',
+            linkUrl: `/call/${callPayload.callId}`,
+          }).catch((err: any) => console.warn('[CALL PUSH NOTIFICATION NOTICE]', err?.message));
         }
       );
 

@@ -4,16 +4,24 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 export class ChatService {
   /**
-   * Get or create a conversation between two users
+   * Get or create an inquiry-based conversation between two users
    */
   static async getOrCreateConversation(user1Id: string, user2Id: string, propertyId?: string, projectId?: string) {
+    const whereClause: any = {
+      OR: [
+        { user1Id, user2Id },
+        { user1Id: user2Id, user2Id: user1Id },
+      ],
+    };
+
+    if (propertyId) {
+      whereClause.propertyId = propertyId;
+    } else if (projectId) {
+      whereClause.projectId = projectId;
+    }
+
     let conversation = await prisma.conversation.findFirst({
-      where: {
-        OR: [
-          { user1Id, user2Id },
-          { user1Id: user2Id, user2Id: user1Id },
-        ],
-      },
+      where: whereClause,
       include: {
         messages: {
           orderBy: { createdAt: 'asc' },
@@ -58,11 +66,62 @@ export class ChatService {
       });
     }
 
-    return conversation;
+    // Attach rich property/project context
+    let propertyContext: any = null;
+    if (conversation.propertyId) {
+      const prop = await prisma.property.findUnique({
+        where: { id: conversation.propertyId },
+        select: {
+          id: true,
+          title: true,
+          price: true,
+          images: true,
+          city: true,
+          state: true,
+        },
+      });
+      if (prop) {
+        propertyContext = {
+          id: prop.id,
+          type: 'PROPERTY',
+          title: prop.title,
+          price: prop.price,
+          location: `${prop.city}, ${prop.state}`,
+          imageUrl: prop.images?.[0] || null,
+        };
+      }
+    } else if (conversation.projectId) {
+      const proj = await prisma.project.findUnique({
+        where: { id: conversation.projectId },
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          state: true,
+          images: true,
+          units: { take: 1, select: { price: true } },
+        },
+      });
+      if (proj) {
+        propertyContext = {
+          id: proj.id,
+          type: 'PROJECT',
+          title: proj.name,
+          price: proj.units?.[0]?.price || 0,
+          location: `${proj.city}, ${proj.state}`,
+          imageUrl: proj.images?.[0] || null,
+        };
+      }
+    }
+
+    return {
+      ...conversation,
+      propertyContext,
+    };
   }
 
   /**
-   * Start a conversation with a developer
+   * Start a conversation with a developer anchored to a property inquiry
    */
   static async startWithDeveloper(buyerId: string, developerId: string, propertyId?: string, projectId?: string, initialMessage?: string) {
     // Find developer's user account
@@ -80,17 +139,30 @@ export class ChatService {
       throw new Error('Developer user account is not active');
     }
 
-    const conversation = await this.getOrCreateConversation(buyerId, devUserId, propertyId, projectId);
+    const conversation: any = await this.getOrCreateConversation(buyerId, devUserId, propertyId, projectId);
 
-    if (initialMessage && initialMessage.trim()) {
+    // If conversation is brand new (0 messages), inject initial inquiry message from buyer
+    if (!conversation.messages || conversation.messages.length === 0) {
+      let inquiryText = initialMessage;
+      if (!inquiryText || !inquiryText.trim()) {
+        const listingTitle = conversation.propertyContext?.title || 'this listing';
+        inquiryText = `Hello, I am interested in ${listingTitle}. Can you provide more details regarding milestone schedules and site inspection?`;
+      }
+
       await this.sendMessage({
         conversationId: conversation.id,
         senderId: buyerId,
-        content: initialMessage.trim(),
+        content: inquiryText.trim(),
       });
     }
 
-    return conversation;
+    const devPhone = developer.phone || developer.user?.phone || null;
+
+    return {
+      ...conversation,
+      developerPhone: devPhone,
+      peerPhone: devPhone,
+    };
   }
 
   /**
@@ -151,12 +223,14 @@ export class ChatService {
         id: true,
         firstName: true,
         lastName: true,
+        phone: true,
         avatarUrl: true,
         role: true,
         developer: {
           select: {
             id: true,
             companyName: true,
+            phone: true,
             isVerified: true,
           },
         },
@@ -164,6 +238,28 @@ export class ChatService {
     });
 
     const peerMap = new Map(peers.map((p) => [p.id, p]));
+
+    // Batch fetch associated properties and projects
+    const propIds = conversations.map((c) => c.propertyId).filter(Boolean) as string[];
+    const projIds = conversations.map((c) => c.projectId).filter(Boolean) as string[];
+
+    const [properties, projects] = await Promise.all([
+      propIds.length > 0
+        ? prisma.property.findMany({
+            where: { id: { in: propIds } },
+            select: { id: true, title: true, price: true, images: true, city: true, state: true },
+          })
+        : [],
+      projIds.length > 0
+        ? prisma.project.findMany({
+            where: { id: { in: projIds } },
+            select: { id: true, name: true, city: true, state: true, images: true, units: { take: 1, select: { price: true } } },
+          })
+        : [],
+    ]);
+
+    const propMap = new Map(properties.map((p) => [p.id, p]));
+    const projMap = new Map(projects.map((p) => [p.id, p]));
 
     // Calculate unread counts per conversation
     const result = await Promise.all(
@@ -180,7 +276,6 @@ export class ChatService {
         });
 
         const isPeerOnline = SocketService.isUserOnline(peerId);
-
         const lastMsg = c.messages[0];
 
         // Format peer display name and role
@@ -191,16 +286,43 @@ export class ChatService {
           role = 'VERIFIED_DEVELOPER';
         }
 
+        let propertyContext: any = null;
+        if (c.propertyId && propMap.has(c.propertyId)) {
+          const p = propMap.get(c.propertyId)!;
+          propertyContext = {
+            id: p.id,
+            type: 'PROPERTY',
+            title: p.title,
+            price: p.price,
+            location: `${p.city}, ${p.state}`,
+            imageUrl: p.images?.[0] || null,
+          };
+        } else if (c.projectId && projMap.has(c.projectId)) {
+          const pr = projMap.get(c.projectId)!;
+          propertyContext = {
+            id: pr.id,
+            type: 'PROJECT',
+            title: pr.name,
+            price: pr.units?.[0]?.price || 0,
+            location: `${pr.city}, ${pr.state}`,
+            imageUrl: pr.images?.[0] || null,
+          };
+        }
+
+        const peerPhone = peer?.developer?.phone || peer?.phone || null;
+
         return {
           id: c.id,
           peerId,
           peerName: displayName,
           peerRole: role,
           peerAvatar: peer?.avatarUrl || null,
+          peerPhone,
           isPeerOnline,
           isVerified: peer?.developer?.isVerified ?? (peer?.role === 'ADMIN' || peer?.role === 'SUPER_ADMIN'),
           propertyId: c.propertyId,
           projectId: c.projectId,
+          propertyContext,
           unreadCount,
           lastMessage: lastMsg
             ? {
@@ -246,6 +368,60 @@ export class ChatService {
       data: { isRead: true },
     });
 
+    const peerId = conversation.user1Id === userId ? conversation.user2Id : conversation.user1Id;
+    const peer = await prisma.user.findUnique({
+      where: { id: peerId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        avatarUrl: true,
+        role: true,
+        developer: {
+          select: {
+            id: true,
+            companyName: true,
+            phone: true,
+            isVerified: true,
+          },
+        },
+      },
+    });
+
+    let propertyContext: any = null;
+    if (conversation.propertyId) {
+      const prop = await prisma.property.findUnique({
+        where: { id: conversation.propertyId },
+        select: { id: true, title: true, price: true, images: true, city: true, state: true },
+      });
+      if (prop) {
+        propertyContext = {
+          id: prop.id,
+          type: 'PROPERTY',
+          title: prop.title,
+          price: prop.price,
+          location: `${prop.city}, ${prop.state}`,
+          imageUrl: prop.images?.[0] || null,
+        };
+      }
+    } else if (conversation.projectId) {
+      const proj = await prisma.project.findUnique({
+        where: { id: conversation.projectId },
+        select: { id: true, name: true, city: true, state: true, images: true, units: { take: 1, select: { price: true } } },
+      });
+      if (proj) {
+        propertyContext = {
+          id: proj.id,
+          type: 'PROJECT',
+          title: proj.name,
+          price: proj.units?.[0]?.price || 0,
+          location: `${proj.city}, ${proj.state}`,
+          imageUrl: proj.images?.[0] || null,
+        };
+      }
+    }
+
     const messages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
@@ -267,7 +443,7 @@ export class ChatService {
       },
     });
 
-    return messages.map((m) => {
+    const formattedMessages = messages.map((m) => {
       const isSenderMe = m.senderId === userId;
       const senderName = m.sender.developer?.companyName || `${m.sender.firstName} ${m.sender.lastName}`.trim();
 
@@ -286,6 +462,13 @@ export class ChatService {
         createdAt: m.createdAt.toISOString(),
       };
     });
+
+    return {
+      conversationId,
+      propertyContext,
+      peerPhone: peer?.developer?.phone || peer?.phone || null,
+      messages: formattedMessages,
+    };
   }
 
   /**
