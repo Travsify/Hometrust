@@ -4,6 +4,19 @@ import PDFDocument from 'pdfkit';
 import { config } from '../../config';
 
 export class BankingPdfService {
+  private static getLogoPath(): string | null {
+    const candidates = [
+      path.join(process.cwd(), 'public', 'logo.png'),
+      path.join(process.cwd(), 'public', 'assets', 'logo.png'),
+      path.join(__dirname, '..', '..', '..', 'public', 'logo.png'),
+      path.join(__dirname, '..', '..', '..', 'public', 'assets', 'logo.png'),
+    ];
+    for (const c of candidates) {
+      if (fs.existsSync(c)) return c;
+    }
+    return null;
+  }
+
   static async generateStatementPdf(data: {
     userName: string;
     email: string;
@@ -33,21 +46,44 @@ export class BankingPdfService {
       const stream = fs.createWriteStream(filePath);
       doc.pipe(stream);
 
-      // Header Banner
-      doc.rect(40, 40, 515, 65).fill('#059669');
-      doc.fillColor('#FFFFFF').fontSize(22).font('Helvetica-Bold').text('HOMETRUST', 55, 52);
-      doc.fontSize(8.5).font('Helvetica').text(subtitle, 55, 78);
-      doc.fontSize(8.5).font('Helvetica').text(`Generated: ${new Date().toLocaleString()}`, 380, 55, { align: 'right' });
-      doc.text('Security: Bank-Grade NDPR Verified', 380, 72, { align: 'right' });
+      // Header Banner with Bold Logo
+      doc.rect(40, 40, 515, 75).fill('#059669');
 
-      // User & Account Overview Box
-      let y = 120;
+      const logoPath = BankingPdfService.getLogoPath();
+      let textStartX = 55;
+      if (logoPath) {
+        try {
+          doc.image(logoPath, 50, 48, { width: 58, height: 58 });
+          textStartX = 118;
+        } catch (_) {}
+      }
+
+      doc.fillColor('#FFFFFF').fontSize(22).font('Helvetica-Bold').text('HOMETRUST', textStartX, 50);
+      doc.fontSize(8.5).font('Helvetica').fillColor('#D1FAE5').text('Ehomes Global Inclusive Limited', textStartX, 72);
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#FEF08A').text(subtitle, textStartX, 86);
+
+      const genDateStr = new Date().toLocaleString('en-GB', {
+        timeZone: 'Africa/Lagos',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+
+      doc.fontSize(8.5).font('Helvetica').fillColor('#FFFFFF').text(`Generated: ${genDateStr} (WAT)`, 340, 52, { align: 'right' });
+      doc.fontSize(7.5).fillColor('#D1FAE5').text('Security: Bank-Grade NDPR Verified', 340, 70, { align: 'right' });
+      doc.text('Regulated CBN Custodial Partner', 340, 84, { align: 'right' });
+
+      // User & Account Overview Box (No email exposed)
+      let y = 125;
       doc.rect(40, y, 515, 75).fillAndStroke('#F8FAFC', '#E2E8F0');
-      doc.fillColor('#0F172A').fontSize(10).font('Helvetica-Bold').text('ACCOUNT SUMMARY', 52, y + 10);
+      doc.fillColor('#0F172A').fontSize(10).font('Helvetica-Bold').text('ESCROW ACCOUNT SUMMARY', 52, y + 10);
       
       doc.fillColor('#334155').fontSize(9).font('Helvetica');
       doc.text(`Account Holder: ${data.userName}`, 52, y + 26);
-      doc.text(`Email: ${data.email}`, 52, y + 40);
+      doc.text(`Platform: Hometrust Real Estate Escrow`, 52, y + 40);
       doc.text(`Dedicated Bank: ${data.bankName}`, 52, y + 54);
 
       doc.text(`NUBAN Account: ${data.accountNumber}`, 320, y + 26);
@@ -56,7 +92,7 @@ export class BankingPdfService {
       doc.text(`Available Balance: NGN ${data.balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 320, y + 54);
 
       // Transactions Ledger Table Header
-      y += 95;
+      y += 90;
       doc.fillColor('#0F172A').fontSize(11).font('Helvetica-Bold').text('TRANSACTION LEDGER', 40, y);
       y += 18;
 
@@ -81,7 +117,7 @@ export class BankingPdfService {
         doc.rect(40, y, 515, 20).fill(isEven ? '#F8FAFC' : '#FFFFFF');
         isEven = !isEven;
 
-        const dateStr = tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : 'N/A';
+        const dateStr = tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('en-GB', { timeZone: 'Africa/Lagos' }) : 'N/A';
         const isCredit = tx.type === 'CREDIT';
         const amountStr = `${isCredit ? '+' : '-'}NGN ${Number(tx.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 
@@ -134,11 +170,21 @@ export class BankingPdfService {
       const stream = fs.createWriteStream(filePath);
       doc.pipe(stream);
 
-      // Header Banner
-      doc.rect(40, 40, 515, 65).fill('#059669');
-      doc.fillColor('#FFFFFF').fontSize(22).font('Helvetica-Bold').text('HOMETRUST', 55, 52);
-      doc.fontSize(9).font('Helvetica').text('OFFICIAL ESCROW PAYMENT RECEIPT', 55, 78);
-      doc.fontSize(8.5).font('Helvetica').text(`Receipt No: ${data.reference}`, 340, 55, { align: 'right' });
+      // Header Banner with Bold Logo & Company Name
+      doc.rect(40, 40, 515, 75).fill('#059669');
+
+      const logoPath = BankingPdfService.getLogoPath();
+      let textStartX = 55;
+      if (logoPath) {
+        try {
+          doc.image(logoPath, 50, 48, { width: 58, height: 58 });
+          textStartX = 118;
+        } catch (_) {}
+      }
+
+      doc.fillColor('#FFFFFF').fontSize(22).font('Helvetica-Bold').text('HOMETRUST', textStartX, 50);
+      doc.fontSize(8.5).font('Helvetica').fillColor('#D1FAE5').text('Ehomes Global Inclusive Limited', textStartX, 72);
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#FEF08A').text('OFFICIAL ESCROW PAYMENT RECEIPT', textStartX, 86);
       
       const txDate = new Date(data.createdAt);
       const exactTimeStr = txDate.toLocaleString('en-GB', {
@@ -152,19 +198,21 @@ export class BankingPdfService {
         hour12: true,
       });
 
-      doc.text(`Issued: ${exactTimeStr} (WAT)`, 340, 72, { align: 'right' });
+      doc.fontSize(8.5).font('Helvetica').fillColor('#FFFFFF').text(`Receipt No: ${data.reference}`, 340, 52, { align: 'right' });
+      doc.text(`Issued: ${exactTimeStr} (WAT)`, 340, 68, { align: 'right' });
+      doc.fontSize(7.5).fillColor('#D1FAE5').text('Security: CBN Partner Verified', 340, 84, { align: 'right' });
 
       // Receipt Box
-      let y = 130;
-      doc.rect(40, y, 515, 340).fillAndStroke('#FFFFFF', '#E2E8F0');
+      let y = 125;
+      doc.rect(40, y, 515, 345).fillAndStroke('#FFFFFF', '#E2E8F0');
 
       // Amount Banner inside receipt
-      doc.rect(60, y + 20, 475, 55).fill('#ECFDF5');
-      doc.fillColor('#065F46').fontSize(10).font('Helvetica-Bold').text('TOTAL TRANSACTION AMOUNT (NGN)', 75, y + 30);
-      doc.fontSize(18).fillColor('#059669').text(`NGN ${Number(data.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 75, y + 46);
+      doc.rect(60, y + 16, 475, 55).fill('#ECFDF5');
+      doc.fillColor('#065F46').fontSize(10).font('Helvetica-Bold').text('BENEFICIARY SETTLEMENT AMOUNT (NGN)', 75, y + 26);
+      doc.fontSize(18).fillColor('#059669').text(`NGN ${Number(data.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 75, y + 42);
 
-      // Detail Rows (Account Holder Email omitted for privacy)
-      let rowY = y + 95;
+      // Detail Rows (Account Holder Email completely omitted for privacy)
+      let rowY = y + 85;
       const isWithdrawal = data.type === 'DEBIT' || (data.purpose || '').toUpperCase().includes('WITHDRAWAL') || (data.purpose || '').toUpperCase().includes('PAYOUT');
 
       const details = [
@@ -174,7 +222,7 @@ export class BankingPdfService {
         { label: 'Payment Type / Purpose', value: data.purpose || data.type },
         { label: 'Originating Account / Sender', value: data.userName },
         ...(isWithdrawal ? [
-          { label: 'Beneficiary Receives', value: `NGN ${Number(data.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })} (Full Amount)` },
+          { label: 'Beneficiary Receives', value: `NGN ${Number(data.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })} (Full 100%)` },
           { label: 'Sender Platform Fee', value: 'NGN 100.00 (Zero Charge to Receiver)' },
           { label: 'Total Debited from Sender', value: `NGN ${(Number(data.amount) + 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}` },
         ] : []),
@@ -183,19 +231,19 @@ export class BankingPdfService {
         { label: 'Escrow Security Status', value: 'Guaranteed by CBN Licensed Partner Bank' },
       ];
 
-      for (const d of details as any[]) {
+      for (const d of details) {
         doc.fillColor('#64748B').fontSize(9).font('Helvetica').text(d.label, 75, rowY);
         doc.fillColor(d.isGreen ? '#059669' : '#0F172A').font('Helvetica-Bold').text(d.value, 240, rowY);
         doc.moveTo(75, rowY + 14).lineTo(515, rowY + 14).strokeColor('#F1F5F9').stroke();
-        rowY += 24;
+        rowY += 23;
       }
 
       // Security Seal & Verification Note
-      y = 490;
-      doc.rect(40, y, 515, 65).fillAndStroke('#F8FAFC', '#CBD5E1');
-      doc.fillColor('#0F172A').fontSize(8.5).font('Helvetica-Bold').text('AUTHENTICITY & ESCROW WARRANTY', 55, y + 10);
+      y = 485;
+      doc.rect(40, y, 515, 70).fillAndStroke('#F8FAFC', '#CBD5E1');
+      doc.fillColor('#0F172A').fontSize(8.5).font('Helvetica-Bold').text('HOMETRUST AUTHENTICITY & ESCROW WARRANTY', 55, y + 10);
       doc.fillColor('#475569').fontSize(7.5).font('Helvetica').text('This document serves as an electronic legal confirmation of funds processed through Hometrust escrow services in Nigerian Naira (NGN). Hometrust is a product of Ehomes Global Inclusive Limited. Escrow custodial and payment settlement services are provided in partnership with licensed CBN-regulated financial institutions.', 55, y + 24, { width: 485 });
-      doc.text('Direct verification: https://hometrustng.com/receipts/verify | Support: support@hometrust.ng', 55, y + 48);
+      doc.text('Direct verification: https://hometrustng.com/receipts/verify | Support: support@hometrustng.com', 55, y + 50);
 
       doc.end();
       stream.on('finish', () => resolve({ filePath, fileName }));
