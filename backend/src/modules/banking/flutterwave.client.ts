@@ -144,14 +144,30 @@ export class FlutterwaveClient {
     throw new Error(resData?.message || 'Failed to create dedicated virtual account via Flutterwave.');
   }
 
+  public static normalizeBankCodeForFlutterwave(code: string): string {
+    const trimmed = (code || '').trim();
+    const map: Record<string, string> = {
+      '999992': '100004', // OPay / Paycom
+      '999991': '100033', // PalmPay
+      '50211': '090267',  // Kuda Bank
+      '50515': '090405',  // Moniepoint
+      '51318': '090551',  // FairMoney
+      '125': '090175',    // Rubies
+      '565': '100026',    // Carbon
+      '50163': '090470',  // Dot
+    };
+    return map[trimmed] || trimmed;
+  }
+
   /**
    * 2. Perform Name Enquiry to verify beneficiary account before withdrawal
    */
   static async nameEnquiry(accountNumber: string, bankCode: string): Promise<FlutterwaveNameEnquiryResponse> {
     const { secretKey, baseUrl } = await this.getCredentials();
+    const flwBankCode = this.normalizeBankCodeForFlutterwave(bankCode);
 
     try {
-      console.log(`[FLUTTERWAVE] Resolving account ${accountNumber} with bank ${bankCode}...`);
+      console.log(`[FLUTTERWAVE] Resolving account ${accountNumber} with bank ${flwBankCode} (original: ${bankCode})...`);
       const response = await fetch(`${baseUrl}/accounts/resolve`, {
         method: 'POST',
         headers: {
@@ -160,7 +176,7 @@ export class FlutterwaveClient {
         },
         body: JSON.stringify({
           account_number: accountNumber.trim(),
-          account_bank: bankCode.trim(),
+          account_bank: flwBankCode,
         }),
       });
 
@@ -225,10 +241,11 @@ export class FlutterwaveClient {
     narration?: string;
   }): Promise<FlutterwaveTransferResponse> {
     const { secretKey, baseUrl } = await this.getCredentials();
+    const flwBankCode = this.normalizeBankCodeForFlutterwave(params.bankCode);
 
     if (secretKey) {
       try {
-        console.log(`[PAYOUT] Initiating Flutterwave payout of ₦${params.amount} to ${params.accountNumber} (${params.bankCode})...`);
+        console.log(`[PAYOUT] Initiating Flutterwave payout of ₦${params.amount} to ${params.accountNumber} (${flwBankCode}, orig: ${params.bankCode})...`);
         const response = await fetch(`${baseUrl}/transfers`, {
           method: 'POST',
           headers: {
@@ -236,8 +253,8 @@ export class FlutterwaveClient {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            account_bank: params.bankCode,
-            account_number: params.accountNumber,
+            account_bank: flwBankCode,
+            account_number: params.accountNumber.trim(),
             amount: params.amount,
             narration: params.narration || 'Hometrust Escrow Milestone Disbursement',
             currency: 'NGN',
